@@ -31,7 +31,7 @@ jobs:
         uses: termux/upload-release-action@v4.2.0
         with:
           asset_name: Sesame-Normal-${{ github.event.release.tag_name }}.apk
-          path: ${{ steps.sign_normal_apk.outputs.signedFile }}
+          file: ${{ steps.sign_normal_apk.outputs.signedFile }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref }}
           overwrite: true
@@ -42,7 +42,7 @@ jobs:
         uses: termux/upload-release-action@v4.2.0
         with:
           asset_name: Sesame-Compatible-${{ github.event.release.tag_name }}.apk
-          path: ${{ steps.sign_compatible_apk.outputs.signedFile }}
+          file: ${{ steps.sign_compatible_apk.outputs.signedFile }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref }}
           overwrite: true
