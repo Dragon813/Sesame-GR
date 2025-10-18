@@ -134,6 +134,7 @@ public class ProtectEcology extends ModelTask {
             TreeIdMap.save();
             ReserveIdMap.save();
             AnimalIdMap.save();
+
         } catch (Throwable t) {
             Log.i(TAG, "initForest err:");
             Log.printStackTrace(TAG, t);

@@ -21,6 +21,7 @@ import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectOneModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.common.SelectModelFieldFunc;
 import io.github.lazyimmortal.sesame.entity.AlipayAnimal;
 import io.github.lazyimmortal.sesame.entity.AlipayBeach;
+import io.github.lazyimmortal.sesame.entity.AlipayForestHunt;
 import io.github.lazyimmortal.sesame.entity.AlipayMarathon;
 import io.github.lazyimmortal.sesame.entity.AlipayNewAncientTree;
 import io.github.lazyimmortal.sesame.entity.AlipayReserve;
@@ -284,6 +285,7 @@ public class ListDialog {
                             || (curIdAndName instanceof AlipayMarathon)
                             || (curIdAndName instanceof AlipayNewAncientTree)
                             || (curIdAndName instanceof AlipayBeach)
+                            || (curIdAndName instanceof AlipayForestHunt)
                             || (curIdAndName instanceof WalkPath)
                     ) {
                         try {
@@ -315,6 +317,10 @@ public class ListDialog {
                                                 AlipayBeach.remove(curIdAndName.id);
                                                 BeachIdMap.remove(curIdAndName.id);
                                                 BeachIdMap.save();
+                                            } else if (curIdAndName instanceof AlipayForestHunt) {
+                                                AlipayForestHunt.remove(curIdAndName.id);
+                                                ForestHuntIdMap.remove(curIdAndName.id);
+                                                ForestHuntIdMap.save();
                                             } else if (curIdAndName instanceof WalkPath) {
                                                 WalkPath.remove(curIdAndName.id);
                                                 WalkPathIdMap.remove(curIdAndName.id);

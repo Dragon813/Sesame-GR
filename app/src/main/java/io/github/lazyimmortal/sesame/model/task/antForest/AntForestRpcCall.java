@@ -421,4 +421,15 @@ public class AntForestRpcCall {
                 "\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]";
         return ApplicationHook.requestString("alipay.antforest.forest.h5.takeOffDress", args);
     }
+
+    public static String shareComponentRecall(String shareId) {
+        String requestData = "[{\"iepShareChannelType\":\"qrcode\",\"requestType\":\"RPC\",\"sceneCode\":\"FOREST_NORMAL_20250829_SHARE\",\"shareId\":\"" + shareId + "\",\"source\":\"chouchoule\"}]";
+        return ApplicationHook.requestString("com.alipay.antiep.shareComponentRecall", requestData);
+
+    }
+
+    public static String confirmShareRecall(String shareId,String userId) {
+        String requestData = "[{\"beSharedBizExtInfo\":{\"drawActivityId\":\"2025082901\",\"inviterUid\":\"" + shareId + "\"},\"requestType\":\"RPC\",\"sceneCode\":\"FOREST_NORMAL_20250829_SHARE\",\"shareId\":\"" + shareId + "\",\"source\":\"chouchoule\",\"userId\":\""+ userId +"\"}]";
+        return ApplicationHook.requestString("com.alipay.antiep.confirmShareRecall", requestData);
+    }
 }

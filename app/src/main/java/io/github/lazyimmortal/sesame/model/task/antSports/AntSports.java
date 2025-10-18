@@ -1065,70 +1065,97 @@ public class AntSports extends ModelTask {
         }
     }
 
-    /* 抢好友大战 */
+    // 抢好友大战
+    //俱乐部首页，执行抢好友、训练动作、抢购等操作（具体逻辑依赖配置的 clubTrainItemType、clubTradeMemberType 等）
     private void queryClubHome() {
         try {
+            //收金币
+            JSONObject joBubble = new JSONObject(AntSportsRpcCall.queryClubHome());
+            if (!MessageUtil.checkResultCode(TAG, joBubble)) {
+                return;
+            }
+            JSONObject mainRoom = joBubble.getJSONObject("mainRoom");
+            if (mainRoom.has("bubbleList"))
+            {
+                JSONArray bubbleList = mainRoom.getJSONArray("bubbleList");
+                for (int k= 0; k < bubbleList.length(); k++) {
+                    String bubbleId = bubbleList.getJSONObject(k).getString("bubbleId");
+                    //Log.other("收取被抢走好友的能量球序号："+String.valueOf(k));
+                    //Log.other(bubbleId);
+                    collectBubble(bubbleId,"[买卖好友]");
+                    TimeUtil.sleep(1000);
+                }
+            }
+
+
             JSONObject jo = new JSONObject(AntSportsRpcCall.queryClubHome());
             if (!MessageUtil.checkResultCode(TAG, jo)) {
                 return;
             }
             JSONArray roomList = jo.getJSONArray("roomList");
+            //Log.other("\n\n"+"JSONArray roomList = jo.getJSONArray(\"roomList\")");
+            //Log.other(roomList.toString());
             for (int i = 0; i < roomList.length(); i++) {
+                //Log.other("检查可以购买好友的房号："+String.valueOf(i));
                 JSONObject room = roomList.getJSONObject(i);
+                //Log.other(room.toString());
                 String roomId = room.getString("roomId");
-                queryClubRoom(roomId);
-                TimeUtil.sleep(1000);
+                //Log.other(roomId);
+
+                //收取训练好友能量
+                if (room.has("bubbleList")){
+                    JSONArray roombubbleList = room.getJSONArray("bubbleList");
+                    for (int l = 0; l < roombubbleList.length(); l++) {
+                        String bubbleId = roombubbleList.getJSONObject(l).getString("bubbleId");
+                        //Log.other("收取第"+String.valueOf(i)+"号房间需要收取训练好友的第"+String.valueOf(l)+"个能量球");
+                        collectBubble(bubbleId,"[训练好友]");
+                        TimeUtil.sleep(1000);
+                    }
+                }
+
+                if (room.getJSONArray("memberList").length()!=0){
+                    continue;
+                }
+
+                //购买好友
+                if (clubTradeMemberType.getValue() != TradeMemberType.NONE) {
+                    queryMemberPriceRanking(roomId);
+                    //JSONObject member = queryMemberPriceRanking();
+                    //buyMember(roomId, member);
+                    TimeUtil.sleep(1000);
+                }
+            }
+            TimeUtil.sleep(1000);
+
+            //训练好友
+            JSONObject joTrain = new JSONObject(AntSportsRpcCall.queryClubHome());
+            if (!MessageUtil.checkResultCode(TAG, joTrain)) {
+                return;
+            }
+            JSONArray roomListTrain = joTrain.getJSONArray("roomList");
+            for (int j= 0; j < roomListTrain.length(); j++) {
+                JSONObject roomTrain = roomListTrain.getJSONObject(j);
+                if (roomTrain.getJSONArray("memberList").length() != 0) {
+                    JSONObject member=roomTrain.getJSONArray("memberList").getJSONObject(0);
+                    trainMember(member);
+                    TimeUtil.sleep(1000);
+                }
             }
         } catch (Throwable t) {
             Log.i(TAG, "queryClubHome err:");
             Log.printStackTrace(TAG, t);
         }
+
     }
 
-    private void queryClubRoom(String roomId) {
+    // 抢好友大战-收集运动能量
+    private void collectBubble(String bubbleId,String bubbleType) {
         try {
-            JSONObject jo = new JSONObject(AntSportsRpcCall.queryClubRoom(roomId));
-            if (!MessageUtil.checkResultCode(TAG, jo)) {
-                return;
-            }
-            if (jo.has("bubbleList")) {
-                JSONArray bubbleList = jo.getJSONArray("bubbleList");
-                for (int i = 0; i < bubbleList.length(); i++) {
-                    JSONObject bubble = bubbleList.getJSONObject(i);
-                    collectBubble(bubble);
-                }
-            }
-            JSONArray memberDetailList = jo.getJSONArray("memberDetailList");
-            if (memberDetailList.length() == 0) {
-                if (clubTradeMemberType.getValue() != TradeMemberType.NONE) {
-                    JSONObject member = queryMemberPriceRanking();
-                    if (buyMember(roomId, member)) {
-                        queryClubRoom(roomId);
-                    }
-                }
-                return;
-            }
-            if (clubTrainItemType.getValue() != TrainItemType.NONE) {
-                for (int i = 0; i < memberDetailList.length(); i++) {
-                    JSONObject member = memberDetailList.getJSONObject(i);
-                    member = member.getJSONObject("memberModel");
-                    trainMember(member);
-                }
-            }
-        } catch (Throwable t) {
-            Log.i(TAG, "queryClubRoom err:");
-            Log.printStackTrace(TAG, t);
-        }
-    }
-
-    // 抢好友大战-收集运动币
-    private void collectBubble(JSONObject bubble) {
-        try {
-            String bubbleId = bubble.getString("bubbleId");
             JSONObject jo = new JSONObject(AntSportsRpcCall.collectBubble(bubbleId));
-            if (MessageUtil.checkResultCode(TAG, jo)) {
-                int collectCoin = jo.getInt("collectCoin");
-                Log.other("训练好友💰️获得[" + collectCoin + "运动币]");
+            if (jo.optBoolean("success")) {
+                JSONObject ja= jo.getJSONObject("data");
+                String collectCoin =ja.getString("changeAmount");
+                Log.other("收取" + bubbleType + "💰️获得[" + collectCoin + "运动能量]");
             }
         } catch (Throwable t) {
             Log.i(TAG, "collectBubble err:");
@@ -1150,15 +1177,40 @@ public class AntSports extends ModelTask {
                 if (StringUtil.isEmpty(itemType)) {
                     return;
                 }
-                JSONObject jo = new JSONObject(AntSportsRpcCall.trainMember(itemType, memberId, originBossId));
-                if (!MessageUtil.checkResultCode(TAG, jo)) {
+
+                String name = TrainItemType.nickNames[clubTrainItemType.getValue()];
+                JSONObject queryTrainItemjo = new JSONObject(AntSportsRpcCall.queryTrainItem());
+                if (!MessageUtil.checkResultCode(TAG, queryTrainItemjo)) {
                     return;
                 }
-                String name = TrainItemType.nickNames[clubTrainItemType.getValue()];
-                Log.other("训练好友🥋训练[" + userName + "]" + name);
-                trainInfo = jo.getJSONObject("trainInfo");
-            }
 
+                //可以翻倍训练
+                if (queryTrainItemjo.has("bizId")) {
+                    String bizId = queryTrainItemjo.getString("bizId");
+                    String taskAction = "SHOW_AD";
+                    queryTrainItemjo = queryTrainItemjo.getJSONObject("taskDetail");
+                    String taskId = queryTrainItemjo.getString("taskId");
+                    JSONObject jo = new JSONObject(AntSportsRpcCall.DoubletrainMember(itemType, bizId, memberId, originBossId));
+                    Log.other("训练好友🥋训练[" + userName + "]" + name);
+                    if (!MessageUtil.checkResultCode(TAG, jo)) {
+                        return;
+                    }
+                    TimeUtil.sleep(7000);
+                    jo = new JSONObject(AntSportsRpcCall.duublecompleteTask(bizId, taskAction, taskId));
+                    if (!MessageUtil.checkResultCode(TAG, jo)) {
+                        return;
+                    }
+                    Log.other("翻倍训练好友🥋训练[" + userName + "]" + name);
+                }
+                else{
+                    JSONObject jo = new JSONObject(AntSportsRpcCall.trainMember(itemType, memberId, originBossId));
+                    if (!MessageUtil.checkResultCode(TAG, jo)) {
+                        return;
+                    }
+                    Log.other("训练好友🥋训练[" + userName + "]" + name);
+                    trainInfo = jo.getJSONObject("trainInfo");
+                }
+            }
             Long gmtEnd = trainInfo.getLong("gmtEnd");
             long updateTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(10);
             addChildTask(new ChildModelTask(roomId, "", () -> {
@@ -1175,27 +1227,37 @@ public class AntSports extends ModelTask {
         String taskId = "TRAIN|" + roomId;
         if (!hasChildTask(taskId)) {
             addChildTask(new ChildModelTask(taskId, "TRAIN", () -> {
-                queryClubRoom(roomId);
+                AntSportsRpcCall.queryClubRoom(roomId);
             }, gmtEnd));
             int roomIdInt = Integer.parseInt(roomId.substring(2, 8));
             Log.record("添加蹲点训练🥋[" + roomIdInt + "号房嘉宾]在[" + TimeUtil.getCommonDate(gmtEnd) + "]执行");
         }
     }
 
+
+
     // 抢好友大战-抢购好友
-    private JSONObject queryMemberPriceRanking() {
+    private void queryMemberPriceRanking(String roomId) {
+        int energyBalance;
         try {
-            JSONObject jo = new JSONObject(AntSportsRpcCall.queryMemberPriceRanking());
-            if (!MessageUtil.checkResultCode(TAG, jo)) {
-                return null;
+            JSONObject jo1 = new JSONObject(AntSportsRpcCall.queryClubHome());
+            if (!MessageUtil.checkResultCode(TAG, jo1)) {
+                return;
             }
-            int coinBalance = jo.getInt("coinBalance");
+            JSONObject assetsInfo = jo1.getJSONObject("assetsInfo");
+            energyBalance =assetsInfo.getInt("energyBalance");
+            TimeUtil.sleep(1000);
+            JSONObject jo = new JSONObject(AntSportsRpcCall.queryMemberPriceRankingEnergy(energyBalance));
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            energyBalance = jo.getInt("energyBalance");
             jo = jo.getJSONObject("rank");
             JSONArray ja = jo.getJSONArray("data");
             for (int i = 0; i < ja.length(); i++) {
                 jo = ja.getJSONObject(i);
                 int price = jo.getInt("price");
-                if (price > coinBalance) {
+                if (price > energyBalance) {
                     continue;
                 }
                 String originBossId = jo.getString("originBossId");
@@ -1206,13 +1268,17 @@ public class AntSports extends ModelTask {
                 if (!isTradeMember) {
                     continue;
                 }
-                return queryClubMember(jo);
+                //如果购买好友成功则返回，继续检测下一个房间
+                if(buyMember(roomId,queryClubMember(jo))){
+                    return;
+                }
+
             }
         } catch (Throwable t) {
             Log.i(TAG, "queryMemberPriceRanking err:");
             Log.printStackTrace(TAG, t);
         }
-        return null;
+        return;
     }
 
     private JSONObject queryClubMember(JSONObject member) {
@@ -1223,6 +1289,7 @@ public class AntSports extends ModelTask {
             if (MessageUtil.checkResultCode(TAG, jo)) {
                 JSONObject priceInfo = jo.getJSONObject("member").getJSONObject("priceInfo");
                 member.put("priceInfo", priceInfo);
+
                 return member;
             }
         } catch (Throwable t) {
@@ -1245,8 +1312,11 @@ public class AntSports extends ModelTask {
             if (MessageUtil.checkResultCode(TAG, jo)) {
                 String userName = UserIdMap.getMaskName(originBossId);
                 int price = member.getInt("price");
-                Log.other("抢购好友🥋抢购[" + userName + "]花费[" + price + "运动币]");
+                Log.other("抢购好友🥋抢购[" + userName + "]花费[" + price + "健康能量]");
                 return true;
+            }
+            else{
+                return false;
             }
         } catch (Throwable t) {
             Log.i(TAG, "buyMember err:");

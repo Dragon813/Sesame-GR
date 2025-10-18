@@ -262,6 +262,14 @@ public class FileUtil {
         return file;
     }
 
+    public static File getForestHuntIdMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "ForestHunt.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+
     public static File getWalkPathIdMapFile() {
         File file = new File(MAIN_DIRECTORY_FILE, "walkPath.json");
         if (file.exists() && file.isDirectory()) {

@@ -45,6 +45,7 @@ import io.github.lazyimmortal.sesame.entity.FriendWatch;
 import io.github.lazyimmortal.sesame.entity.KVNode;
 import io.github.lazyimmortal.sesame.entity.RpcEntity;
 import io.github.lazyimmortal.sesame.entity.VitalityBenefit;
+import io.github.lazyimmortal.sesame.entity.AlipayForestHunt;
 import io.github.lazyimmortal.sesame.hook.ApplicationHook;
 import io.github.lazyimmortal.sesame.hook.Toast;
 import io.github.lazyimmortal.sesame.model.base.TaskCommon;
@@ -68,6 +69,7 @@ import io.github.lazyimmortal.sesame.util.TimeUtil;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.VitalityBenefitIdMap;
 import lombok.Getter;
+
 
 /**
  * 蚂蚁森林V2
@@ -197,6 +199,9 @@ public class AntForestV2 extends ModelTask {
         return ModelGroup.FOREST;
     }
 
+    private BooleanModelField ForestHuntHelp;
+    private SelectModelField ForestHuntHelpList;
+
     @Override
     public ModelFields getFields() {
         ModelFields modelFields = new ModelFields();
@@ -239,6 +244,10 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(greenLife = new BooleanModelField("greenLife", "森林集市", false));
         modelFields.addField(ecoLife = new BooleanModelField("ecoLife", "绿色行动 | 开启", false));
         modelFields.addField(ecoLifeOptions = new SelectModelField("ecoLifeOptions", "绿色行动 | 选项", new LinkedHashSet<>(), CustomOption::getEcoLifeOptions, "光盘行动需要先手动完成一次"));
+        modelFields.addField(ForestHuntHelp= new BooleanModelField("ForestHuntHelp", "森林寻宝助力", false));
+
+        modelFields.addField(ForestHuntHelpList = new SelectModelField("ForestHuntHelpList", "森林寻宝助力 | userID列表", new LinkedHashSet<>(), AlipayForestHunt::getList));
+
         modelFields.addField(dress = new BooleanModelField("dress", "装扮保护 | 开启", false));
         modelFields.addField(dressDetailList = new TextModelField("dressDetailList", "装扮保护 | 装扮信息", ""));
         modelFields.addField(new EmptyModelField("dressDetailListClear", "装扮保护 | 装扮信息清除", () -> dressDetailList.reset()));
@@ -459,6 +468,35 @@ public class AntForestV2 extends ModelTask {
                         }
                     }
                 }
+
+                //森林寻宝助力
+                if (ForestHuntHelp.getValue()) {
+                    if (!Status.hasFlagToday("Forest::syncForestHunt") ) {
+                        //if (true) {
+                        try {
+                            Set<String>  shareIds=ForestHuntHelpList.getValue();
+                            for (String  shareId : shareIds) {
+                                //Log.other("助力分享ID:"+shareId);
+                                TimeUtil.sleep(2000);
+                                if(shareId.length()>90){
+                                    String userId=shareComponentRecall(shareId);
+                                    TimeUtil.sleep(2000);
+                                    String resconfirmShareRecall=confirmShareRecall(shareId,userId);
+                                    TimeUtil.sleep( 1000);
+                                    Log.other("森林寻宝助力shareID："+ userId +"，结果：" + resconfirmShareRecall);
+                                }
+                            }
+                            Status.flagToday("Forest::syncForestHunt");
+                        } catch (Throwable t) {
+                            Log.printStackTrace(TAG, t);
+                        }
+                    };
+
+                }
+
+
+
+
                 if (userPatrol.getValue()) {
                     queryUserPatrol();
                 }
@@ -2713,5 +2751,35 @@ public class AntForestV2 extends ModelTask {
         int ONLY_LIMIT_TIME = 2;
 
         String[] nickNames = {"关闭", "所有道具", "限时道具"};
+    }
+
+    private String shareComponentRecall(String shareId) {
+        try {
+            JSONObject jo = new JSONObject(AntForestRpcCall.shareComponentRecall(shareId));
+            if (!MessageUtil.checkSuccess(TAG, jo)) {
+                return "shareID错误";
+            }
+            jo = jo.getJSONObject("inviterInfoVo");
+            //Log.other(jo.toString());
+            String userID = jo.getString("userId");
+            //Log.other(userID);
+            return userID;
+        } catch (Throwable t) {
+            Log.i(TAG, "trainMember err:");
+            Log.printStackTrace(TAG, t);
+        }
+        return "获取userID失败";
+    }
+
+    private String confirmShareRecall(String shareId,String userId) {
+        try {
+            JSONObject jo = new JSONObject(AntForestRpcCall.confirmShareRecall(shareId,userId));
+            //Log.other(jo.toString());
+            return jo.getString("desc");
+        } catch (Throwable t) {
+            Log.i(TAG, "confirmShareRecall err:");
+            Log.printStackTrace(TAG, t);
+        }
+        return "FALSE end";
     }
 }

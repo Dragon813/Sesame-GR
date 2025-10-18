@@ -54,6 +54,7 @@ import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.ToastUtil;
 import io.github.lazyimmortal.sesame.util.idMap.AnimalIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.BeachIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.ForestHuntIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.CooperationIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.FarmOrnamentsIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.MarathonIdMap;
@@ -113,6 +114,7 @@ public class NewSettingsActivity extends BaseActivity {
         MarathonIdMap.load();
         NewAncientTreeIdMap.load();
         BeachIdMap.load();
+        ForestHuntIdMap.load();
         WalkPathIdMap.load();
         ConfigV2.load(userId);
         setContentView(R.layout.activity_new_settings);
