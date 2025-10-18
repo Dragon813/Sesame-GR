@@ -27,24 +27,26 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew assembleRelease -P version=${{ github.ref_name }}
 
-      - name: Upload Normal to Release
-        uses: termux/upload-release-action@v4.2.0
-        with:
-          asset_name: Sesame-Normal-${{ github.event.release.tag_name }}.apk
-          file: ${{ steps.sign_normal_apk.outputs.signedFile }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref }}
-          overwrite: true
-          checksums: sha256
-          checksums_file_name: CHECKSUMS-Sesame-Normal-${{ github.event.release.tag_name }}.%algo%
 
-      - name: Upload Compatible to Release
-        uses: termux/upload-release-action@v4.2.0
+      - name: Upload Assets to Source Release
+        if: github.event_name == 'release' && github.event.action == 'published'
+        uses: softprops/action-gh-release@v2
         with:
-          asset_name: Sesame-Compatible-${{ github.event.release.tag_name }}.apk
-          file: ${{ steps.sign_compatible_apk.outputs.signedFile }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref }}
-          overwrite: true
-          checksums: sha256
-          checksums_file_name: CHECKSUMS-Sesame-Compatible-${{ github.event.release.tag_name }}.%algo%
+          name: ${{ github.event.release.tag_name || steps.extract_info.outputs.version }} # 发布的名称。默认为标签名称
+          files: |
+            ${{ steps.extract_apks.outputs.signed_compatible }}
+            ${{ steps.extract_apks.outputs.signed_normal }}
+            CHECKSUMS-Sesame-Normal-${{ steps.extract_info.outputs.version }}.${{ env.SHORT_SHA }}-signed.apk.sha256
+            CHECKSUMS-Sesame-Compatible-${{ steps.extract_info.outputs.version }}.${{ env.SHORT_SHA }}-signed.apk.sha256
+          tag_name: ${{ steps.extract_info.outputs.version}}
+          draft: false
+          append_body: true
+          generate_release_notes: true
+          body: |
+            ## ✨What's Changed
+
+            ${{ github.event.head_commit.message || github.event.pull_request.title }}
+            > ## 下载说明
+              * Normal 为正常版本,适用于`Android 8.0`及以上的系统
+              * Compatible 为兼容版本,适用于`Android 7.0`不再向下兼容 参考minSDK24后续不再兼容`
+            > 倒卖必死全家
