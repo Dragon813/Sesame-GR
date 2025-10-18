@@ -26,34 +26,42 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew assembleRelease -P "version=${{ github.ref_name }}"
 
-      # 步骤1：定位构建生成的未签名APK
-      - name: Locate unsigned APKs
+      # 步骤1：定位未签名APK并解析所在目录（核心修复）
+      - name: Locate unsigned APKs and directories
         id: locate_unsigned_apks
         run: |
-          # 查找未签名的Normal和Compatible版本APK（根据实际路径调整）
+          # 查找Normal版本未签名APK并解析目录
           normal_unsigned=$(find app/build/outputs/apk/normal/release -name "*.apk" | head -n 1)
+          normal_dir=$(dirname "$normal_unsigned")  # 用Shell解析目录路径
+          
+          # 查找Compatible版本未签名APK并解析目录
           compatible_unsigned=$(find app/build/outputs/apk/compatible/release -name "*.apk" | head -n 1)
+          compatible_dir=$(dirname "$compatible_unsigned")  # 用Shell解析目录路径
+          
+          # 输出变量供后续步骤使用
           echo "normal_unsigned=$normal_unsigned" >> $GITHUB_OUTPUT
+          echo "normal_dir=$normal_dir" >> $GITHUB_OUTPUT
           echo "compatible_unsigned=$compatible_unsigned" >> $GITHUB_OUTPUT
+          echo "compatible_dir=$compatible_dir" >> $GITHUB_OUTPUT
 
-      # 步骤2：签名Normal版本APK
+      # 步骤2：签名Normal版本APK（引用解析后的目录）
       - name: Sign Normal APK
         id: sign_normal
         uses: ilharp/sign-android-release@v2
         with:
-          releaseDir: $(dirname ${{ steps.locate_unsigned_apks.outputs.normal_unsigned }})
+          releaseDir: ${{ steps.locate_unsigned_apks.outputs.normal_dir }}  # 使用提前解析的目录
           signingKey: ${{ secrets.ANDROID_SIGNING_KEY }}
           keyAlias: ${{ secrets.ANDROID_KEY_ALIAS }}
           keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          buildToolsVersion: 34.0.0  # 与项目build.gradle中一致
+          buildToolsVersion: 34.0.0
 
-      # 步骤3：签名Compatible版本APK
+      # 步骤3：签名Compatible版本APK（引用解析后的目录）
       - name: Sign Compatible APK
         id: sign_compatible
         uses: ilharp/sign-android-release@v2
         with:
-          releaseDir: $(dirname ${{ steps.locate_unsigned_apks.outputs.compatible_unsigned }})
+          releaseDir: ${{ steps.locate_unsigned_apks.outputs.compatible_dir }}  # 使用提前解析的目录
           signingKey: ${{ secrets.ANDROID_SIGNING_KEY }}
           keyAlias: ${{ secrets.ANDROID_KEY_ALIAS }}
           keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -64,9 +72,9 @@ jobs:
       - name: Generate signed APK checksums
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-          # 为签名后的Normal APK生成校验和
+          # 为Normal版本生成校验和
           sha256sum ${{ steps.sign_normal.outputs.signedFile }} > "CHECKSUMS-Sesame-Normal-${{ github.ref_name }}.${{ env.SHORT_SHA }}-signed.sha256"
-          # 为签名后的Compatible APK生成校验和
+          # 为Compatible版本生成校验和
           sha256sum ${{ steps.sign_compatible.outputs.signedFile }} > "CHECKSUMS-Sesame-Compatible-${{ github.ref_name }}.${{ env.SHORT_SHA }}-signed.sha256"
 
       # 步骤5：上传签名后的APK及校验和到Release
