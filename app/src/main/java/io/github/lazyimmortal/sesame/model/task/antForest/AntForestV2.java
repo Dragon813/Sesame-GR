@@ -244,8 +244,8 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(greenLife = new BooleanModelField("greenLife", "森林集市", false));
         modelFields.addField(ecoLife = new BooleanModelField("ecoLife", "绿色行动 | 开启", false));
         modelFields.addField(ecoLifeOptions = new SelectModelField("ecoLifeOptions", "绿色行动 | 选项", new LinkedHashSet<>(), CustomOption::getEcoLifeOptions, "光盘行动需要先手动完成一次"));
-        modelFields.addField(ForestHuntHelp= new BooleanModelField("ForestHuntHelp", "森林寻宝助力", false));
 
+        modelFields.addField(ForestHuntHelp= new BooleanModelField("ForestHuntHelp", "森林寻宝助力", false));
         modelFields.addField(ForestHuntHelpList = new SelectModelField("ForestHuntHelpList", "森林寻宝助力 | userID列表", new LinkedHashSet<>(), AlipayForestHunt::getList));
 
         modelFields.addField(dress = new BooleanModelField("dress", "装扮保护 | 开启", false));
@@ -476,14 +476,13 @@ public class AntForestV2 extends ModelTask {
                         try {
                             Set<String>  shareIds=ForestHuntHelpList.getValue();
                             for (String  shareId : shareIds) {
-                                //Log.other("助力分享ID:"+shareId);
                                 TimeUtil.sleep(2000);
                                 if(shareId.length()>90){
                                     String userId=shareComponentRecall(shareId);
                                     TimeUtil.sleep(2000);
                                     String resconfirmShareRecall=confirmShareRecall(shareId,userId);
                                     TimeUtil.sleep( 1000);
-                                    Log.other("森林寻宝助力shareID："+ userId +"，结果：" + resconfirmShareRecall);
+                                    Log.forest("森林寻宝助力shareID："+ userId +"，结果：" + resconfirmShareRecall);
                                 }
                             }
                             Status.flagToday("Forest::syncForestHunt");
@@ -2760,9 +2759,9 @@ public class AntForestV2 extends ModelTask {
                 return "shareID错误";
             }
             jo = jo.getJSONObject("inviterInfoVo");
-            //Log.other(jo.toString());
+            //Log.forest(jo.toString());
             String userID = jo.getString("userId");
-            //Log.other(userID);
+            //Log.forest(userID);
             return userID;
         } catch (Throwable t) {
             Log.i(TAG, "trainMember err:");
@@ -2774,7 +2773,7 @@ public class AntForestV2 extends ModelTask {
     private String confirmShareRecall(String shareId,String userId) {
         try {
             JSONObject jo = new JSONObject(AntForestRpcCall.confirmShareRecall(shareId,userId));
-            //Log.other(jo.toString());
+            //Log.forest(jo.toString());
             return jo.getString("desc");
         } catch (Throwable t) {
             Log.i(TAG, "confirmShareRecall err:");
