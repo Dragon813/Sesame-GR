@@ -485,7 +485,7 @@ public class AntForestV2 extends ModelTask {
                                     TimeUtil.sleep(2000);
                                     String resconfirmShareRecall=confirmShareRecall(shareId,userId);
                                     TimeUtil.sleep( 1000);
-                                    Log.forest("森林寻宝助力UID："+ userId +"，结果：" + resconfirmShareRecall+"#"+UserIdMap.getMaskName(UserIdMap.getCurrentUid()));
+                                    Log.forest("森林寻宝🛍️助力UID："+ userId +"，结果：" + resconfirmShareRecall+"#"+UserIdMap.getMaskName(UserIdMap.getCurrentUid()));
                                 }
                             }
                             Status.flagToday("Forest::syncForestHunt");
@@ -1254,7 +1254,7 @@ public class AntForestV2 extends ModelTask {
     //绿色租赁
     private static void greenRent() {
         try {
-            JSONObject jo = new JSONObject(AntForestRpcCall.creditapollon("RENT"));
+            /*JSONObject jo = new JSONObject(AntForestRpcCall.creditapollon("RENT"));
             if (!MessageUtil.checkSuccess(TAG, jo)) {
                 return;
             }
@@ -1262,7 +1262,11 @@ public class AntForestV2 extends ModelTask {
             jo = new JSONObject(AntForestRpcCall.generateEnergy());
             if (!MessageUtil.checkSuccess(TAG, jo)) {
                 return;
-            }
+            }*/
+            JSONObject jo = new JSONObject(AntForestRpcCall.checkUserSecondSceneChance());
+            TimeUtil.sleep(200);
+            jo = new JSONObject(AntForestRpcCall.generateEnergy());
+
             JSONObject resultObject = jo.getJSONObject("resultObject");
             jo=resultObject.getJSONObject("resultObject");
             int zulinshangpinliulan=jo.getInt("zulinshangpinliulan");
