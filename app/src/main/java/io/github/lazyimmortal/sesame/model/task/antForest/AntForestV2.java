@@ -1263,13 +1263,21 @@ public class AntForestV2 extends ModelTask {
             if (!MessageUtil.checkSuccess(TAG, jo)) {
                 return;
             }*/
+
+            //Log.other(roomList.toString());
+            //Log.other("收取被抢走好友的能量球序号："+String.valueOf(k));
+            //Log.other(bubbleId);
+
             JSONObject jo = new JSONObject(AntForestRpcCall.checkUserSecondSceneChance());
             TimeUtil.sleep(200);
             jo = new JSONObject(AntForestRpcCall.generateEnergy());
-
+            Log.other(jo.toString());
             JSONObject resultObject = jo.getJSONObject("resultObject");
+            Log.other(resultObject.toString());
             jo=resultObject.getJSONObject("resultObject");
+            Log.other(jo.toString());
             int zulinshangpinliulan=jo.getInt("zulinshangpinliulan");
+            Log.other(String.valueOf(zulinshangpinliulan));
             Log.forest("绿色租赁🛍️完成[线上逛街]#产生[" + zulinshangpinliulan + "g能量]"+"#"+UserIdMap.getMaskName(UserIdMap.getCurrentUid()));
         } catch (Throwable t) {
             Log.i(TAG, "greenRent err:");
