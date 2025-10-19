@@ -1255,12 +1255,22 @@ public class AntForestV2 extends ModelTask {
     private static void greenRent() {
 
         AntForestRpcCall.creditapollon("RENT");
-        TimeUtil.sleep(1000);
+        TimeUtil.sleep(100);
         AntForestRpcCall.promofrontcenter();
-        TimeUtil.sleep(1000);
+        TimeUtil.sleep(100);
         AntForestRpcCall.RentPromotionRpcService();
-        TimeUtil.sleep(1000);
+        TimeUtil.sleep(100);
         AntForestRpcCall.checkUserSecondSceneChance();
+
+        TimeUtil.sleep(100);
+        AntForestRpcCall.generateEnergy();
+
+        TimeUtil.sleep(16000);
+        AntForestRpcCall.shading();
+
+        TimeUtil.sleep(1000);
+        AntForestRpcCall.enableVoucherSummary();
+
         Log.forest("绿色租赁完成"); }
 
     private static void retrieveCurrentActivity() {

@@ -454,5 +454,21 @@ public class AntForestRpcCall {
         return ApplicationHook.requestString("com.alipay.creditapollon.biz.rpc.api.rent.green.checkUserSecondSceneChance", requestData);
     }
 
+    public static String generateEnergy() {
+        String requestData = "[{\"requestSceneCode\":\"rentBrowse\"}]";
+        return ApplicationHook.requestString("com.alipay.creditapollon.biz.rpc.api.rent.green.generateEnergy", requestData);
+    }
+
+    public static String shading() {
+        String requestData = "[{\"chInfo\":\"antsenlin\",\"extInfo\":{\"shadingFeatures\":{\"itemIdList\":\"\",\"landingStrategyId\":\"\",\"r_zl_all_u_clk_qd_item_id_sess\":\"\",\"r_zl_q_u_query_qd_word_sess\":\"\",\"selectIdList\":\"\",\"spuIds\":\"\",\"trafficCreativeCode\":\"\",\"trafficSourcePosition\":\"\"}},\"itemIds\":\"\",\"size\":10}]";
+        return ApplicationHook.requestString("com.alipay.creditapollon.biz.rpc.api.rent.RentRpcService.shading", requestData);
+    }
+
+    public static String enableVoucherSummary() {
+        String requestData = "[{\"chInfo\":\"antsenlin\",\"rentPromotionId\":\"rent_618_promotion\"}]";
+        return ApplicationHook.requestString("com.alipay.creditapollon.biz.rpc.api.rent.RentPromotionRpcService.enableVoucherSummary", requestData);
+    }
+
+
 
 }
