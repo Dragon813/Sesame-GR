@@ -432,4 +432,27 @@ public class AntForestRpcCall {
         String requestData = "[{\"beSharedBizExtInfo\":{\"drawActivityId\":\"2025082901\",\"inviterUid\":\"" + shareId + "\"},\"requestType\":\"RPC\",\"sceneCode\":\"FOREST_NORMAL_20250829_SHARE\",\"shareId\":\"" + shareId + "\",\"source\":\"chouchoule\",\"userId\":\""+ userId +"\"}]";
         return ApplicationHook.requestString("com.alipay.antiep.confirmShareRecall", requestData);
     }
+
+    //绿色租赁
+    public static String creditapollon(String aseChannelId) {
+        String requestData = "[{\"aseChannelId\":\""+ aseChannelId +"\",\"extInfo\":{\"venuePageId\":\"rent_config_page\"},\"frontPageId\":\"rent_config_page\"}]";
+        return ApplicationHook.requestString("com.alipay.creditapollon.venue.page.layout.query", requestData);
+    }
+
+    public static String promofrontcenter() {
+        String requestData = "[{\"extInfo\":{},\"pageCode\":\"@alipay/Renting/home\"}]";
+        return ApplicationHook.requestString("com.alipay.promofrontcenter.deliver.deliverByPageId", requestData);
+    }
+
+    public static String RentPromotionRpcService() {
+        String requestData = "[{\"chInfo\":\"antsenlin\",\"rentPromotionId\":\"rent_618_promotion\"}]";
+        return ApplicationHook.requestString("com.alipay.creditapollon.biz.rpc.api.rent.RentPromotionRpcService.enableVoucherSummary", requestData);
+    }
+
+    public static String checkUserSecondSceneChance() {
+        String requestData = "[{\"requestSceneCode\":\"rentBrowse\"}]";
+        return ApplicationHook.requestString("com.alipay.creditapollon.biz.rpc.api.rent.green.checkUserSecondSceneChance", requestData);
+    }
+
+
 }

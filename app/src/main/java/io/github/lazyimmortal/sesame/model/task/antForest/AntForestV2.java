@@ -174,6 +174,8 @@ public class AntForestV2 extends ModelTask {
     private BooleanModelField collectGiftBox;
     private BooleanModelField medicalHealth;
     private BooleanModelField greenLife;
+
+    private BooleanModelField greenRent;
     private BooleanModelField combineAnimalPiece;
     private ChoiceModelField consumeAnimalPropType;
     private SelectModelField whoYouWantToGiveTo;
@@ -242,6 +244,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(collectGiftBox = new BooleanModelField("collectGiftBox", "领取礼盒", false));
         modelFields.addField(medicalHealth = new BooleanModelField("medicalHealth", "医疗健康", false));
         modelFields.addField(greenLife = new BooleanModelField("greenLife", "森林集市", false));
+        modelFields.addField(greenRent = new BooleanModelField("greenRent", "绿色租赁", false));
         modelFields.addField(ecoLife = new BooleanModelField("ecoLife", "绿色行动 | 开启", false));
         modelFields.addField(ecoLifeOptions = new SelectModelField("ecoLifeOptions", "绿色行动 | 选项", new LinkedHashSet<>(), CustomOption::getEcoLifeOptions, "光盘行动需要先手动完成一次"));
 
@@ -529,6 +532,14 @@ public class AntForestV2 extends ModelTask {
                 /* 森林集市 */
                 if (greenLife.getValue()) {
                     greenLife();
+                }
+
+                //绿色租赁
+                if (greenRent.getValue()) {
+                    if (!Status.hasFlagToday("Forest::greenRent") ) {
+                        greenRent();
+                        Status.flagToday("Forest::greenRent");
+                    }
                 }
 
                 if (medicalHealth.getValue()) {
@@ -1239,6 +1250,18 @@ public class AntForestV2 extends ModelTask {
         sendEnergyByAction("ANTFOREST");
         retrieveCurrentActivity();
     }
+
+    //绿色租赁
+    private static void greenRent() {
+
+        AntForestRpcCall.creditapollon("RENT");
+        TimeUtil.sleep(1000);
+        AntForestRpcCall.promofrontcenter();
+        TimeUtil.sleep(1000);
+        AntForestRpcCall.RentPromotionRpcService();
+        TimeUtil.sleep(1000);
+        AntForestRpcCall.checkUserSecondSceneChance();
+        Log.forest("绿色租赁完成"); }
 
     private static void retrieveCurrentActivity() {
         try {

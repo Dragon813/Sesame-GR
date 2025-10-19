@@ -68,6 +68,14 @@ public class Status {
         }
     }
 
+    // 清除单个指定Flag
+    public static void clearFlag(String tag) {
+        if (INSTANCE.flagLogList.contains(tag)) {
+            INSTANCE.flagLogList.remove(tag);
+            save(); // 清除后需保存状态，避免下次加载时恢复
+        }
+    }
+
     public static Boolean canWaterFriendToday(String id, int newCount) {
         Integer count = INSTANCE.waterFriendLogList.get(id);
         if (count == null) {
