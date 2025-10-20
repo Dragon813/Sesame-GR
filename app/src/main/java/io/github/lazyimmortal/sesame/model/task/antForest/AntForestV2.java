@@ -485,8 +485,8 @@ public class AntForestV2 extends ModelTask {
                                     TimeUtil.sleep(2000);
                                     String resconfirmShareRecall=confirmShareRecall(shareId,userId);
                                     TimeUtil.sleep( 1000);
-                                    Log.forest("森林寻宝🛍️助力UID："+ userId +"，结果：" + resconfirmShareRecall+"#"+UserIdMap.getMaskName(UserIdMap.getCurrentUid()));
-                                }
+                                    Log.forest("森林寻宝🎰️助力UID："+ userId +"，结果：" + resconfirmShareRecall+"#"+UserIdMap.getMaskName(UserIdMap.getCurrentUid()));
+                                 }
                             }
                             Status.flagToday("Forest::syncForestHunt");
                         } catch (Throwable t) {

@@ -3,7 +3,7 @@ apply plugin: 'com.android.application'
 android {
     def version = project.getProperties().get("version")
     if (version == null || "unspecified".equalsIgnoreCase(version)) {
-        version = "TEST"
+        version = "Dragon"
     }
     def gitCommitHash = 'git rev-parse --short HEAD'.execute().text.trim()
     def gitBranchName = 'git rev-parse --abbrev-ref HEAD'.execute().text.trim()
