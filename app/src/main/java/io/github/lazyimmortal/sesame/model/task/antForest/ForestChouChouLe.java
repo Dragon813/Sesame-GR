@@ -73,11 +73,10 @@ public class ForestChouChouLe {
 
                             // ==================== 活力值兑换任务 =====================
                             if (taskType.equals("NORMAL_DRAW_EXCHANGE_VITALITY") && taskStatus.equals("TODO")) {
-                                JSONObject sginRes =  new JSONObject(AntForestRpcCall.exchangeTimesFromTaskopengreen(
-                                        activityId, sceneCode, source, taskSceneCode, taskType
-                                ));
+                                JSONObject sginRes =  new JSONObject(AntForestRpcCall.exchangeTimesFromTaskopengreen(activityId, sceneCode, source, taskSceneCode, taskType));
                                 if (MessageUtil.checkSuccess(TAG, sginRes)) {
-                                    Log.forest("森林寻宝🧾：" + taskName);
+                                    int times=sginRes.getInt("times");
+                                    Log.forest("森林寻宝🏆"+ taskName+"，获得抽奖次数：" + times);
                                     doublecheck = true;
                                 }
                                 continue; // 防止进入下面的 FOREST_NORMAL_DRAW 分支
@@ -90,7 +89,6 @@ public class ForestChouChouLe {
                                     Log.record("已屏蔽任务，跳过：" + taskName);
                                 }
                                 else{
-                                    Log.record("任务延时2S模拟：" + taskName);
                                     TimeUtil.sleep(1000);
 
                                     // 调用对应完成接口
@@ -102,7 +100,7 @@ public class ForestChouChouLe {
                                     }
 
                                     if (MessageUtil.checkSuccess(TAG, result)) {
-                                        Log.forest("森林寻宝🧾：" + taskName);
+                                        Log.forest("森林寻宝🧾完成任务：" + taskName);
                                         doublecheck = true;
                                     }
                                 }
@@ -110,11 +108,11 @@ public class ForestChouChouLe {
 
                             // 已完成任务领取奖励
                             if (taskStatus.equals("FINISHED")) {
-                                Log.record("奖励延时3S:" + taskName);
                                 TimeUtil.sleep(3000);
                                 JSONObject sginRes = new JSONObject(AntForestRpcCall.receiveTaskAwardopengreen(source, taskSceneCode, taskType));
                                 if (MessageUtil.checkSuccess(TAG, sginRes)) {
-                                    Log.forest("森林寻宝🧾：" + taskName);
+                                    int incAwardCount=sginRes.getInt("incAwardCount");
+                                    Log.forest("森林寻宝🏆"+ taskName+"，获得抽奖次数：" + incAwardCount);
                                     if (rightsTimesLimit - rightsTimes > 0) {
                                         doublecheck = true;
                                     }
@@ -150,6 +148,7 @@ public class ForestChouChouLe {
                     }
                 }
             }
+
             // ==============================================
 
         } catch (Exception e) {
