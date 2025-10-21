@@ -6,6 +6,7 @@ import org.json.JSONObject;
 import io.github.lazyimmortal.sesame.entity.AlipayVersion;
 import io.github.lazyimmortal.sesame.entity.RpcEntity;
 import io.github.lazyimmortal.sesame.hook.ApplicationHook;
+import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.RandomUtil;
 import io.github.lazyimmortal.sesame.util.StringUtil;
 
@@ -422,6 +423,18 @@ public class AntForestRpcCall {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.takeOffDress", args);
     }
 
+    //绿色租赁
+    public static String checkUserSecondSceneChance() {
+        String requestData = "[{\"requestSceneCode\":\"rentBrowse\"}]";
+        return ApplicationHook.requestString("com.alipay.creditapollon.biz.rpc.api.rent.green.checkUserSecondSceneChance", requestData);
+    }
+
+    public static String generateEnergy() {
+        String requestData = "[{\"requestSceneCode\":\"rentBrowse\"}]";
+        return ApplicationHook.requestString("com.alipay.creditapollon.biz.rpc.api.rent.green.generateEnergy", requestData);
+    }
+
+    //森林寻宝助力
     public static String shareComponentRecall(String shareId) {
         String requestData = "[{\"iepShareChannelType\":\"qrcode\",\"requestType\":\"RPC\",\"sceneCode\":\"FOREST_NORMAL_20250829_SHARE\",\"shareId\":\"" + shareId + "\",\"source\":\"chouchoule\"}]";
         return ApplicationHook.requestString("com.alipay.antiep.shareComponentRecall", requestData);
@@ -433,42 +446,120 @@ public class AntForestRpcCall {
         return ApplicationHook.requestString("com.alipay.antiep.confirmShareRecall", requestData);
     }
 
-    //绿色租赁
-    public static String creditapollon(String aseChannelId) {
-        String requestData = "[{\"aseChannelId\":\""+ aseChannelId +"\",\"extInfo\":{\"venuePageId\":\"rent_config_page\"},\"frontPageId\":\"rent_config_page\"}]";
-        return ApplicationHook.requestString("com.alipay.creditapollon.venue.page.layout.query", requestData);
+    /**
+     * 森林抽抽乐-活动列表
+     */
+    public static String enterDrawActivityopengreen(String source) {
+        //JSONObject params = new JSONObject();
+        //params.put("activityId", "2025060301");
+        //params.put("requestType", "RPC");
+        //params.put("sceneCode", "ANTFOREST_NORMAL_DRAW");
+        //params.put("source", source);
+        //String args = "[" + params + "]";
+        String requestData = "[{\"activityId\":\"2025060301\",\"requestType\":\"RPC\",\"sceneCode\":\"ANTFOREST_NORMAL_DRAW\",\"source\":\""+source+"\"}]";
+        return ApplicationHook.requestString("com.alipay.antiepdrawprod.enterDrawActivityopengreen", requestData);
     }
 
-    public static String promofrontcenter() {
-        String requestData = "[{\"extInfo\":{},\"pageCode\":\"@alipay/Renting/home\"}]";
-        return ApplicationHook.requestString("com.alipay.promofrontcenter.deliver.deliverByPageId", requestData);
+    /**
+     * 森林抽抽乐-请求任务列表
+     */
+    public static String listTaskopengreen(String activityId, String sceneCode, String source) {
+//        [{"requestType":"RPC","sceneCode":"ANTFOREST_NORMAL_DRAW_TASK","source":"task_entry"}]
+        //JSONObject params = new JSONObject();
+        //params.put("requestType", "RPC");
+        //params.put("sceneCode", sceneCode);
+        //params.put("source", source);
+        //String args = "[" + params + "]";
+        String requestData = "[{\"requestType\":\"RPC\",\"sceneCode\":\""+ sceneCode +"\",\"source\":\""+source+"\"}]";
+        return ApplicationHook.requestString("com.alipay.antieptask.listTaskopengreen", requestData);
     }
 
-    public static String RentPromotionRpcService() {
-        String requestData = "[{\"chInfo\":\"antsenlin\",\"rentPromotionId\":\"rent_618_promotion\"}]";
-        return ApplicationHook.requestString("com.alipay.creditapollon.biz.rpc.api.rent.RentPromotionRpcService.enableVoucherSummary", requestData);
+    /**
+     * 森林抽抽乐-签到领取次数-访问即算签到，所以直接领取？？
+     */
+    public static String receiveTaskAwardopengreen(String source, String sceneCode, String taskType) {
+        //JSONObject params = new JSONObject();
+        //params.put("ignoreLimit", true);
+        //params.put("requestType", "RPC");
+        //params.put("sceneCode", sceneCode);
+        //params.put("source", source);
+        //params.put("taskType", taskType);
+        //String args = "[" + params + "]";
+        String requestData = "[{\"ignoreLimit\":true,\"requestType\":\"RPC\",\"sceneCode\":\""+sceneCode+"\",\"source\":\""+source+"\",\"taskType\":\""+taskType+"\"}]";
+        return ApplicationHook.requestString("com.alipay.antieptask.receiveTaskAwardopengreen", requestData);
     }
 
-    public static String checkUserSecondSceneChance() {
-        String requestData = "[{\"requestSceneCode\":\"rentBrowse\"}]";
-        return ApplicationHook.requestString("com.alipay.creditapollon.biz.rpc.api.rent.green.checkUserSecondSceneChance", requestData);
+    /**
+     * 森林抽抽乐-任务-活力值兑换抽奖次数
+     */
+    public static String exchangeTimesFromTaskopengreen(String activityId, String sceneCode, String source, String taskSceneCode, String taskType) {
+//        [{"activityId":"2025060301","requestType":"RPC","sceneCode":"ANTFOREST_NORMAL_DRAW","source":"task_entry","taskSceneCode":"ANTFOREST_NORMAL_DRAW_TASK","taskType":"NORMAL_DRAW_EXCHANGE_VITALITY"}]
+       /* JSONObject params = new JSONObject();
+        params.put("activityId", activityId);
+        params.put("requestType", "RPC");
+        params.put("sceneCode", sceneCode);
+        params.put("source", source);
+        params.put("taskSceneCode", taskSceneCode);
+        params.put("taskType", taskType);
+        String args = "[" + params + "]";*/
+        String requestData = "[{\"activityId\":\""+activityId+"\",\"requestType\":\"RPC\",\"sceneCode\":\""+sceneCode+"\",\"source\":\""+source+"\",\"taskSceneCode\":\""+taskSceneCode+"\",\"taskType\":\""+taskType+"\"}]";
+        return ApplicationHook.requestString("com.alipay.antiepdrawprod.exchangeTimesFromTaskopengreen", requestData);
     }
 
-    public static String generateEnergy() {
-        String requestData = "[{\"requestSceneCode\":\"rentBrowse\"}]";
-        return ApplicationHook.requestString("com.alipay.creditapollon.biz.rpc.api.rent.green.generateEnergy", requestData);
+    /**
+     * 森林抽抽乐-任务-广告
+     */
+    public static String finishTask4Chouchoule(String taskType, String sceneCode)  {
+        //[{"outBizNo":"FOREST_NORMAL_DRAW_XLIGHT_1_1749288736354_ffba6daf","requestType":"RPC","sceneCode":"ANTFOREST_NORMAL_DRAW_TASK","source":"ADBASICLIB","taskType":"FOREST_NORMAL_DRAW_XLIGHT_1"}]
+        //"_" + System.currentTimeMillis() + "_" + RandomUtil.getRandomString(8)
+        String taskTypeRandom=taskType+"_" + System.currentTimeMillis() + "_" + RandomUtil.getRandomString(8);
+        /*JSONObject params = new JSONObject();
+        params.put("outBizNo", taskType + RandomUtil.getRandomTag());
+        params.put("requestType", "RPC");
+        params.put("sceneCode", sceneCode);
+        params.put("source", "ADBASICLIB");
+        params.put("taskType", taskType);
+        String args = "[" + params + "]";*/
+        String requestData = "[{\"outBizNo\":\""+taskTypeRandom+"\",\"requestType\":\"RPC\",\"sceneCode\":\""+sceneCode+"\",\"source\":\"ADBASICLIB\",\"taskType\":\""+taskType+"\"}]";
+        return ApplicationHook.requestString("com.alipay.antiep.finishTask", requestData);
     }
 
-    public static String shading() {
-        String requestData = "[{\"chInfo\":\"antsenlin\",\"extInfo\":{\"shadingFeatures\":{\"itemIdList\":\"\",\"landingStrategyId\":\"\",\"r_zl_all_u_clk_qd_item_id_sess\":\"\",\"r_zl_q_u_query_qd_word_sess\":\"\",\"selectIdList\":\"\",\"spuIds\":\"\",\"trafficCreativeCode\":\"\",\"trafficSourcePosition\":\"\"}},\"itemIds\":\"\",\"size\":10}]";
-        return ApplicationHook.requestString("com.alipay.creditapollon.biz.rpc.api.rent.RentRpcService.shading", requestData);
+    /**
+     * 森林抽抽乐-抽奖
+     */
+    public static String drawopengreen(String activityId, String sceneCode, String source, String userId){
+        /*JSONObject params = new JSONObject();
+        params.put("activityId", activityId);
+        params.put("requestType", "RPC");
+        params.put("sceneCode", sceneCode);
+        params.put("source", source);
+        params.put("userId", userId);
+        String args = "[" + params + "]";*/
+        String requestData = "[{\"activityId\":\""+activityId+"\",\"requestType\":\"RPC\",\"sceneCode\":\""+sceneCode+"\",\"source\":\""+source+"\",\"userId\":\""+userId+"\"}]";
+        return ApplicationHook.requestString("com.alipay.antiepdrawprod.drawopengreen", requestData);
     }
 
-    public static String enableVoucherSummary() {
-        String requestData = "[{\"chInfo\":\"antsenlin\",\"rentPromotionId\":\"rent_618_promotion\"}]";
-        return ApplicationHook.requestString("com.alipay.creditapollon.biz.rpc.api.rent.RentPromotionRpcService.enableVoucherSummary", requestData);
-    }
+    /**
+     * 完成森林抽抽乐 任务
+     *
+     * @param taskType  任务类型
+     * @param sceneCode 场景Code
+     * @return s
+     */
+    public static String finishTaskopengreen(String taskType, String sceneCode)  {
+        // [{"outBizNo":"FOREST_NORMAL_DRAW_ANTTODO_1749481064943_2dd9971d","requestType":"RPC","sceneCode":"ANTFOREST_NORMAL_DRAW_TASK","source":"task_entry","taskType":"FOREST_NORMAL_DRAW_ANTTODO"}]
+        String taskTypeRandom=taskType+"_" + System.currentTimeMillis() + "_" + RandomUtil.getRandomString(8);
 
+        /*JSONObject params = new JSONObject();
+        params.put("outBizNo", taskType + RandomUtil.getRandomTag());
+        params.put("requestType", "RPC");
+        params.put("sceneCode", sceneCode);
+        params.put("source", "task_entry");
+        params.put("taskType", taskType);
+        String args = "[" + params + "]";*/
+        String requestData = "[{\"outBizNo\":\""+taskTypeRandom+"\",\"requestType\":\"RPC\",\"sceneCode\":\""+sceneCode+"\",\"source\":\"task_entry\",\"taskType\":\""+taskType+"\"}]";
+        return ApplicationHook.requestString("com.alipay.antieptask.finishTaskopengreen", requestData);
+    }
 
 
 }

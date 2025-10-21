@@ -201,6 +201,9 @@ public class AntForestV2 extends ModelTask {
         return ModelGroup.FOREST;
     }
 
+    private BooleanModelField ForestHunt;
+
+    private BooleanModelField ForestHuntDraw;
     private BooleanModelField ForestHuntHelp;
     private SelectModelField ForestHuntHelpList;
 
@@ -248,6 +251,8 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(ecoLife = new BooleanModelField("ecoLife", "绿色行动 | 开启", false));
         modelFields.addField(ecoLifeOptions = new SelectModelField("ecoLifeOptions", "绿色行动 | 选项", new LinkedHashSet<>(), CustomOption::getEcoLifeOptions, "光盘行动需要先手动完成一次"));
 
+        modelFields.addField(ForestHunt= new BooleanModelField("ForestHunt", "森林寻宝", false));
+        modelFields.addField(ForestHuntDraw= new BooleanModelField("ForestHuntDraw", "森林寻宝抽奖", false));
         modelFields.addField(ForestHuntHelp= new BooleanModelField("ForestHuntHelp", "森林寻宝助力", false));
         modelFields.addField(ForestHuntHelpList = new SelectModelField("ForestHuntHelpList", "森林寻宝助力 | userID列表", new LinkedHashSet<>(), AlipayForestHunt::getList));
 
@@ -471,6 +476,11 @@ public class AntForestV2 extends ModelTask {
                         }
                     }
                 }
+                if (ForestHunt.getValue()) {
+                    ForestChouChouLe forestChouChouLe=new ForestChouChouLe();
+                    forestChouChouLe.chouChouLe(ForestHuntDraw.getValue());
+                }
+
 
                 //森林寻宝助力
                 if (ForestHuntHelp.getValue()) {
