@@ -355,6 +355,7 @@ public class AntForestV2 extends ModelTask {
                             for (int i = 0; i < wateringBubbles.length(); i++) {
                                 JSONObject wateringBubble = wateringBubbles.getJSONObject(i);
                                 String bizType = wateringBubble.getString("bizType");
+                                String friendShowName = UserIdMap.getShowName(wateringBubble.getString("userId"));
                                 switch (bizType) {
                                     case "jiaoshui": {
                                         JSONObject joEnergy = new JSONObject(
@@ -369,9 +370,10 @@ public class AntForestV2 extends ModelTask {
                                             for (int j = 0; j < bubbles.length(); j++) {
                                                 collected = bubbles.getJSONObject(j).getInt("collectedEnergy");
                                             }
+
                                             if (collected > 0) {
-                                                String msg = "收取金球🍯浇水[" + collected + "g]";
-                                                Log.forest(msg +"#"+UserIdMap.getMaskName(UserIdMap.getCurrentUid()));
+                                                String msg = "收取[" + friendShowName + "]的金球🍯浇水[" + collected + "g]";
+                                                Log.forest(msg +"["+UserIdMap.getShowName(UserIdMap.getCurrentUid())+ "]");
                                                 Toast.show(msg);
                                                 totalCollected += collected;
                                                 Statistics.addData(Statistics.DataType.COLLECTED, collected);
@@ -394,7 +396,6 @@ public class AntForestV2 extends ModelTask {
                                         break;
                                     }
                                     case "baohuhuizeng": {
-                                        String friendMaskName = UserIdMap.getMaskName(wateringBubble.getString("userId"));
                                         JSONObject joEnergy = new JSONObject(
                                                 AntForestRpcCall.collectEnergy(
                                                         bizType,
@@ -402,19 +403,19 @@ public class AntForestV2 extends ModelTask {
                                                         wateringBubble.getLong("id")
                                                 )
                                         );
-                                        if (MessageUtil.checkResultCodeString("收取[" + friendMaskName + "]的复活回赠金球", joEnergy)) {
+                                        if (MessageUtil.checkResultCodeString("收取[" + friendShowName + "]的复活回赠金球", joEnergy)) {
                                             JSONArray bubbles = joEnergy.getJSONArray("bubbles");
                                             for (int j = 0; j < bubbles.length(); j++) {
                                                 collected = bubbles.getJSONObject(j).getInt("collectedEnergy");
                                             }
                                             if (collected > 0) {
-                                                String msg = "收取金球🍯[" + friendMaskName + "]复活回赠[" + collected + "g]";
+                                                String msg = "收取金球🍯[" + friendShowName + "]复活回赠[" + collected + "g]";
                                                 Log.forest(msg);
                                                 Toast.show(msg);
                                                 totalCollected += collected;
                                                 Statistics.addData(Statistics.DataType.COLLECTED, collected);
                                             } else {
-                                                Log.record("收取[" + friendMaskName + "]的复活回赠金球失败");
+                                                Log.record("收取[" + friendShowName + "]的复活回赠金球失败");
                                             }
                                         }
                                         break;
@@ -495,8 +496,8 @@ public class AntForestV2 extends ModelTask {
                                     TimeUtil.sleep(2000);
                                     String resconfirmShareRecall=confirmShareRecall(shareId,userId);
                                     TimeUtil.sleep( 1000);
-                                    Log.forest("森林寻宝🎰️助力UID："+ userId +"，结果：" + resconfirmShareRecall+"#"+UserIdMap.getMaskName(UserIdMap.getCurrentUid()));
-                                 }
+                                    Log.forest("森林寻宝🎰️助力["+ userId +"]" + resconfirmShareRecall+"["+UserIdMap.getShowName(UserIdMap.getCurrentUid())+ "]");
+                                }
                             }
                             Status.flagToday("Forest::syncForestHunt");
                         } catch (Throwable t) {
@@ -1282,7 +1283,8 @@ public class AntForestV2 extends ModelTask {
             JSONObject resultObject = jo.getJSONObject("resultObject");
             JSONObject energyGenerated = resultObject.getJSONObject("energyGenerated");
             int zulinshangpinliulan=energyGenerated.getInt("zulinshangpinliulan");
-            Log.forest("绿色租赁🛍️完成[线上逛街]#产生[" + zulinshangpinliulan + "g能量]"+"#"+UserIdMap.getMaskName(UserIdMap.getCurrentUid()));
+            Log.forest("绿色租赁🛍️完成[线上逛街]#产生[" + zulinshangpinliulan + "g能量]");
+            Toast.show("绿色租赁🛍️完成[线上逛街]#产生[" + zulinshangpinliulan + "g能量]");
         } catch (Throwable t) {
             Log.i(TAG, "greenRent err:");
             Log.printStackTrace(TAG, t);
@@ -1358,6 +1360,7 @@ public class AntForestV2 extends ModelTask {
                     if (data.optBoolean("canSendEnergy", false)) {
                         int receivedEnergyAmount = data.getInt("receivedEnergyAmount");
                         Log.forest("森林集市🛍️完成[线上逛街]#产生[" + receivedEnergyAmount + "g能量]");
+                        Toast.show("森林集市🛍️完成[线上逛街]#产生[" + receivedEnergyAmount + "g能量]");
                     }
                 }
             }
@@ -1738,7 +1741,7 @@ public class AntForestV2 extends ModelTask {
             jo = new JSONObject(AntForestRpcCall.energyRainSettlement(sum, token));
             if (MessageUtil.checkResultCode(TAG, jo)) {
                 Toast.show("获得了[" + sum + "g]能量[能量雨]");
-                Log.forest("收能量雨🌧️[" + sum + "g]#"+UserIdMap.getMaskName(UserIdMap.getCurrentUid()));
+                Log.forest("收能量雨🌧️[" + sum + "g]#["+UserIdMap.getShowName(UserIdMap.getCurrentUid())+"]");
                 totalCollected += sum;
                 Statistics.addData(Statistics.DataType.COLLECTED, sum);
             }
@@ -1778,8 +1781,8 @@ public class AntForestV2 extends ModelTask {
                                 granted = true;
                                 // 20230724能量雨调整为列表中没有可赠送的好友则不赠送
                                 if (MessageUtil.checkResultCode(TAG, joEnergyRainChance)) {
-                                    Log.forest("送能量雨🌧️[" + UserIdMap.getMaskName(userId) + "]#"
-                                            + UserIdMap.getMaskName(UserIdMap.getCurrentUid()));
+                                    Log.forest("送能量雨🌧️[" + UserIdMap.getMaskName(userId) + "]#["
+                                            + UserIdMap.getShowName(UserIdMap.getCurrentUid())+"]");
                                     startEnergyRain();
                                 }
                                 break;
@@ -2057,7 +2060,7 @@ public class AntForestV2 extends ModelTask {
                 return;
             }
             String toastMsg = jo.getJSONObject("data").getString("toastMsg");
-            Log.forest("光盘行动💿打卡完成#" + toastMsg+"#"+UserIdMap.getMaskName(UserIdMap.getCurrentUid()));
+            Log.forest("光盘行动💿打卡完成#" + toastMsg+"["+UserIdMap.getShowName(UserIdMap.getCurrentUid())+"]");
         } catch (Throwable t) {
             Log.i(TAG, "photoGuangPan err:");
             Log.printStackTrace(TAG, t);

@@ -78,6 +78,8 @@ public class UserEntity {
 
         private String remarkName;
 
+        private String showName;
+
         public UserEntity toEntity() {
             return new UserEntity(userId, account, friendStatus, realName, nickName, remarkName);
         }

@@ -10,6 +10,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import io.github.lazyimmortal.sesame.hook.Toast;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
@@ -76,7 +77,7 @@ public class ForestChouChouLe {
                                 JSONObject sginRes =  new JSONObject(AntForestRpcCall.exchangeTimesFromTaskopengreen(activityId, sceneCode, source, taskSceneCode, taskType));
                                 if (MessageUtil.checkSuccess(TAG, sginRes)) {
                                     int times=sginRes.getInt("times");
-                                    Log.forest("森林寻宝🏆"+ taskName+"，获得抽奖次数：" + times);
+                                    Log.forest("森林寻宝🏆["+ taskName+"]获得抽奖*" + times);
                                     doublecheck = true;
                                 }
                                 continue; // 防止进入下面的 FOREST_NORMAL_DRAW 分支
@@ -100,7 +101,7 @@ public class ForestChouChouLe {
                                     }
 
                                     if (MessageUtil.checkSuccess(TAG, result)) {
-                                        Log.forest("森林寻宝🧾完成任务：" + taskName);
+                                        Log.forest("森林寻宝🧾完成[" + taskName+"]");
                                         doublecheck = true;
                                     }
                                 }
@@ -112,7 +113,7 @@ public class ForestChouChouLe {
                                 JSONObject sginRes = new JSONObject(AntForestRpcCall.receiveTaskAwardopengreen(source, taskSceneCode, taskType));
                                 if (MessageUtil.checkSuccess(TAG, sginRes)) {
                                     int incAwardCount=sginRes.getInt("incAwardCount");
-                                    Log.forest("森林寻宝🏆"+ taskName+"，获得抽奖次数：" + incAwardCount);
+                                    Log.forest("森林寻宝🏆["+ taskName+"]获得抽奖*" + incAwardCount);
                                     if (rightsTimesLimit - rightsTimes > 0) {
                                         doublecheck = true;
                                     }
@@ -143,7 +144,8 @@ public class ForestChouChouLe {
                             JSONObject prizeVO = jo.getJSONObject("prizeVO");
                             String prizeName = prizeVO.getString("prizeName");
                             int prizeNum = prizeVO.getInt("prizeNum");
-                            Log.forest("森林寻宝🎁[领取: " + prizeName + "*" + prizeNum + "]"+"#"+UserIdMap.getMaskName(UserIdMap.getCurrentUid()));
+                            Log.forest("森林寻宝🎁领取[" + prizeName + "*" + prizeNum + "]"+"#["+UserIdMap.getShowName(UserIdMap.getCurrentUid())+"]");
+                            Toast.show("森林寻宝🎁领取[" + prizeName + "*" + prizeNum + "]");
                         }
                     }
                 }

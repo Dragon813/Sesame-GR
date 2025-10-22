@@ -108,7 +108,13 @@ public class UserIdMap {
         }
         return userEntity.getMaskName();
     }
-
+    public static String getShowName(String userId) {
+        UserEntity userEntity = userMap.get(userId);
+        if (userEntity == null) {
+            return null;
+        }
+        return userEntity.getShowName();
+    }
     public static String getFullName(String userId) {
         UserEntity userEntity = userMap.get(userId);
         if (userEntity == null) {
