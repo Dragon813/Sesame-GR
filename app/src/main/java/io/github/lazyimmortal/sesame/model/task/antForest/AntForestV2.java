@@ -1389,7 +1389,7 @@ public class AntForestV2 extends ModelTask {
                         if (signKey.equals(currentSignKey)) {
                             if (!signRecord.getBoolean("signed")) {
                                 JSONObject resData2 = new JSONObject(
-                                        AntForestRpcCall.antiepSign(signId, UserIdMap.getCurrentUid()));
+                                        AntForestRpcCall.antiepSign(signId,"ANTFOREST_ENERGY_SIGN", UserIdMap.getCurrentUid()));
                                 if (MessageUtil.checkSuccess(TAG, resData2)) {
                                     Log.forest("过期能量💊[" + signRecord.getInt("awardCount") + "g]");
                                 }
@@ -1464,8 +1464,8 @@ public class AntForestV2 extends ModelTask {
                 switch (resultCode) {
                     case "SUCCESS":
                         String currentEnergy = jo.getJSONObject("treeEnergy").getString("currentEnergy");
-                        Log.forest("好友浇水🚿[" + UserIdMap.getMaskName(userId) + "]#" + waterEnergy + "g，剩余能量["
-                                + currentEnergy + "g]");
+                        Log.forest("好友浇水🚿给[" + UserIdMap.getShowName(userId) + "]浇" + waterEnergy + "g#剩余能量["
+                                + currentEnergy + "g]#["+UserIdMap.getShowName(UserIdMap.getCurrentUid())+"]");
                         wateredTimes++;
                         Statistics.addData(Statistics.DataType.WATERED, waterEnergy);
                         break;
@@ -1534,19 +1534,28 @@ public class AntForestV2 extends ModelTask {
         }
     }
 
-    private void vitalitySign(JSONArray forestSignVOList) {
+    private void vantiepSign(JSONArray forestSignVOList) {
         try {
             JSONObject forestSignVO = forestSignVOList.getJSONObject(0);
-            String currentSignKey = forestSignVO.getString("currentSignKey");
-            JSONArray signRecords = forestSignVO.getJSONArray("signRecords");
-            for (int i = 0; i < signRecords.length(); i++) {
+            String currentSignKey = forestSignVO.getString("currentSignKey"); // 当前签到的 key
+            String signId = forestSignVO.getString("signId"); // 签到ID
+            String sceneCode = forestSignVO.getString("sceneCode"); // 场景代码
+            JSONArray signRecords = forestSignVO.getJSONArray("signRecords"); // 签到记录
+            for (int i = 0; i < signRecords.length(); i++) { //遍历签到记录
                 JSONObject signRecord = signRecords.getJSONObject(i);
                 String signKey = signRecord.getString("signKey");
-                if (signKey.equals(currentSignKey)) {
-                    if (!signRecord.getBoolean("signed")) {
-                        vitalitySign();
+                int awardCount = signRecord.optInt("awardCount", 0);
+                if (signKey.equals(currentSignKey) && !signRecord.getBoolean("signed")) {
+                    JSONObject joSign = new JSONObject(AntForestRpcCall.antiepSign(signId, UserIdMap.getCurrentUid(), sceneCode));
+                    TimeUtil.sleep(300); // 等待300毫秒
+                    int continuousCount=joSign.getInt("continuousCount");
+
+                    if (MessageUtil.checkSuccess(TAG+ "森林签到失败:", joSign)) {
+                        Log.forest("森林签到📆拯救第"+continuousCount+"天#复活["+awardCount+"g能量]");
+
+                        //return awardCount;
                     }
-                    return;
+                    break;
                 }
             }
         } catch (Throwable t) {
@@ -1583,7 +1592,7 @@ public class AntForestV2 extends ModelTask {
                     return;
                 }
                 JSONArray forestSignVOList = jo.getJSONArray("forestSignVOList");
-                vitalitySign(forestSignVOList);
+                vantiepSign(forestSignVOList);
                 JSONArray forestTasksNew = jo.optJSONArray("forestTasksNew");
                 if (forestTasksNew == null) {
                     return;

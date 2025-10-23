@@ -9,6 +9,7 @@ import io.github.lazyimmortal.sesame.hook.ApplicationHook;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.RandomUtil;
 import io.github.lazyimmortal.sesame.util.StringUtil;
+import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
 import java.util.List;
 import java.util.UUID;
@@ -107,6 +108,12 @@ public class AntForestRpcCall {
                 "[{\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]");
     }
 
+
+    public static String antiepSign(String entityId, String userId, String sceneCode) {
+        String args = "[{\"entityId\":\""+ entityId +"\",\"requestType\":\"rpc\",\"sceneCode\":\""+sceneCode+"\",\"source\":\"ANTFOREST\",\"userId\":\""+userId+"\"}]";
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.vitalitySign", args);
+    }
+
     public static String queryTaskList() {
         return queryTaskList(new JSONObject());
     }
@@ -158,13 +165,13 @@ public class AntForestRpcCall {
                         + VERSION + "\"}]");
     }
 
-    public static String antiepSign(String entityId, String userId) {
+    /*public static String antiepSign(String entityId, String userId) {
         return ApplicationHook.requestString("com.alipay.antiep.sign",
                 "[{\"entityId\":\"" + entityId
                         + "\",\"requestType\":\"rpc\",\"sceneCode\":\"ANTFOREST_ENERGY_SIGN\",\"source\":\"ANTFOREST\",\"userId\":\""
                         + userId + "\"}]");
     }
-
+*/
     public static String queryPropList(boolean onlyGive) {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.queryPropList",
                 "[{\"onlyGive\":\"" + (onlyGive ? "Y" : "")

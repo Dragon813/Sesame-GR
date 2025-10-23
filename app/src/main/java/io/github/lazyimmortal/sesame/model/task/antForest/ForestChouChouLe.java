@@ -109,7 +109,7 @@ public class ForestChouChouLe {
 
                             // 已完成任务领取奖励
                             if (taskStatus.equals("FINISHED")) {
-                                TimeUtil.sleep(3000);
+                                TimeUtil.sleep(2000);
                                 JSONObject sginRes = new JSONObject(AntForestRpcCall.receiveTaskAwardopengreen(source, taskSceneCode, taskType));
                                 if (MessageUtil.checkSuccess(TAG, sginRes)) {
                                     int incAwardCount=sginRes.getInt("incAwardCount");
