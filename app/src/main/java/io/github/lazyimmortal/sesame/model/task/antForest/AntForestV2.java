@@ -1544,13 +1544,12 @@ public class AntForestV2 extends ModelTask {
             for (int i = 0; i < signRecords.length(); i++) { //遍历签到记录
                 JSONObject signRecord = signRecords.getJSONObject(i);
                 String signKey = signRecord.getString("signKey");
-                int awardCount = signRecord.optInt("awardCount", 0);
+                int awardCount = signRecord.getInt("awardCount");
                 if (signKey.equals(currentSignKey) && !signRecord.getBoolean("signed")) {
                     JSONObject joSign = new JSONObject(AntForestRpcCall.antiepSign(signId, UserIdMap.getCurrentUid(), sceneCode));
                     TimeUtil.sleep(300); // 等待300毫秒
-                    int continuousCount=joSign.getInt("continuousCount");
-
                     if (MessageUtil.checkSuccess(TAG+ "森林签到失败:", joSign)) {
+                        int continuousCount=joSign.getInt("continuousCount");
                         Log.forest("森林签到📆拯救第"+continuousCount+"天#复活["+awardCount+"g能量]");
 
                         //return awardCount;

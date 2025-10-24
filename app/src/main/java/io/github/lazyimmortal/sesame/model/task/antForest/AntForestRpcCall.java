@@ -111,7 +111,7 @@ public class AntForestRpcCall {
 
     public static String antiepSign(String entityId, String userId, String sceneCode) {
         String args = "[{\"entityId\":\""+ entityId +"\",\"requestType\":\"rpc\",\"sceneCode\":\""+sceneCode+"\",\"source\":\"ANTFOREST\",\"userId\":\""+userId+"\"}]";
-        return ApplicationHook.requestString("alipay.antforest.forest.h5.vitalitySign", args);
+        return ApplicationHook.requestString("com.alipay.antiep.sign", args);
     }
 
     public static String queryTaskList() {
