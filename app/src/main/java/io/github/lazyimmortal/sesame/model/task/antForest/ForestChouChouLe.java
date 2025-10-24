@@ -135,7 +135,15 @@ public class ForestChouChouLe {
                     int blance = drawAsset.getInt("blance");
 
                     while (blance > 0) {
-                        jo = new JSONObject(AntForestRpcCall.drawopengreen(sceneCode, source, UserIdMap.getCurrentUid()));
+                        String activityId;
+                        if(sceneCode.equals("ANTFOREST_NORMAL_DRAW")){
+                            activityId="2025101301";
+                        }
+                            else{
+
+                            activityId="20251024";
+                        }
+                        jo = new JSONObject(AntForestRpcCall.drawopengreen(activityId,sceneCode, source, UserIdMap.getCurrentUid()));
                         if (MessageUtil.checkSuccess(TAG, jo)) {
                             drawAsset = jo.getJSONObject("drawAsset");
                             blance = drawAsset.getInt("blance");
