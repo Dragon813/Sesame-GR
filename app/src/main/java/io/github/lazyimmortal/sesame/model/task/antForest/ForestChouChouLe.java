@@ -58,7 +58,7 @@ public class ForestChouChouLe {
                 doublecheck = false;
 
 
-                    JSONObject listTaskopengreen = new JSONObject(AntForestRpcCall.listTaskopengreen(sceneCode, source));
+                    JSONObject listTaskopengreen = new JSONObject(AntForestRpcCall.listTaskopengreen(sceneCode+"_TASK", source));
                     if (MessageUtil.checkSuccess(TAG, listTaskopengreen)) {
                         JSONArray taskList = listTaskopengreen.getJSONArray("taskInfoList");
                         for (int i = 0; i < taskList.length(); i++) {
