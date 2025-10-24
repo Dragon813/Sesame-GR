@@ -6,6 +6,7 @@ package io.github.lazyimmortal.sesame.model.task.antForest;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -15,6 +16,7 @@ import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
+
 
 public class ForestChouChouLe {
 
@@ -107,7 +109,7 @@ public class ForestChouChouLe {
                                         doublecheck = true;
                                     }
                                 }
-
+                            }
 
                             // 已完成任务领取奖励
                             if (taskStatus.equals("FINISHED")) {
@@ -123,7 +125,6 @@ public class ForestChouChouLe {
                             }
                         }
                     }
-                }
             } while (doublecheck && ++loopCount < MAX_LOOP);
 
             // ==================== 执行抽奖 ====================

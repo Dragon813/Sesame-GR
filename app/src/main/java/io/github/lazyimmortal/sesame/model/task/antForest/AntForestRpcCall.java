@@ -543,7 +543,7 @@ public class AntForestRpcCall {
         params.put("source", source);
         params.put("userId", userId);
         String args = "[" + params + "]";*/
-        String requestData = "[{\"activityId\":\"2025060301\",\"requestType\":\"RPC\",\"sceneCode\":\""+sceneCode+"\",\"source\":\""+source+"\",\"userId\":\""+userId+"\"}]";
+        String requestData = "[{\"activityId\":\"20251024\",\"requestType\":\"RPC\",\"sceneCode\":\""+sceneCode+"\",\"source\":\""+source+"\",\"userId\":\""+userId+"\"}]";
         return ApplicationHook.requestString("com.alipay.antiepdrawprod.drawopengreen", requestData);
     }
 
