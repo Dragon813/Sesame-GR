@@ -442,28 +442,28 @@ public class AntForestRpcCall {
     }
 
     //森林寻宝助力
-    public static String shareComponentRecall(String shareId) {
-        String requestData = "[{\"iepShareChannelType\":\"qrcode\",\"requestType\":\"RPC\",\"sceneCode\":\"FOREST_NORMAL_20250829_SHARE\",\"shareId\":\"" + shareId + "\",\"source\":\"chouchoule\"}]";
+    public static String shareComponentRecall(String sceneCode,String shareId) {
+        String requestData = "[{\"iepShareChannelType\":\"qrcode\",\"requestType\":\"RPC\",\"sceneCode\":\""+sceneCode+"\",\"shareId\":\"" + shareId + "\",\"source\":\"chouchoule\"}]";
         return ApplicationHook.requestString("com.alipay.antiep.shareComponentRecall", requestData);
 
     }
 
-    public static String confirmShareRecall(String shareId,String userId) {
-        String requestData = "[{\"beSharedBizExtInfo\":{\"drawActivityId\":\"2025082901\",\"inviterUid\":\"" + shareId + "\"},\"requestType\":\"RPC\",\"sceneCode\":\"FOREST_NORMAL_20250829_SHARE\",\"shareId\":\"" + shareId + "\",\"source\":\"chouchoule\",\"userId\":\""+ userId +"\"}]";
+    public static String confirmShareRecall(String shareId,String sceneCode,String userId) {
+        String requestData = "[{\"beSharedBizExtInfo\":{\"drawActivityId\":\"2025082901\",\"inviterUid\":\"" + shareId + "\"},\"requestType\":\"RPC\",\"sceneCode\":\""+sceneCode+"\",\"shareId\":\"" + shareId + "\",\"source\":\"chouchoule\",\"userId\":\""+ userId +"\"}]";
         return ApplicationHook.requestString("com.alipay.antiep.confirmShareRecall", requestData);
     }
 
     /**
      * 森林抽抽乐-活动列表
      */
-    public static String enterDrawActivityopengreen(String source) {
+    public static String enterDrawActivityopengreen(String sceneCode,String source) {
         //JSONObject params = new JSONObject();
         //params.put("activityId", "2025060301");
         //params.put("requestType", "RPC");
         //params.put("sceneCode", "ANTFOREST_NORMAL_DRAW");
         //params.put("source", source);
         //String args = "[" + params + "]";
-        String requestData = "[{\"activityId\":\"2025060301\",\"requestType\":\"RPC\",\"sceneCode\":\"ANTFOREST_NORMAL_DRAW\",\"source\":\""+source+"\"}]";
+        String requestData = "[{\"activityId\":\"2025060301\",\"requestType\":\"RPC\",\"sceneCode\":\""+sceneCode+"\",\"source\":\""+source+"\"}]";
         return ApplicationHook.requestString("com.alipay.antiepdrawprod.enterDrawActivityopengreen", requestData);
     }
 

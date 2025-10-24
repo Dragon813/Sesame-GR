@@ -479,7 +479,8 @@ public class AntForestV2 extends ModelTask {
                 }
                 if (ForestHunt.getValue()) {
                     ForestChouChouLe forestChouChouLe=new ForestChouChouLe();
-                    forestChouChouLe.chouChouLe(ForestHuntDraw.getValue());
+                    forestChouChouLe.chouChouLe(ForestHuntDraw.getValue(),"ANTFOREST_NORMAL_DRAW","task_entry");
+                    forestChouChouLe.chouChouLe(ForestHuntDraw.getValue(),"ANTFOREST_ACTIVITY_DRAW_TASK","forestchouchoule");
                 }
 
 
@@ -2833,7 +2834,7 @@ public class AntForestV2 extends ModelTask {
 
     private String shareComponentRecall(String shareId) {
         try {
-            JSONObject jo = new JSONObject(AntForestRpcCall.shareComponentRecall(shareId));
+            JSONObject jo = new JSONObject(AntForestRpcCall.shareComponentRecall("FOREST_NORMAL_20250829_SHARE",shareId));
             if (!MessageUtil.checkSuccess(TAG, jo)) {
                 return "shareID错误";
             }
@@ -2851,7 +2852,7 @@ public class AntForestV2 extends ModelTask {
 
     private String confirmShareRecall(String shareId,String userId) {
         try {
-            JSONObject jo = new JSONObject(AntForestRpcCall.confirmShareRecall(shareId,userId));
+            JSONObject jo = new JSONObject(AntForestRpcCall.confirmShareRecall(shareId,"FOREST_NORMAL_20250829_SHARE",userId));
             //Log.forest(jo.toString());
             return jo.getString("desc");
         } catch (Throwable t) {

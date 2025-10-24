@@ -20,21 +20,22 @@ public class ForestChouChouLe {
 
     private static final String TAG = ForestChouChouLe.class.getSimpleName();
 
-    void chouChouLe(Boolean ForestHuntDraw) {
+    void chouChouLe(Boolean ForestHuntDraw,String opengreensceneCode,String source) {
         try {
             boolean doublecheck;
-            String source = "task_entry";
+            //String source = "task_entry";
             //String source = "guide";
+            //String source = "forestchouchoule";
 
 
             // ==================== 手动屏蔽任务集合 ====================
             Set<String> presetBad = new LinkedHashSet<>();
             presetBad.add("FOREST_NORMAL_DRAW_SHARE");  // 邀请好友任务（屏蔽）
             // 你可以在这里继续添加更多要屏蔽的任务
-            // presetBad.add("xxx");
+             presetBad.add("FOREST_ACTIVITY_DRAW_SHARE");
             // =====================================================
 
-            JSONObject jo = new JSONObject(AntForestRpcCall.enterDrawActivityopengreen(source));
+            JSONObject jo = new JSONObject(AntForestRpcCall.enterDrawActivityopengreen(opengreensceneCode,source));
             if (!MessageUtil.checkSuccess(TAG, jo)) {
                 return;
             }
@@ -83,8 +84,8 @@ public class ForestChouChouLe {
                                 continue; // 防止进入下面的 FOREST_NORMAL_DRAW 分支
                             }
 
-                            // 统一处理 FOREST_NORMAL_DRAW 开头任务
-                            if (taskType.startsWith("FOREST_NORMAL_DRAW") && taskStatus.equals("TODO")) {
+                            // 统一处理 FOREST_NORMAL_DRAW 和 FOREST_ACTIVITY_DRAW开头任务
+                            if ((taskType.startsWith("FOREST_NORMAL_DRAW")||taskType.startsWith("FOREST_ACTIVITY_DRAW")) && taskStatus.equals("TODO")) {
                                 // ==================== 屏蔽逻辑 ====================
                                 if (presetBad.contains(taskType)) {
                                     Log.record("已屏蔽任务，跳过：" + taskName);
@@ -125,8 +126,8 @@ public class ForestChouChouLe {
             } while (doublecheck && ++loopCount < MAX_LOOP);
 
             // ==================== 执行抽奖 ====================
-            if(ForestHuntDraw){
-                jo = new JSONObject(AntForestRpcCall.enterDrawActivityopengreen(source));
+            if(ForestHuntDraw) {
+                jo = new JSONObject(AntForestRpcCall.enterDrawActivityopengreen(opengreensceneCode,source));
                 if (MessageUtil.checkSuccess(TAG, jo)) {
                     drawScene = jo.getJSONObject("drawScene");
                     drawActivity = drawScene.getJSONObject("drawActivity");
@@ -158,3 +159,4 @@ public class ForestChouChouLe {
         }
     }
 }
+
