@@ -480,7 +480,7 @@ public class AntForestV2 extends ModelTask {
                 if (ForestHunt.getValue()) {
                     ForestChouChouLe forestChouChouLe=new ForestChouChouLe();
                     forestChouChouLe.chouChouLe(ForestHuntDraw.getValue(),"ANTFOREST_NORMAL_DRAW","task_entry");
-                    forestChouChouLe.chouChouLe(ForestHuntDraw.getValue(),"ANTFOREST_ACTIVITY_DRAW_TASK","forestchouchoule");
+                    forestChouChouLe.chouChouLe(ForestHuntDraw.getValue(),"ANTFOREST_ACTIVITY_DRAW","forestchouchoule");
                 }
 
 
