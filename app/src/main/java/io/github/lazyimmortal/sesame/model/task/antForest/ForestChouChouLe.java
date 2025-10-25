@@ -14,7 +14,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import io.github.lazyimmortal.sesame.hook.Toast;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
+import io.github.lazyimmortal.sesame.util.Status;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
+import io.github.lazyimmortal.sesame.util.idMap.ForestHuntIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
 
@@ -23,8 +25,9 @@ public class ForestChouChouLe {
     private static final String TAG = ForestChouChouLe.class.getSimpleName();
 
 
-    void chouChouLe(Boolean ForestHuntDraw) {
+    void chouChouLe(Boolean ForestHuntDraw,Boolean ForestHuntHelp,Set<String> shareIds) {
         try {
+            ForestHuntIdMap.load();
             //String source = "task_entry";
             //String source = "guide";
             //String source = "forestchouchoule";
@@ -40,7 +43,7 @@ public class ForestChouChouLe {
 
                 String activityId = drawActivity.getString("activityId");
                 String sceneCode = drawActivity.getString("sceneCode");
-                chouChouLescene(ForestHuntDraw, activityId, sceneCode);
+                chouChouLescene(ForestHuntDraw, activityId, sceneCode,ForestHuntHelp,shareIds);
             }
         }catch(Exception e){
             Log.printStackTrace(e);
@@ -49,7 +52,7 @@ public class ForestChouChouLe {
 
 
 
-    void chouChouLescene(Boolean ForestHuntDraw,String activityId,String sceneCode) {
+    void chouChouLescene(Boolean ForestHuntDraw,String activityId,String sceneCode,Boolean ForestHuntHelp,Set<String> shareIds) {
         try {
             boolean doublecheck;
             // ==================== 手动屏蔽任务集合 ====================
@@ -62,10 +65,21 @@ public class ForestChouChouLe {
             int loopCount = 0;           // 循环次数计数
             final int MAX_LOOP = 7;      // 最大循环次数，避免死循环
 
+            /*
+            sceneCode
+            ANTFOREST_NORMAL_DRAW_TASK
+            ANTFOREST_ACTIVITY_DRAW_TASK
+
+            taskType
+            FOREST_NORMAL_DRAW_SHARE
+            FOREST_ACTIVITY_DRAW_SHARE
+
+            p2pSceneCode
+            FOREST_NORMAL_20250829_SHARE
+            FOREST_NORMAL_20251024_SHARE
+             */
             do {
                 doublecheck = false;
-
-
                     JSONObject listTaskopengreen = new JSONObject(AntForestRpcCall.listTaskopengreen(sceneCode+"_TASK", "task_entry"));
                     if (MessageUtil.checkSuccess(TAG, listTaskopengreen)) {
                         JSONArray taskList = listTaskopengreen.getJSONArray("taskInfoList");
@@ -78,9 +92,23 @@ public class ForestChouChouLe {
                             String taskStatus = taskBaseInfo.getString("taskStatus");
                             String taskType = taskBaseInfo.getString("taskType");
 
+
                             JSONObject taskRights = taskInfo.getJSONObject("taskRights");
                             int rightsTimes = taskRights.getInt("rightsTimes");
                             int rightsTimesLimit = taskRights.getInt("rightsTimesLimit");
+
+                            //
+                            if (taskType.contains("_DRAW_SHARE")&&ForestHuntHelp) {
+                                JSONObject prodPlayParam=new JSONObject(taskBaseInfo.getString("prodPlayParam"));
+                                String p2pSceneCode=prodPlayParam.getString("p2pSceneCode");
+                                if (!Status.hasFlagToday("Forest::" + sceneCode)) {
+                                    DoForestHuntHelp(shareIds,activityId,p2pSceneCode);
+                                    Status.flagToday("Forest::" + sceneCode);
+                                }
+                            }
+
+
+
 
                             // ==================== 活力值兑换任务 =====================
                             if (taskType.equals("NORMAL_DRAW_EXCHANGE_VITALITY") && taskStatus.equals("TODO")) {
@@ -161,5 +189,60 @@ public class ForestChouChouLe {
             Log.printStackTrace(e);
         }
     }
+
+    void DoForestHuntHelp(Set<String> shareIds,String activityId,String p2pSceneCode) {
+            try {
+                //Set<String> shareIds = ForestHuntHelpList.getValue();
+                for (String shareId : shareIds) {
+                    TimeUtil.sleep(2000);
+                    if (shareId.length() > 90) {
+                        String userId = shareComponentRecall(p2pSceneCode, shareId);
+                        Log.forest("森林寻宝🎰️尝试助力#"+ForestHuntIdMap.get(shareId));
+                        if(userId.equals("解析userID失败")){
+                            continue;
+                        }
+                        TimeUtil.sleep(2000);
+                        String resconfirmShareRecall = confirmShareRecall(activityId, p2pSceneCode, shareId, userId);
+                        TimeUtil.sleep(1000);
+                        Log.forest("森林寻宝🎰️助力[" + userId + "]" + resconfirmShareRecall + "[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                    }
+                }
+            } catch (Throwable t) {
+                Log.printStackTrace(TAG, t);
+            }
+        }
+
+
+    private String shareComponentRecall(String sceneCode,String shareId) {
+        try {
+            JSONObject jo = new JSONObject(AntForestRpcCall.shareComponentRecall(sceneCode, shareId));
+            if (!MessageUtil.checkSuccess(TAG, jo)) {
+                return "解析shareID失败";
+            }
+            if (jo.has("inviterInfoVo")) {
+                jo = jo.getJSONObject("inviterInfoVo");
+                String userID = jo.getString("userId");
+                return userID;
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "shareComponentRecall err:");
+            Log.printStackTrace(TAG, t);
+        }
+        return "解析userID失败";
+    }
+
+private String confirmShareRecall(String activityId,String p2pSceneCode,String shareId,String userId) {
+    try {
+        JSONObject jo = new JSONObject(AntForestRpcCall.confirmShareRecall(activityId,p2pSceneCode,shareId,userId));
+        //Log.forest(jo.toString());
+        return jo.getString("desc");
+    } catch (Throwable t) {
+        Log.i(TAG, "confirmShareRecall err:");
+        Log.printStackTrace(TAG, t);
+    }
+    return "FALSE end";
 }
+    }
+
+
 

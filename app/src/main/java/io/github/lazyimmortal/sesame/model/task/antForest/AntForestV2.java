@@ -479,34 +479,15 @@ public class AntForestV2 extends ModelTask {
                 }
                 if (ForestHunt.getValue()) {
                     ForestChouChouLe forestChouChouLe=new ForestChouChouLe();
-                    forestChouChouLe.chouChouLe(ForestHuntDraw.getValue());
+                    forestChouChouLe.chouChouLe(ForestHuntDraw.getValue(),ForestHuntHelp.getValue(),ForestHuntHelpList.getValue());
 
                 }
 
 
                 //森林寻宝助力
-                if (ForestHuntHelp.getValue()) {
-                    if (!Status.hasFlagToday("Forest::syncForestHunt") ) {
-                        //if (true) {
-                        try {
-                            Set<String>  shareIds=ForestHuntHelpList.getValue();
-                            for (String  shareId : shareIds) {
-                                TimeUtil.sleep(2000);
-                                if(shareId.length()>90){
-                                    String userId=shareComponentRecall(shareId);
-                                    TimeUtil.sleep(2000);
-                                    String resconfirmShareRecall=confirmShareRecall(shareId,userId);
-                                    TimeUtil.sleep( 1000);
-                                    Log.forest("森林寻宝🎰️助力["+ userId +"]" + resconfirmShareRecall+"["+UserIdMap.getShowName(UserIdMap.getCurrentUid())+ "]");
-                                }
-                            }
-                            Status.flagToday("Forest::syncForestHunt");
-                        } catch (Throwable t) {
-                            Log.printStackTrace(TAG, t);
-                        }
-                    };
-
-                }
+                //if (ForestHuntHelp.getValue()) {
+                //    ForestChouChouLe.DoForestHuntHelp(ForestHuntHelpList.getValue());
+                //}
 
 
 
@@ -2832,33 +2813,5 @@ public class AntForestV2 extends ModelTask {
         String[] nickNames = {"关闭", "所有道具", "限时道具"};
     }
 
-    private String shareComponentRecall(String shareId) {
-        try {
-            JSONObject jo = new JSONObject(AntForestRpcCall.shareComponentRecall("FOREST_NORMAL_20250829_SHARE",shareId));
-            if (!MessageUtil.checkSuccess(TAG, jo)) {
-                return "shareID错误";
-            }
-            jo = jo.getJSONObject("inviterInfoVo");
-            //Log.forest(jo.toString());
-            String userID = jo.getString("userId");
-            //Log.forest(userID);
-            return userID;
-        } catch (Throwable t) {
-            Log.i(TAG, "trainMember err:");
-            Log.printStackTrace(TAG, t);
-        }
-        return "获取userID失败";
-    }
 
-    private String confirmShareRecall(String shareId,String userId) {
-        try {
-            JSONObject jo = new JSONObject(AntForestRpcCall.confirmShareRecall(shareId,"FOREST_NORMAL_20250829_SHARE",userId));
-            //Log.forest(jo.toString());
-            return jo.getString("desc");
-        } catch (Throwable t) {
-            Log.i(TAG, "confirmShareRecall err:");
-            Log.printStackTrace(TAG, t);
-        }
-        return "FALSE end";
-    }
 }
