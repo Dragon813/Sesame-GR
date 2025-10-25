@@ -456,14 +456,14 @@ public class AntForestRpcCall {
     /**
      * 森林抽抽乐-活动列表
      */
-    public static String enterDrawActivityopengreen(String sceneCode,String source) {
+    public static String enterDrawActivityopengreen(String activityId,String sceneCode,String source) {
         //JSONObject params = new JSONObject();
         //params.put("activityId", "2025060301");
         //params.put("requestType", "RPC");
         //params.put("sceneCode", "ANTFOREST_NORMAL_DRAW");
         //params.put("source", source);
         //String args = "[" + params + "]";
-        String requestData = "[{\"activityId\":\"\",\"requestType\":\"RPC\",\"sceneCode\":\""+sceneCode+"\",\"source\":\""+source+"\"}]";
+        String requestData = "[{\"activityId\":\""+activityId+"\",\"requestType\":\"RPC\",\"sceneCode\":\""+sceneCode+"\",\"source\":\""+source+"\"}]";
         return ApplicationHook.requestString("com.alipay.antiepdrawprod.enterDrawActivityopengreen", requestData);
     }
 
@@ -499,7 +499,8 @@ public class AntForestRpcCall {
     /**
      * 森林抽抽乐-任务-活力值兑换抽奖次数
      */
-    public static String exchangeTimesFromTaskopengreen(String sceneCode, String source, String taskSceneCode, String taskType) {
+    public static String exchangeTimesFromTaskopengreen(String activityId,String sceneCode, String source, String taskSceneCode, String taskType) {
+        //{"activityId":"2025060301","requestType":"RPC","sceneCode":"ANTFOREST_NORMAL_DRAW","source":"task_entry","taskSceneCode":"ANTFOREST_NORMAL_DRAW_TASK","taskType":"NORMAL_DRAW_EXCHANGE_VITALITY"}
 //        [{"activityId":"2025060301","requestType":"RPC","sceneCode":"ANTFOREST_NORMAL_DRAW","source":"task_entry","taskSceneCode":"ANTFOREST_NORMAL_DRAW_TASK","taskType":"NORMAL_DRAW_EXCHANGE_VITALITY"}]
        /* JSONObject params = new JSONObject();
         params.put("activityId", activityId);
@@ -509,7 +510,8 @@ public class AntForestRpcCall {
         params.put("taskSceneCode", taskSceneCode);
         params.put("taskType", taskType);
         String args = "[" + params + "]";*/
-        String requestData = "[{\"activityId\":\"2025060301\",\"requestType\":\"RPC\",\"sceneCode\":\""+sceneCode+"\",\"source\":\""+source+"\",\"taskSceneCode\":\""+taskSceneCode+"\",\"taskType\":\""+taskType+"\"}]";
+        //String requestData = "[{\"activityId\":\""+activityId+"\",\"requestType\":\"RPC\",\"sceneCode\":\""+sceneCode+"\",\"source\":\""+source+"\",\"taskSceneCode\":\""+taskSceneCode+"\",\"taskType\":\""+taskType+"\"}]";
+        String requestData = "[{\"activityId\":\""+activityId+"\",\"requestType\":\"RPC\",\"sceneCode\":\""+sceneCode+"\",\"source\":\""+source+"\",\"taskSceneCode\":\""+taskSceneCode+"\",\"taskType\":\""+taskType+"\"}]";
         return ApplicationHook.requestString("com.alipay.antiepdrawprod.exchangeTimesFromTaskopengreen", requestData);
     }
 
