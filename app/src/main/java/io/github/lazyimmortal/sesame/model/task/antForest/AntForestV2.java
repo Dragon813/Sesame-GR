@@ -1772,7 +1772,6 @@ public class AntForestV2 extends ModelTask {
                 if (jo == null) {
                     return;
                 }
-
                 // 使用能量双击卡
                 if (consumeProp(jo)) {
                     Long endTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(
