@@ -42,8 +42,9 @@ public class ForestChouChouLe {
                 JSONObject drawActivity = drawScene.getJSONObject("drawActivity");
 
                 String activityId = drawActivity.getString("activityId");
+                String drawScenename = drawActivity.getString("name");
                 String sceneCode = drawActivity.getString("sceneCode");
-                chouChouLescene(ForestHuntDraw, activityId, sceneCode,ForestHuntHelp,shareIds);
+                chouChouLescene(ForestHuntDraw, activityId,drawScenename, sceneCode,ForestHuntHelp,shareIds);
             }
         }catch(Exception e){
             Log.printStackTrace(e);
@@ -52,7 +53,7 @@ public class ForestChouChouLe {
 
 
 
-    void chouChouLescene(Boolean ForestHuntDraw,String activityId,String sceneCode,Boolean ForestHuntHelp,Set<String> shareIds) {
+    void chouChouLescene(Boolean ForestHuntDraw,String activityId,String drawScenename,String sceneCode,Boolean ForestHuntHelp,Set<String> shareIds) {
         try {
             boolean doublecheck;
             // ==================== 手动屏蔽任务集合 ====================
@@ -102,7 +103,8 @@ public class ForestChouChouLe {
                                 JSONObject prodPlayParam=new JSONObject(taskBaseInfo.getString("prodPlayParam"));
                                 String p2pSceneCode=prodPlayParam.getString("p2pSceneCode");
                                 if (!Status.hasFlagToday("Forest::" + sceneCode)) {
-                                    DoForestHuntHelp(shareIds,activityId,p2pSceneCode);
+                                    Log.forest("森林寻宝🎰️开始执行["+drawScenename+"]助力好友");
+                                    DoForestHuntHelp(shareIds,activityId,p2pSceneCode,taskType);
                                     Status.flagToday("Forest::" + sceneCode);
                                 }
                             }
@@ -190,12 +192,14 @@ public class ForestChouChouLe {
         }
     }
 
-    void DoForestHuntHelp(Set<String> shareIds,String activityId,String p2pSceneCode) {
+    void DoForestHuntHelp(Set<String> shareIds,String activityId,String p2pSceneCode,String taskType) {
             try {
                 //Set<String> shareIds = ForestHuntHelpList.getValue();
                 for (String shareId : shareIds) {
                     TimeUtil.sleep(2000);
-                    if (shareId.length() > 90) {
+                    if (shareId.length() > 90&&((shareId.contains("YINZOkxgPDkvWvkwkQXSDbZ")&&taskType.equals("FOREST_NORMAL_DRAW_SHARE"))
+                            ||(shareId.contains("bxgpIW643h4FnWRjs9uZzng")&&taskType.equals("FOREST_ACTIVITY_DRAW_SHARE"))) ){
+
                         String userId = shareComponentRecall(p2pSceneCode, shareId);
                         Log.forest("森林寻宝🎰️尝试助力#"+ForestHuntIdMap.get(shareId));
                         if(userId.equals("解析userID失败")){
