@@ -512,7 +512,7 @@ public class AntForestV2 extends ModelTask {
                 }
 
                 if (useEnergyRainLimit.getValue()) {
-                    useEnergyRainCard(getForestPropVOList());
+                    useEnergyRainCard();
                 }
 
                 if (energyRain.getValue()) {
@@ -1756,7 +1756,7 @@ public class AntForestV2 extends ModelTask {
 
     //LIMIT_TIME_ENERGY_DOUBLE_CLICK,CR20230516000363
     //LIMIT_TIME_ENERGY_RAIN_CHANCE,SK20250117005985,VITALITY_ENERGYRAIN_3DAYS，限时3天内使用能量雨次卡
-    private void useEnergyRainCard(JSONArray forestPropVOList) {
+    private void useEnergyRainCard() {
         try {
             if (!Status.hasFlagToday("AntForest::useEnergyRainCard")) {
                 // 商店兑换 限时能量雨卡
@@ -1767,9 +1767,9 @@ public class AntForestV2 extends ModelTask {
                 }
                 JSONObject jo = null;
                 do{
+                    TimeUtil.sleep(500);
                     // 背包查找 能量雨卡
-                    List<JSONObject> list = getPropGroup(forestPropVOList, PropGroup.energyRain.name());
-                    Log.forest(list.toString());
+                    List<JSONObject> list = getPropGroup(getForestPropVOList(), PropGroup.energyRain.name());
                     if (!list.isEmpty()) {
                         jo = list.get(0);
                     }
