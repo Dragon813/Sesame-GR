@@ -242,7 +242,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(energyRain = new BooleanModelField("energyRain", "收集能量雨", false));
         modelFields.addField(giveEnergyRainList = new SelectModelField("giveEnergyRainList", "赠送能量雨好友列表", new LinkedHashSet<>(), AlipayUser::getList));
 
-        modelFields.addField(useEnergyRainLimit = new BooleanModelField("useEnergyRainLimit", "使用限时能量雨卡(正在开发)", false));
+        modelFields.addField(useEnergyRainLimit = new BooleanModelField("useEnergyRainLimit", "每日兑换使用限时能量雨卡", false));
 
         modelFields.addField(userPatrol = new BooleanModelField("userPatrol", "保护地巡护", false));
         modelFields.addField(combineAnimalPiece = new BooleanModelField("combineAnimalPiece", "合成动物碎片", false));
@@ -511,12 +511,12 @@ public class AntForestV2 extends ModelTask {
                     popupTask();
                 }
 
-                if (energyRain.getValue()) {
-                    energyRain();
-                }
-
                 if (useEnergyRainLimit.getValue()) {
                     useEnergyRainCard(getForestPropVOList());
+                }
+
+                if (energyRain.getValue()) {
+                    energyRain();
                 }
 
                 if (receiveForestTaskAward.getValue()) {
@@ -1306,7 +1306,11 @@ public class AntForestV2 extends ModelTask {
             if (!MessageUtil.checkSuccess(TAG, jo)) {
                 return;
             }
+
             jo = jo.getJSONObject("data");
+            if(!jo.has("currentActivity")){
+                return;
+            }
             JSONObject currentActivity = jo.getJSONObject("currentActivity");
             int numberOfDaysCompleted = currentActivity.getInt("numberOfDaysCompleted") + 1;
             JSONObject currentTask = jo.getJSONObject("currentTask");
@@ -1751,33 +1755,29 @@ public class AntForestV2 extends ModelTask {
     }
 
     //LIMIT_TIME_ENERGY_DOUBLE_CLICK,CR20230516000363
-    //LIMIT_TIME_ENERGY_RAIN_CHANCE,SK20250117005985,限时3天内使用能量雨次卡
+    //LIMIT_TIME_ENERGY_RAIN_CHANCE,SK20250117005985,VITALITY_ENERGYRAIN_3DAYS，限时3天内使用能量雨次卡
     private void useEnergyRainCard(JSONArray forestPropVOList) {
         try {
             if (!Status.hasFlagToday("AntForest::useEnergyRainCard")) {
-                // 背包查找 能量双击卡
-                JSONObject jo = null;
-                List<JSONObject> list = getPropGroup(forestPropVOList, PropGroup.energyRainCard.name());
-                Log.forest(list.toString());
-                if (!list.isEmpty()) {
-                    jo = list.get(0);
-                }
-                if (jo == null) {
-                    // 商店兑换 限时能量双击卡
-                    if (exchangeBenefit("SK20250117005985")) {
-                        jo = getForestPropVO(getForestPropVOList(), "VITALITY_ENERGYRAIN_3DAYS");
-
+                // 商店兑换 限时能量雨卡
+                if (!Status.hasFlagToday("AntForest::exchangeEnergyRainCard")) {
+                    if(exchangeBenefit("SK20250117005985")){
+                        Status.flagToday("AntForest::exchangeEnergyRainCard");
                     }
                 }
-                if (jo == null) {
-                    return;
-                }
-                // 使用能量双击卡
-                if (consumeProp(jo)) {
-                    Long endTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(
-                            jo.getJSONObject("propConfigVO").getLong("durationTime"));
-                    usingProps.put(PropGroup.energyRainCard.name(), endTime);
-                }
+                JSONObject jo = null;
+                do{
+                    // 背包查找 能量雨卡
+                    List<JSONObject> list = getPropGroup(forestPropVOList, PropGroup.energyRain.name());
+                    Log.forest(list.toString());
+                    if (!list.isEmpty()) {
+                        jo = list.get(0);
+                    }
+                    if (jo == null) {
+                        break;
+                    }
+                    //使用能量雨卡
+                }while(consumeProp(jo));
                 Status.flagToday("AntForest::useEnergyRainCard");
             }
         } catch (Throwable th) {
@@ -2810,7 +2810,7 @@ public class AntForestV2 extends ModelTask {
     }
 
     public enum PropGroup {
-        shield, boost, doubleClick,energyRainCard,vitalitySignDouble, stealthCard, robExpandCard;
+        shield, boost, doubleClick,energyRain,vitalitySignDouble, stealthCard, robExpandCard;
 
         public static final String[] nickNames = {"能量保护罩", "时光加速器", "能量双击卡", "能量雨卡","活力翻倍卡", "隐身卡", "能量翻倍卡"};
 
