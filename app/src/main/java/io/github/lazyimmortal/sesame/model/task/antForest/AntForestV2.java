@@ -242,7 +242,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(energyRain = new BooleanModelField("energyRain", "收集能量雨", false));
         modelFields.addField(giveEnergyRainList = new SelectModelField("giveEnergyRainList", "赠送能量雨好友列表", new LinkedHashSet<>(), AlipayUser::getList));
 
-        modelFields.addField(useEnergyRainLimit = new BooleanModelField("useEnergyRainLimit", "使用限时能量雨卡 | 次数(不足兑换)", false));
+        modelFields.addField(useEnergyRainLimit = new BooleanModelField("useEnergyRainLimit", "使用限时能量雨卡(正在开发)", false));
 
         modelFields.addField(userPatrol = new BooleanModelField("userPatrol", "保护地巡护", false));
         modelFields.addField(combineAnimalPiece = new BooleanModelField("combineAnimalPiece", "合成动物碎片", false));
@@ -258,7 +258,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(ForestHunt = new BooleanModelField("ForestHunt", "森林寻宝", false));
         modelFields.addField(ForestHuntDraw = new BooleanModelField("ForestHuntDraw", "森林寻宝抽奖", false));
         modelFields.addField(ForestHuntHelp = new BooleanModelField("ForestHuntHelp", "森林寻宝助力", false));
-        modelFields.addField(ForestHuntHelpList = new SelectModelField("ForestHuntHelpList", "森林寻宝助力 | userID列表", new LinkedHashSet<>(), AlipayForestHunt::getList));
+        modelFields.addField(ForestHuntHelpList = new SelectModelField("ForestHuntHelpList", "寻宝助力列表(填写shareId中开头的22-24位字符在\"4O7FEYDgn\"前的)", new LinkedHashSet<>(), AlipayForestHunt::getList));
 
         modelFields.addField(dress = new BooleanModelField("dress", "装扮保护 | 开启", false));
         modelFields.addField(dressDetailList = new TextModelField("dressDetailList", "装扮保护 | 装扮信息", ""));

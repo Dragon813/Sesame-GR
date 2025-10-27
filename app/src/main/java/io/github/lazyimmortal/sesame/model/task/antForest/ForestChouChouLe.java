@@ -103,13 +103,11 @@ public class ForestChouChouLe {
                                 JSONObject prodPlayParam=new JSONObject(taskBaseInfo.getString("prodPlayParam"));
                                 String p2pSceneCode=prodPlayParam.getString("p2pSceneCode");
                                 if (!Status.hasFlagToday("Forest::" + sceneCode)) {
-                                    Log.forest("森林寻宝🎰️开始执行["+drawScenename+"]助力好友");
+                                    Log.forest("森林寻宝🎰️执行[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]助力好友["+drawScenename+"]");
                                     DoForestHuntHelp(shareIds,activityId,p2pSceneCode,taskType);
                                     Status.flagToday("Forest::" + sceneCode);
                                 }
                             }
-
-
 
 
                             // ==================== 活力值兑换任务 =====================
@@ -192,24 +190,33 @@ public class ForestChouChouLe {
         }
     }
 
+    //kuzVe2lrSrXFdacxxi3KWjxx-4O7FEYDgn0xx0OehP5jt9-YINZOkxgPDkvWvkwkQXSDbZ-77VUJcjlcZsjGio6MsAtmwxkxkx(FOREST_NORMAL_DRAW_SHARE)
+    //kuzVe2lrSrXFdacxxi3KWjxx-4O7FEYDgn0xx0OehP5jt9-bxgpIW643h4FnWRjs9uZzng-77VUJcjlcZsjGio6MsAtmwxkxkx(FOREST_ACTIVITY_DRAW_SHARE)
     void DoForestHuntHelp(Set<String> shareIds,String activityId,String p2pSceneCode,String taskType) {
             try {
-                //Set<String> shareIds = ForestHuntHelpList.getValue();
-                for (String shareId : shareIds) {
+                for (String shareUserId : shareIds) {
+                    String shareId;
                     TimeUtil.sleep(2000);
-                    if (shareId.length() > 90&&((shareId.contains("YINZOkxgPDkvWvkwkQXSDbZ")&&taskType.equals("FOREST_NORMAL_DRAW_SHARE"))
-                            ||(shareId.contains("bxgpIW643h4FnWRjs9uZzng")&&taskType.equals("FOREST_ACTIVITY_DRAW_SHARE"))) ){
-
-                        String userId = shareComponentRecall(p2pSceneCode, shareId);
-                        Log.forest("森林寻宝🎰️尝试助力#"+ForestHuntIdMap.get(shareId));
-                        if(userId.equals("解析userID失败")){
-                            continue;
-                        }
-                        TimeUtil.sleep(2000);
-                        String resconfirmShareRecall = confirmShareRecall(activityId, p2pSceneCode, shareId, userId);
-                        TimeUtil.sleep(1000);
-                        Log.forest("森林寻宝🎰️助力[" + userId + "]" + resconfirmShareRecall + "[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                    if ((shareUserId.length() > 21&&shareUserId.length() < 25)&&taskType.equals("FOREST_NORMAL_DRAW_SHARE")){
+                        shareId=shareUserId+"4O7FEYDgn0xx0OehP5jt9"+"YINZOkxgPDkvWvkwkQXSDbZ"+"77VUJcjlcZsjGio6MsAtmwxkxkx";
                     }
+                    else if((shareUserId.length() > 21&&shareUserId.length() < 25)&&taskType.equals("FOREST_ACTIVITY_DRAW_SHARE")){
+                        shareId=shareUserId+"4O7FEYDgn0xx0OehP5jt9"+"bxgpIW643h4FnWRjs9uZzng"+"77VUJcjlcZsjGio6MsAtmwxkxkx";
+                    }
+                    else {
+                        Log.forest("森林寻宝🎰️存在错误usershareUserId:"+shareUserId);
+                        continue;
+                    }
+                    String userId = shareComponentRecall(p2pSceneCode, shareId);
+                    Log.forest("森林寻宝🎰️尝试助力#"+ForestHuntIdMap.get(shareUserId));
+                    if(userId.equals("解析userID失败")){
+                        continue;
+                    }
+                    TimeUtil.sleep(2000);
+                    String resconfirmShareRecall = confirmShareRecall(activityId, p2pSceneCode, shareId, userId);
+                    TimeUtil.sleep(1000);
+                    Log.forest("森林寻宝🎰️助力[" + userId + "]" + resconfirmShareRecall);
+
                 }
             } catch (Throwable t) {
                 Log.printStackTrace(TAG, t);
