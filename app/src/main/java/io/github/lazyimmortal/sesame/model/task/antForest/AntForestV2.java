@@ -1765,10 +1765,11 @@ public class AntForestV2 extends ModelTask {
                         Status.flagToday("AntForest::exchangeEnergyRainCard");
                     }
                 }
-                JSONObject jo = null;
+                JSONObject jo;
                 do{
                     TimeUtil.sleep(500);
                     // 背包查找 能量雨卡
+                    jo = null;
                     List<JSONObject> list = getPropGroup(getForestPropVOList(), PropGroup.energyRain.name());
                     if (!list.isEmpty()) {
                         jo = list.get(0);
