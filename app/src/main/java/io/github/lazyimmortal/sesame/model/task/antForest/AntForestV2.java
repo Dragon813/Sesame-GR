@@ -242,7 +242,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(energyRain = new BooleanModelField("energyRain", "收集能量雨", false));
         modelFields.addField(giveEnergyRainList = new SelectModelField("giveEnergyRainList", "赠送能量雨好友列表", new LinkedHashSet<>(), AlipayUser::getList));
 
-        modelFields.addField(useEnergyRainLimit = new BooleanModelField("useEnergyRainLimit", "每日兑换使用限时能量雨卡", false));
+        modelFields.addField(useEnergyRainLimit = new BooleanModelField("useEnergyRainLimit", "兑换使用限时能量雨卡", false));
 
         modelFields.addField(userPatrol = new BooleanModelField("userPatrol", "保护地巡护", false));
         modelFields.addField(combineAnimalPiece = new BooleanModelField("combineAnimalPiece", "合成动物碎片", false));
@@ -1758,13 +1758,8 @@ public class AntForestV2 extends ModelTask {
     //LIMIT_TIME_ENERGY_RAIN_CHANCE,SK20250117005985,VITALITY_ENERGYRAIN_3DAYS，限时3天内使用能量雨次卡
     private void useEnergyRainCard() {
         try {
-            if (!Status.hasFlagToday("AntForest::useEnergyRainCard")) {
-                // 商店兑换 限时能量雨卡
-                if (!Status.hasFlagToday("AntForest::exchangeEnergyRainCard")) {
-                    if(exchangeBenefit("SK20250117005985")){
-                        Status.flagToday("AntForest::exchangeEnergyRainCard");
-                    }
-                }
+            // 商店兑换 限时能量雨卡
+            exchangeBenefit("SK20250117005985");
                 JSONObject jo;
                 do{
                     TimeUtil.sleep(500);
@@ -1779,8 +1774,6 @@ public class AntForestV2 extends ModelTask {
                     }
                     //使用能量雨卡
                 }while(consumeProp(jo));
-                Status.flagToday("AntForest::useEnergyRainCard");
-            }
         } catch (Throwable th) {
             Log.i(TAG, "useDoubleCard err:");
             Log.printStackTrace(TAG, th);
