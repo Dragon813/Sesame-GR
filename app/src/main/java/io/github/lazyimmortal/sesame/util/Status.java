@@ -43,6 +43,7 @@ public class Status {
 
     // other
     private final Set<String> flagLogList = new HashSet<>();
+    private final Set<String> ForestHuntHelpflagToday = new HashSet<>();
 
     // 保存时间
     private Long saveTime = 0L;
@@ -68,6 +69,17 @@ public class Status {
         }
     }
 
+    public static Boolean hasForestHuntHelpFlagToday(String tag) {
+        return INSTANCE.flagLogList.contains(tag);
+    }
+
+    public static void ForestHuntHelpflagToday(String tag) {
+        if (!hasForestHuntHelpFlagToday(tag)) {
+            INSTANCE.flagLogList.add(tag);
+            save();
+        }
+    }
+
     // 清除单个指定Flag
     public static void clearFlag(String tag) {
         if (INSTANCE.flagLogList.contains(tag)) {
@@ -84,9 +96,12 @@ public class Status {
         return count < newCount;
     }
 
-    public static void waterFriendToday(String id, int count) {
-        INSTANCE.waterFriendLogList.put(id, count);
-        save();
+    public static void waterFriendToday(String id, int count,String waterUID) {
+        //还是之前给他人浇水的用户时标记，避免支付宝切换账户的时候标记到下一个号里面
+        if(waterUID.equals(UserIdMap.getCurrentUid())){
+            INSTANCE.waterFriendLogList.put(id, count);
+            save();
+        }
     }
 
     public static int getVitalityExchangeBenefitCountToday(String skuId) {

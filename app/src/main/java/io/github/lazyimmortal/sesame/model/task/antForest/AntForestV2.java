@@ -241,9 +241,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(whoYouWantToGiveTo = new SelectModelField("whoYouWantToGiveTo", "赠送道具好友列表", new LinkedHashSet<>(), AlipayUser::getList, "会赠送所有可送道具都给已选择的好友"));
         modelFields.addField(energyRain = new BooleanModelField("energyRain", "收集能量雨", false));
         modelFields.addField(giveEnergyRainList = new SelectModelField("giveEnergyRainList", "赠送能量雨好友列表", new LinkedHashSet<>(), AlipayUser::getList));
-
         modelFields.addField(useEnergyRainLimit = new BooleanModelField("useEnergyRainLimit", "兑换使用限时能量雨卡", false));
-
         modelFields.addField(userPatrol = new BooleanModelField("userPatrol", "保护地巡护", false));
         modelFields.addField(combineAnimalPiece = new BooleanModelField("combineAnimalPiece", "合成动物碎片", false));
         modelFields.addField(consumeAnimalPropType = new ChoiceModelField("consumeAnimalPropType", "派遣动物伙伴", ConsumeAnimalPropType.NONE, ConsumeAnimalPropType.nickNames));
@@ -254,12 +252,10 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(greenRent = new BooleanModelField("greenRent", "绿色租赁", false));
         modelFields.addField(ecoLife = new BooleanModelField("ecoLife", "绿色行动 | 开启", false));
         modelFields.addField(ecoLifeOptions = new SelectModelField("ecoLifeOptions", "绿色行动 | 选项", new LinkedHashSet<>(), CustomOption::getEcoLifeOptions, "光盘行动需要先手动完成一次"));
-
         modelFields.addField(ForestHunt = new BooleanModelField("ForestHunt", "森林寻宝", false));
         modelFields.addField(ForestHuntDraw = new BooleanModelField("ForestHuntDraw", "森林寻宝抽奖", false));
         modelFields.addField(ForestHuntHelp = new BooleanModelField("ForestHuntHelp", "森林寻宝助力", false));
         modelFields.addField(ForestHuntHelpList = new SelectModelField("ForestHuntHelpList", "寻宝助力列表(填写shareId中开头的22-24位字符在\"4O7FEYDgn\"前的)", new LinkedHashSet<>(), AlipayForestHunt::getList));
-
         modelFields.addField(dress = new BooleanModelField("dress", "装扮保护 | 开启", false));
         modelFields.addField(dressDetailList = new TextModelField("dressDetailList", "装扮保护 | 装扮信息", ""));
         modelFields.addField(new EmptyModelField("dressDetailListClear", "装扮保护 | 装扮信息清除", () -> dressDetailList.reset()));
@@ -1400,6 +1396,7 @@ public class AntForestV2 extends ModelTask {
     }
 
     private void waterFriendEnergy() {
+        String waterUID=UserIdMap.getCurrentUid();
         int waterEnergy = WaterFriendType.waterEnergy[waterFriendType.getValue()];
         if (waterEnergy == 0) {
             return;
@@ -1425,7 +1422,7 @@ public class AntForestV2 extends ModelTask {
                         KVNode<Integer, Boolean> waterCountKVNode = returnFriendWater(uid, bizNo, waterCount, waterEnergy);
                         waterCount = waterCountKVNode.getKey();
                         if (waterCount > 0) {
-                            Status.waterFriendToday(uid, waterCount);
+                            Status.waterFriendToday(uid, waterCount,waterUID);
                         }
                         if (!waterCountKVNode.getValue()) {
                             break;
@@ -1545,7 +1542,7 @@ public class AntForestV2 extends ModelTask {
                     if (MessageUtil.checkSuccess(TAG + "森林签到失败:", joSign)) {
                         int continuousCount = joSign.getInt("continuousCount");
                         Log.forest("森林签到📆拯救第" + continuousCount + "天#复活[" + awardCount + "g能量]");
-
+                        Statistics.addData(Statistics.DataType.COLLECTED, awardCount);
                         //return awardCount;
                     }
                     break;
@@ -2033,9 +2030,9 @@ public class AntForestV2 extends ModelTask {
      * 光盘行动
      */
     private void photoGuangPan(String dayPoint) {
-        if (!TaskCommon.IS_AFTER_6AM) {
-            return;
-        }
+        //if (!TaskCommon.IS_AFTER_6AM) {
+        //    return;
+        //}
         try {
             String source = "renwuGD";
             //检查今日任务状态
@@ -2043,7 +2040,6 @@ public class AntForestV2 extends ModelTask {
             if (!MessageUtil.checkResultCode(TAG, jo)) {
                 return;
             }
-
             // 更新光盘照片
             Map<String, String> dishImage = new HashMap<>();
             JSONObject data = jo.optJSONObject("data");
@@ -2448,7 +2444,7 @@ public class AntForestV2 extends ModelTask {
         try {
             JSONObject jo = new JSONObject(AntForestRpcCall.consumeProp(propId, propType));
             if (MessageUtil.checkResultCode(TAG, jo)) {
-                Log.forest("使用道具🎭[" + propName + "]");
+                Log.forest("使用道具🎭[" + propName + "]#"+UserIdMap.getShowName(UserIdMap.getCurrentUid()));
                 return true;
             }
         } catch (Throwable th) {

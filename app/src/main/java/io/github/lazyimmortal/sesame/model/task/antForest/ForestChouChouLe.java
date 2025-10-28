@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import io.github.lazyimmortal.sesame.hook.Toast;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
+import io.github.lazyimmortal.sesame.util.Statistics;
 import io.github.lazyimmortal.sesame.util.Status;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
 import io.github.lazyimmortal.sesame.util.idMap.ForestHuntIdMap;
@@ -129,7 +130,6 @@ public class ForestChouChouLe {
                                 }
                                 else{
                                     TimeUtil.sleep(1000);
-
                                     // 调用对应完成接口
                                     JSONObject result;
                                     if (taskType.contains("XLIGHT")) {
@@ -178,6 +178,9 @@ public class ForestChouChouLe {
                             int prizeNum = prizeVO.getInt("prizeNum");
                             Log.forest("森林寻宝🎁领取[" + prizeName + "*" + prizeNum + "]"+"#["+UserIdMap.getShowName(UserIdMap.getCurrentUid())+"]");
                             Toast.show("森林寻宝🎁领取[" + prizeName + "*" + prizeNum + "]");
+                            if (prizeName.contains("g能量")) {
+                                Statistics.addData(Statistics.DataType.COLLECTED, prizeNum);
+                            }
                         }
                     }
                 }
@@ -189,14 +192,16 @@ public class ForestChouChouLe {
             Log.printStackTrace(e);
         }
     }
-
     //kuzVe2lrSrXFdacxxi3KWjxx-4O7FEYDgn0xx0OehP5jt9-YINZOkxgPDkvWvkwkQXSDbZ-77VUJcjlcZsjGio6MsAtmwxkxkx(FOREST_NORMAL_DRAW_SHARE)
     //kuzVe2lrSrXFdacxxi3KWjxx-4O7FEYDgn0xx0OehP5jt9-bxgpIW643h4FnWRjs9uZzng-77VUJcjlcZsjGio6MsAtmwxkxkx(FOREST_ACTIVITY_DRAW_SHARE)
     void DoForestHuntHelp(Set<String> shareIds,String activityId,String p2pSceneCode,String taskType) {
-            try {
+        try {
                 for (String shareUserId : shareIds) {
+                    //判断当天是否助力过
+                    if (Status.hasFlagToday(taskType+"::" + shareUserId)){
+                        continue;
+                    }
                     String shareId;
-                    TimeUtil.sleep(2000);
                     if ((shareUserId.length() > 20&&shareUserId.length() < 27)&&taskType.equals("FOREST_NORMAL_DRAW_SHARE")){
                         shareId=shareUserId+"4O7FEYDgn0xx0OehP5jt9"+"YINZOkxgPDkvWvkwkQXSDbZ"+"77VUJcjlcZsjGio6MsAtmwxkxkx";
                     }
@@ -212,11 +217,11 @@ public class ForestChouChouLe {
                     if(userId.equals("解析userID失败")){
                         continue;
                     }
-                    TimeUtil.sleep(2000);
+                    TimeUtil.sleep(1500);
                     String resconfirmShareRecall = confirmShareRecall(activityId, p2pSceneCode, shareId, userId);
-                    TimeUtil.sleep(1000);
+                    TimeUtil.sleep(1500);
                     Log.forest("森林寻宝🎰️助力[" + userId + "]" + resconfirmShareRecall);
-
+                    Status.ForestHuntHelpflagToday(taskType+"::" + shareUserId);
                 }
             } catch (Throwable t) {
                 Log.printStackTrace(TAG, t);
