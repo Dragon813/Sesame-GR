@@ -388,7 +388,7 @@ public class AntForestV2 extends ModelTask {
                                         if (MessageUtil.checkResultCode("收取[我]的复活金球", joEnergy)) {
                                             collected = joEnergy.getInt("energy");
                                             String msg = "收取金球🍯复活[" + collected + "g]";
-                                            Log.forest(msg);
+                                            Log.forest(msg+ "[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                                             Toast.show(msg);
                                             totalCollected += collected;
                                             Statistics.addData(Statistics.DataType.COLLECTED, collected);
@@ -410,7 +410,7 @@ public class AntForestV2 extends ModelTask {
                                             }
                                             if (collected > 0) {
                                                 String msg = "收取金球🍯[" + friendShowName + "]复活回赠[" + collected + "g]";
-                                                Log.forest(msg);
+                                                Log.forest(msg+ "[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                                                 Toast.show(msg);
                                                 totalCollected += collected;
                                                 Statistics.addData(Statistics.DataType.COLLECTED, collected);
