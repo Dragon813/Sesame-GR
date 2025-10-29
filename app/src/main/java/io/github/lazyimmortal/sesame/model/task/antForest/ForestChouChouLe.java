@@ -108,7 +108,7 @@ public class ForestChouChouLe {
                                     DoForestHuntHelp(shareIds,activityId,p2pSceneCode,taskType);
                                     //助力千里江山
                                     if(qianlijiangshanForestHuntHelp){
-                                        Log.forest("森林寻宝🎰️执行[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]助力好友[千里江山图](薅羊毛，服务器接口没关闭，可能会失效)");
+                                        Log.forest("森林寻宝🎰️执行[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]助力好友[千里江山图](薅羊毛，如果服务器接口存在，失效后关闭配置选项即可)");
                                         DoForestHuntHelp(shareIds,"20251024","FOREST_NORMAL_20251024_SHARE","FOREST_ACTIVITY_DRAW_SHARE");
                                     }
                                     Status.flagToday("Forest::" + sceneCode);
