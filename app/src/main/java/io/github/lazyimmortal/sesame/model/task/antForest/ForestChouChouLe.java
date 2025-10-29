@@ -26,7 +26,7 @@ public class ForestChouChouLe {
     private static final String TAG = ForestChouChouLe.class.getSimpleName();
 
 
-    void chouChouLe(Boolean ForestHuntDraw,Boolean ForestHuntHelp,Set<String> shareIds) {
+    void chouChouLe(Boolean ForestHuntDraw,Boolean ForestHuntHelp,Set<String> shareIds,Boolean qianlijiangshanForestHuntHelp) {
         try {
             ForestHuntIdMap.load();
             //String source = "task_entry";
@@ -45,7 +45,7 @@ public class ForestChouChouLe {
                 String activityId = drawActivity.getString("activityId");
                 String drawScenename = drawActivity.getString("name");
                 String sceneCode = drawActivity.getString("sceneCode");
-                chouChouLescene(ForestHuntDraw, activityId,drawScenename, sceneCode,ForestHuntHelp,shareIds);
+                chouChouLescene(ForestHuntDraw, activityId,drawScenename, sceneCode,ForestHuntHelp,shareIds,qianlijiangshanForestHuntHelp);
             }
         }catch(Exception e){
             Log.printStackTrace(e);
@@ -54,7 +54,7 @@ public class ForestChouChouLe {
 
 
 
-    void chouChouLescene(Boolean ForestHuntDraw,String activityId,String drawScenename,String sceneCode,Boolean ForestHuntHelp,Set<String> shareIds) {
+    void chouChouLescene(Boolean ForestHuntDraw,String activityId,String drawScenename,String sceneCode,Boolean ForestHuntHelp,Set<String> shareIds,Boolean qianlijiangshanForestHuntHelp) {
         try {
             boolean doublecheck;
             // ==================== 手动屏蔽任务集合 ====================
@@ -106,6 +106,11 @@ public class ForestChouChouLe {
                                 if (!Status.hasFlagToday("Forest::" + sceneCode)) {
                                     Log.forest("森林寻宝🎰️执行[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]助力好友["+drawScenename+"]");
                                     DoForestHuntHelp(shareIds,activityId,p2pSceneCode,taskType);
+                                    //助力千里江山
+                                    if(qianlijiangshanForestHuntHelp){
+                                        Log.forest("森林寻宝🎰️执行[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]助力好友[千里江山图](薅羊毛，服务器接口没关闭，可能会失效)");
+                                        DoForestHuntHelp(shareIds,"20251024","FOREST_NORMAL_20251024_SHARE","FOREST_ACTIVITY_DRAW_SHARE");
+                                    }
                                     Status.flagToday("Forest::" + sceneCode);
                                 }
                             }
