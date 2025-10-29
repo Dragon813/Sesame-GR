@@ -70,12 +70,12 @@ public class Status {
     }
 
     public static Boolean hasForestHuntHelpFlagToday(String tag) {
-        return INSTANCE.flagLogList.contains(tag);
+        return INSTANCE.ForestHuntHelpflagToday.contains(tag);
     }
 
     public static void ForestHuntHelpflagToday(String tag) {
         if (!hasForestHuntHelpFlagToday(tag)) {
-            INSTANCE.flagLogList.add(tag);
+            INSTANCE.ForestHuntHelpflagToday.add(tag);
             save();
         }
     }
