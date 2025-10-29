@@ -43,7 +43,7 @@ public class Status {
 
     // other
     private final Set<String> flagLogList = new HashSet<>();
-    private final Set<String> ForestHuntHelpflagToday = new HashSet<>();
+    private final Set<String> ForestHuntHelpFlagToday = new HashSet<>();
 
     // 保存时间
     private Long saveTime = 0L;
@@ -70,12 +70,12 @@ public class Status {
     }
 
     public static Boolean hasForestHuntHelpFlagToday(String tag) {
-        return INSTANCE.ForestHuntHelpflagToday.contains(tag);
+        return INSTANCE.ForestHuntHelpFlagToday.contains(tag);
     }
 
-    public static void ForestHuntHelpflagToday(String tag) {
+    public static void ForestHuntHelpFlagToday(String tag) {
         if (!hasForestHuntHelpFlagToday(tag)) {
-            INSTANCE.ForestHuntHelpflagToday.add(tag);
+            INSTANCE.ForestHuntHelpFlagToday.add(tag);
             save();
         }
     }
