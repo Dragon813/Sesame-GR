@@ -112,7 +112,7 @@ public class ForestChouChouLe {
                                 }
                             }
 
-                            //强制开启千里江山助力
+                            //在最后一个任务时强制开启千里江山助力
                             if(i==(taskList.length()-1))
                                 if(qianlijiangshanForestHuntHelp && sceneCode.equals("ANTFOREST_ACTIVITY_DRAW"))
                                 {
@@ -123,23 +123,6 @@ public class ForestChouChouLe {
                                     }
 
                                 }
-
-
-                            /*
-                            if (taskType.contains("_DRAW_SHARE")&&ForestHuntHelp) {
-                                JSONObject prodPlayParam=new JSONObject(taskBaseInfo.getString("prodPlayParam"));
-                                String p2pSceneCode=prodPlayParam.getString("p2pSceneCode");
-                                if (!Status.hasFlagToday("Forest::" + sceneCode)) {
-                                    Log.forest("森林寻宝🎰️执行[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]助力好友["+drawScenename+"]");
-                                    DoForestHuntHelp(shareIds,activityId,p2pSceneCode,taskType);
-                                    //助力千里江山
-                                    //if(qianlijiangshanForestHuntHelp){
-                                    //   Log.forest("森林寻宝🎰️执行[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]助力好友[千里江山图](薅羊毛，如果服务器接口存在，失效后关闭配置选项即可)");
-                                    //   DoForestHuntHelp(shareIds,"20251024","FOREST_NORMAL_20251024_SHARE","FOREST_ACTIVITY_DRAW_SHARE");
-                                    //}
-                                    Status.flagToday("Forest::" + sceneCode);
-                                }
-                            }*/
 
 
                             // ==================== 活力值兑换任务 =====================
@@ -244,7 +227,6 @@ public class ForestChouChouLe {
                         Log.forest("森林寻宝🎰️存在错误usershareUserId:"+shareUserId);
                         continue;
                     }
-                    Log.other(p2pSceneCode+shareId);
                     String userId = shareComponentRecall(p2pSceneCode, shareId);
                     Log.forest("森林寻宝🎰️尝试助力#"+ForestHuntIdMap.get(shareUserId));
                     if(userId.equals("解析userID失败")){
@@ -284,7 +266,6 @@ public class ForestChouChouLe {
 private String confirmShareRecall(String activityId,String p2pSceneCode,String shareId,String userId) {
     try {
         JSONObject jo = new JSONObject(AntForestRpcCall.confirmShareRecall(activityId,p2pSceneCode,shareId,userId));
-        //Log.forest(jo.toString());
         return jo.getString("desc");
     } catch (Throwable t) {
         Log.i(TAG, "confirmShareRecall err:");
