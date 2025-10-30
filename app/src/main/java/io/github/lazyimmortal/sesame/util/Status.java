@@ -1,6 +1,11 @@
 package io.github.lazyimmortal.sesame.util;
 
+import androidx.annotation.NonNull;
+
 import com.fasterxml.jackson.databind.JsonMappingException;
+
+import org.jetbrains.annotations.Contract;
+
 import lombok.Data;
 
 import io.github.lazyimmortal.sesame.data.task.ModelTask;
@@ -43,7 +48,7 @@ public class Status {
 
     // other
     private final Set<String> flagLogList = new HashSet<>();
-    private final Set<String> ForestHuntHelpFlagToday = new HashSet<>();
+    private final Set<String> ForestHuntHelpFlagList = new HashSet<>();
 
     // 保存时间
     private Long saveTime = 0L;
@@ -69,13 +74,14 @@ public class Status {
         }
     }
 
+
     public static Boolean hasForestHuntHelpFlagToday(String tag) {
-        return INSTANCE.ForestHuntHelpFlagToday.contains(tag);
+        return INSTANCE.ForestHuntHelpFlagList.contains(tag);
     }
 
     public static void ForestHuntHelpFlagToday(String tag) {
         if (!hasForestHuntHelpFlagToday(tag)) {
-            INSTANCE.ForestHuntHelpFlagToday.add(tag);
+            INSTANCE.ForestHuntHelpFlagList.add(tag);
             save();
         }
     }
