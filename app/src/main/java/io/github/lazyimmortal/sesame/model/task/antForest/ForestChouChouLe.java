@@ -57,6 +57,7 @@ public class ForestChouChouLe {
 
 
     void chouChouLescene(Boolean ForestHuntDraw,String activityId,String drawScenename,String sceneCode,Boolean ForestHuntHelp,Set<String> shareIds,Boolean qianlijiangshanForestHuntHelp) {
+        String taskUid=UserIdMap.getCurrentUid();
         try {
             boolean doublecheck;
             // ==================== 手动屏蔽任务集合 ====================
@@ -108,7 +109,7 @@ public class ForestChouChouLe {
                                     String p2pSceneCode = prodPlayParam.getString("p2pSceneCode");
                                     Log.forest("森林寻宝🎰️执行[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]助力好友[" + drawScenename + "]");
                                     DoForestHuntHelp(shareIds, activityId, p2pSceneCode, taskType);
-                                    Status.flagToday("Forest::" + sceneCode);
+                                    Status.flagToday("Forest::" + sceneCode,taskUid);
                                 }
                             }
 
@@ -119,7 +120,7 @@ public class ForestChouChouLe {
                                     if (!Status.hasFlagToday("Forest::" + sceneCode)) {
                                         Log.forest("森林寻宝🎰️执行[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]助力好友[千里江山图](薅羊毛，如果服务器接口存在，失效后关闭配置选项即可)");
                                         DoForestHuntHelp(shareIds,"20251024","FOREST_NORMAL_20251024_SHARE","FOREST_ACTIVITY_DRAW_SHARE");
-                                        Status.flagToday("Forest::" + sceneCode);
+                                        Status.flagToday("Forest::" + sceneCode,taskUid);
                                     }
 
                                 }
@@ -209,6 +210,7 @@ public class ForestChouChouLe {
     //kuzVe2lrSrXFdacxxi3KWjxx-4O7FEYDgn0xx0OehP5jt9-YINZOkxgPDkvWvkwkQXSDbZ-77VUJcjlcZsjGio6MsAtmwxkxkx(FOREST_NORMAL_DRAW_SHARE)
     //kuzVe2lrSrXFdacxxi3KWjxx-4O7FEYDgn0xx0OehP5jt9-bxgpIW643h4FnWRjs9uZzng-77VUJcjlcZsjGio6MsAtmwxkxkx(FOREST_ACTIVITY_DRAW_SHARE)
     void DoForestHuntHelp(Set<String> shareIds,String activityId,String p2pSceneCode,String taskType) {
+        String taskUid=UserIdMap.getCurrentUid();
         try {
 
                 for (String shareUserId : shareIds) {
@@ -237,7 +239,7 @@ public class ForestChouChouLe {
                     TimeUtil.sleep(1500);
                     Log.forest("森林寻宝🎰️助力[" + userId + "]" + resconfirmShareRecall);
 
-                    Status.flagToday(taskType+"::" + shareUserId);
+                    Status.flagToday(taskType+"::" + shareUserId,taskUid);
                 }
             } catch (Throwable t) {
                 Log.printStackTrace(TAG, t);

@@ -1400,7 +1400,7 @@ public class AntForestV2 extends ModelTask {
     }
 
     private void waterFriendEnergy() {
-        String waterUID=UserIdMap.getCurrentUid();
+        String taskUid=UserIdMap.getCurrentUid();
         int waterEnergy = WaterFriendType.waterEnergy[waterFriendType.getValue()];
         if (waterEnergy == 0) {
             return;
@@ -1426,7 +1426,7 @@ public class AntForestV2 extends ModelTask {
                         KVNode<Integer, Boolean> waterCountKVNode = returnFriendWater(uid, bizNo, waterCount, waterEnergy);
                         waterCount = waterCountKVNode.getKey();
                         if (waterCount > 0) {
-                            Status.waterFriendToday(uid, waterCount,waterUID);
+                            Status.waterFriendToday(uid, waterCount,taskUid);
                         }
                         if (!waterCountKVNode.getValue()) {
                             break;

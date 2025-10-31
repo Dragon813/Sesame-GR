@@ -74,6 +74,16 @@ public class Status {
         }
     }
 
+    //在写入status中时，重要数据提前记录Uid,一定程度上避免因支付宝账号切换导致标记到下一个账号的少数情况
+    public static void flagToday(String tag,String taskUid) {
+        if (!hasFlagToday(tag)) {
+            if(taskUid.equals(UserIdMap.getCurrentUid())){
+                INSTANCE.flagLogList.add(tag);
+                save();
+            }
+        }
+    }
+
 
     public static Boolean hasForestHuntHelpFlagToday(String tag) {
         return INSTANCE.ForestHuntHelpFlagList.contains(tag);
@@ -102,12 +112,11 @@ public class Status {
         return count < newCount;
     }
 
-    public static void waterFriendToday(String id, int count,String waterUID) {
-        //还是之前给他人浇水的用户时标记，避免支付宝切换账户的时候标记到下一个号里面
-        if(waterUID.equals(UserIdMap.getCurrentUid())){
-            INSTANCE.waterFriendLogList.put(id, count);
-            save();
-        }
+    public static void waterFriendToday(String id, int count,String taskUid) {
+            if(taskUid.equals(UserIdMap.getCurrentUid())){
+                INSTANCE.waterFriendLogList.put(id, count);
+                save();
+            }
     }
 
     public static int getVitalityExchangeBenefitCountToday(String skuId) {
