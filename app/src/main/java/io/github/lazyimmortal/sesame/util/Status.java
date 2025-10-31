@@ -85,15 +85,16 @@ public class Status {
         }
     }
 
-
     public static Boolean hasForestHuntHelpFlagToday(String tag) {
         return INSTANCE.ForestHuntHelpFlagList.contains(tag);
     }
 
-    public static void ForestHuntHelpFlagToday(String tag) {
+    public static void ForestHuntHelpFlagToday(String tag,String taskUid) {
         if (!hasForestHuntHelpFlagToday(tag)) {
-            INSTANCE.ForestHuntHelpFlagList.add(tag);
+            if(taskUid.equals(UserIdMap.getCurrentUid())){
+                INSTANCE.ForestHuntHelpFlagList.add(tag);
             save();
+            }
         }
     }
 
@@ -104,7 +105,6 @@ public class Status {
             save(); // 清除后需保存状态，避免下次加载时恢复
         }
     }
-
 
     public static void forestHuntHelpToday(String taskType, int count,String taskUid) {
         if(taskUid.equals(UserIdMap.getCurrentUid())){
@@ -119,8 +119,7 @@ public class Status {
             return 0;
         }
         else return count;
-        }
-
+    }
 
     public static Boolean canWaterFriendToday(String id, int newCount) {
         Integer count = INSTANCE.waterFriendLogList.get(id);

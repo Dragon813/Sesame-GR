@@ -217,11 +217,12 @@ public class ForestChouChouLe {
     void DoForestHuntHelp(Set<String> shareIds,String activityId,String p2pSceneCode,String taskType) {
         String taskUid=UserIdMap.getCurrentUid();
         try {
-            Integer forestHuntHelpTodayCount=Status.getforestHuntHelpToday(taskType);
+            Integer forestHuntHelpTodayCount;
 
                 for (String shareUserId : shareIds) {
+                    forestHuntHelpTodayCount=Status.getforestHuntHelpToday(taskType);
                     //判断当天是否助力过
-                    if (Status.hasFlagToday(taskType+"::" + shareUserId)){
+                    if (Status.hasForestHuntHelpFlagToday(taskType+"::" + shareUserId)){
                         continue;
                     }
                     String shareId;
@@ -245,7 +246,7 @@ public class ForestChouChouLe {
                     TimeUtil.sleep(1500);
                     Log.forest("森林寻宝🎰️助力[" + userId + "]" + resconfirmShareRecall);
 
-                    Status.flagToday(taskType+"::" + shareUserId,taskUid);
+                    Status.ForestHuntHelpFlagToday(taskType+"::" + shareUserId,taskUid);
                     forestHuntHelpTodayCount++;
                     Status.forestHuntHelpToday(taskType,forestHuntHelpTodayCount,taskUid);
                 }
