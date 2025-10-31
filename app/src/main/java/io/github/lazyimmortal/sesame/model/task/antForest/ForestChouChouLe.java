@@ -245,9 +245,10 @@ public class ForestChouChouLe {
                     String resconfirmShareRecall = confirmShareRecall(activityId, p2pSceneCode, shareId, userId);
                     TimeUtil.sleep(1500);
                     Log.forest("森林寻宝🎰️助力[" + userId + "]" + resconfirmShareRecall);
-
+                    //标记助力成功
                     Status.ForestHuntHelpFlagToday(taskType+"::" + shareUserId,taskUid);
                     forestHuntHelpTodayCount++;
+                    //统计场景助力次数
                     Status.forestHuntHelpToday(taskType,forestHuntHelpTodayCount,taskUid);
                 }
             } catch (Throwable t) {
