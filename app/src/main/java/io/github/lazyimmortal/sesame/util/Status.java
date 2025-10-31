@@ -25,6 +25,7 @@ public class Status {
 
     // forest
     private final Map<String, Integer> waterFriendLogList = new HashMap<>();
+    private final Map<String, Integer> forestHuntHelpLogList = new HashMap<>();
     private final Map<String, Integer> vitalityExchangeBenefitLogList = new HashMap<>();
     private final Map<Integer, Integer> exchangeReserveLogList = new HashMap<>();
     private final Set<String> ancientTreeCityCodeList = new HashSet<>();
@@ -103,6 +104,19 @@ public class Status {
             save(); // 清除后需保存状态，避免下次加载时恢复
         }
     }
+
+
+    public static void forestHuntHelpToday(String taskType, int count,String taskUid) {
+        if(taskUid.equals(UserIdMap.getCurrentUid())){
+            INSTANCE.forestHuntHelpLogList.put(taskType, count);
+            save();
+        }
+    }
+
+    public static Integer getforestHuntHelpToday(String taskType) {
+            return INSTANCE.forestHuntHelpLogList.get(taskType);
+        }
+
 
     public static Boolean canWaterFriendToday(String id, int newCount) {
         Integer count = INSTANCE.waterFriendLogList.get(id);
