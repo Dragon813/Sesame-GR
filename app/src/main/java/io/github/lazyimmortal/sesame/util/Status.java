@@ -114,7 +114,11 @@ public class Status {
     }
 
     public static Integer getforestHuntHelpToday(String taskType) {
-            return INSTANCE.forestHuntHelpLogList.get(taskType);
+        Integer count = INSTANCE.forestHuntHelpLogList.get(taskType);
+        if (count == null) {
+            return 0;
+        }
+        else return count;
         }
 
 
