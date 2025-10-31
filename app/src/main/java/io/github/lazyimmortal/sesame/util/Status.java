@@ -93,7 +93,7 @@ public class Status {
         if (!hasForestHuntHelpFlagToday(tag)) {
             if(taskUid.equals(UserIdMap.getCurrentUid())){
                 INSTANCE.ForestHuntHelpFlagList.add(tag);
-            save();
+                save();
             }
         }
     }
