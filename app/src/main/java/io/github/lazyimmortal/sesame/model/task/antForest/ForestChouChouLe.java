@@ -222,7 +222,7 @@ public class ForestChouChouLe {
                 for (String shareUserId : shareIds) {
                     forestHuntHelpTodayCount=Status.getforestHuntHelpToday(taskType);
                     //判断当天是否助力过
-                    if (Status.hasForestHuntHelpFlagToday(taskType+"::" + shareUserId)){
+                    if (Status.hasFlagToday(taskType+"::" + shareUserId)){
                         continue;
                     }
                     String shareId;
@@ -246,7 +246,7 @@ public class ForestChouChouLe {
                     TimeUtil.sleep(1500);
                     Log.forest("森林寻宝🎰️助力[" + userId + "]" + resconfirmShareRecall);
                     //标记助力成功
-                    Status.ForestHuntHelpFlagToday(taskType+"::" + shareUserId,taskUid);
+                    Status.flagToday(taskType+"::" + shareUserId,taskUid);
                     forestHuntHelpTodayCount++;
                     //统计场景助力次数
                     Status.forestHuntHelpToday(taskType,forestHuntHelpTodayCount,taskUid);
