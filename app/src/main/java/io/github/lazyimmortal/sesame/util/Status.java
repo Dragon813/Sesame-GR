@@ -28,7 +28,9 @@ public class Status {
     private final Map<String, Integer> forestHuntHelpLogList = new HashMap<>();
     private final Map<String, Integer> vitalityExchangeBenefitLogList = new HashMap<>();
     private final Map<Integer, Integer> exchangeReserveLogList = new HashMap<>();
+    private final Set<String> ForestHuntHelpList = new HashSet<>();
     private final Set<String> ancientTreeCityCodeList = new HashSet<>();
+
     private int doubleTimes = 0;
 
     // farm
@@ -49,7 +51,6 @@ public class Status {
 
     // other
     private final Set<String> flagLogList = new HashSet<>();
-    private final Set<String> ForestHuntHelpFlagList = new HashSet<>();
 
     // 保存时间
     private Long saveTime = 0L;
@@ -80,19 +81,6 @@ public class Status {
         if (!hasFlagToday(tag)) {
             if(taskUid.equals(UserIdMap.getCurrentUid())){
                 INSTANCE.flagLogList.add(tag);
-                save();
-            }
-        }
-    }
-
-    public static Boolean hasForestHuntHelpFlagToday(String tag) {
-        return INSTANCE.ForestHuntHelpFlagList.contains(tag);
-    }
-
-    public static void ForestHuntHelpFlagToday(String tag,String taskUid) {
-        if (!hasForestHuntHelpFlagToday(tag)) {
-            if(taskUid.equals(UserIdMap.getCurrentUid())){
-                INSTANCE.ForestHuntHelpFlagList.add(tag);
                 save();
             }
         }
@@ -178,6 +166,20 @@ public class Status {
         if (canMemberPointExchangeBenefitToday(benefitId)) {
             INSTANCE.memberPointExchangeBenefitLogList.add(benefitId);
             save();
+        }
+    }
+
+    public static Boolean canForestHuntHelpToday(String shareUserId) {
+        return !INSTANCE.ForestHuntHelpList.contains(shareUserId);
+    }
+
+    public static void ForestHuntHelpToday(String shareUserId,String taskUid) {
+        Status stat = INSTANCE;
+        if (!stat.ForestHuntHelpList.contains(shareUserId)) {
+            if(taskUid.equals(UserIdMap.getCurrentUid())){
+            stat.ForestHuntHelpList.add(shareUserId);
+            save();
+            }
         }
     }
 
