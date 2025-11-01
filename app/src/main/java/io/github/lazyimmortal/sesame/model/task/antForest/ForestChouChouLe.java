@@ -54,8 +54,6 @@ public class ForestChouChouLe {
         }
     }
 
-
-
     void chouChouLescene(Boolean ForestHuntDraw,String activityId,String drawScenename,String sceneCode,Boolean ForestHuntHelp,Set<String> shareIds,Boolean qianlijiangshanForestHuntHelp) {
         String taskUid=UserIdMap.getCurrentUid();
         try {
@@ -112,12 +110,11 @@ public class ForestChouChouLe {
                                     Log.forest("森林寻宝🎰️执行[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]助力好友[" + drawScenename + "]");
                                     DoForestHuntHelp(shareIds, activityId, p2pSceneCode, taskType);
                                     //Status.flagToday("Forest::" + sceneCode,taskUid);
-
                                 }
                             }
 
                             //在最后一个任务时强制开启千里江山助力
-                            if(i==(taskList.length()-1))
+                            if((i==(taskList.length()-1))&&(!taskType.equals("FOREST_ACTIVITY_DRAW_SHARE")))
                                 if(qianlijiangshanForestHuntHelp && sceneCode.equals("ANTFOREST_ACTIVITY_DRAW"))
                                 {
                                     Integer forestHuntHelpTodayCount=Status.getforestHuntHelpToday(taskType);
