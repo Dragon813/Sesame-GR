@@ -94,6 +94,7 @@ public class Status {
         }
     }
 
+    //根据助力场景记录助力次数
     public static void forestHuntHelpToday(String taskType, int count,String taskUid) {
         if(taskUid.equals(UserIdMap.getCurrentUid())){
             INSTANCE.forestHuntHelpLogList.put(taskType, count);

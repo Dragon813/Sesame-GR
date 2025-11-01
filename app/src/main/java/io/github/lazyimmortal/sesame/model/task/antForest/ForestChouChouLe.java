@@ -222,9 +222,9 @@ public class ForestChouChouLe {
                 for (String shareUserId : shareIds) {
                     forestHuntHelpTodayCount=Status.getforestHuntHelpToday(taskType);
                     //判断当天是否助力过
-                    if (Status.canForestHuntHelpToday(taskType+"::" + shareUserId)){
-
-
+                    if (Status.hasFlagToday(taskType+"::" + shareUserId)) {
+                        continue;
+                    }
                     String shareId;
                     if ((shareUserId.length() > 20&&shareUserId.length() < 27)&&taskType.equals("FOREST_NORMAL_DRAW_SHARE")){
                         shareId=shareUserId+"4O7FEYDgn0xx0OehP5jt9"+"YINZOkxgPDkvWvkwkQXSDbZ"+"77VUJcjlcZsjGio6MsAtmwxkxkx";
@@ -246,11 +246,10 @@ public class ForestChouChouLe {
                     TimeUtil.sleep(1500);
                     Log.forest("森林寻宝🎰️助力[" + userId + "]" + resconfirmShareRecall);
                     //标记助力成功
-                    Status.ForestHuntHelpToday(taskType+"::" + shareUserId,taskUid);
+                    Status.flagToday(taskType+"::" + shareUserId,taskUid);
                     forestHuntHelpTodayCount++;
                     //统计场景助力次数
                     Status.forestHuntHelpToday(taskType,forestHuntHelpTodayCount,taskUid);
-                    }
                 }
             } catch (Throwable t) {
                 Log.printStackTrace(TAG, t);
