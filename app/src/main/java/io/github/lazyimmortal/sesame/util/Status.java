@@ -171,6 +171,7 @@ public class Status {
     }
 
     public static Boolean canForestHuntHelpToday(String shareUserId) {
+        Log.other("canForestHuntHelpToday:" +INSTANCE.toString());
         return !INSTANCE.ForestHuntHelpList.contains(shareUserId);
     }
 
@@ -179,6 +180,7 @@ public class Status {
         if (!stat.ForestHuntHelpList.contains(shareUserId)) {
             if(taskUid.equals(UserIdMap.getCurrentUid())){
             stat.ForestHuntHelpList.add(shareUserId);
+                Log.other("ForestHuntHelpList:" +stat.ForestHuntHelpList);
             save();
             }
         }
