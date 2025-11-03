@@ -305,11 +305,13 @@ public class AntSports extends ModelTask {
                 return;
             }
             JSONObject data = jo.getJSONObject("data");
-            if (!data.has("receiveCoinBubbleList"))
+            if (!data.has("recBubbleList"))
                 return;
-            JSONArray ja = data.getJSONArray("receiveCoinBubbleList");
+            JSONArray ja = data.getJSONArray("recBubbleList");
             for (int i = 0; i < ja.length(); i++) {
                 jo = ja.getJSONObject(i);
+                if (!data.has("assetId"))
+                    return;
                 String assetId = jo.getString("assetId");
                 int coinAmount = jo.getInt("coinAmount");
                 String simpleSourceName = jo.optString("simpleSourceName");
@@ -325,9 +327,9 @@ public class AntSports extends ModelTask {
 
     private Boolean receiveCoinAsset(String assetId, int coinAmount, String title) {
         try {
-            JSONObject jo = new JSONObject(AntSportsRpcCall.receiveCoinAsset(assetId, coinAmount));
+            JSONObject jo = new JSONObject(AntSportsRpcCall.receiveCoinAsset(assetId));
             if (MessageUtil.checkSuccess(TAG, jo)) {
-                Log.other("收运动币💰领取[" + title + "]奖励[" + coinAmount + "运动币]");
+                Log.other("收运动能量💰领取[" + title + "]奖励[" + coinAmount + "运动币]");
                 return true;
             }
         } catch (Throwable t) {
