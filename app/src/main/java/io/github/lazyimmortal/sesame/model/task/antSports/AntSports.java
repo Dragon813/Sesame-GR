@@ -163,8 +163,10 @@ public class AntSports extends ModelTask {
             if (sportsTasks.getValue())
                 sportsTasks();
 
-            if (receiveCoinAsset.getValue())
+            if (receiveCoinAsset.getValue()){
                 receiveCoinAsset();
+                AntSportsRpcCall.pickAllEnergyBall();
+            }
         } catch (Throwable t) {
             Log.i(TAG, "start.run err:");
             Log.printStackTrace(TAG, t);
@@ -1123,12 +1125,12 @@ public class AntSports extends ModelTask {
                 }
 
                 //购买好友
-                if (clubTradeMemberType.getValue() != TradeMemberType.NONE) {
+                //if (clubTradeMemberType.getValue() != TradeMemberType.NONE) {
                     queryMemberPriceRanking(roomId);
                     //JSONObject member = queryMemberPriceRanking();
                     //buyMember(roomId, member);
                     TimeUtil.sleep(1000);
-                }
+                //}
             }
             TimeUtil.sleep(1000);
 
@@ -1160,7 +1162,7 @@ public class AntSports extends ModelTask {
             if (jo.optBoolean("success")) {
                 JSONObject ja= jo.getJSONObject("data");
                 String collectCoin =ja.getString("changeAmount");
-                Log.other("收取" + bubbleType + "💰️获得[" + collectCoin + "运动能量]");
+                Log.other("收取" + bubbleType + "💰️获得[" + collectCoin + "运动能量]"+"#["+UserIdMap.getShowName(UserIdMap.getCurrentUid())+"]");
             }
         } catch (Throwable t) {
             Log.i(TAG, "collectBubble err:");
@@ -1196,7 +1198,7 @@ public class AntSports extends ModelTask {
                     queryTrainItemjo = queryTrainItemjo.getJSONObject("taskDetail");
                     String taskId = queryTrainItemjo.getString("taskId");
                     JSONObject jo = new JSONObject(AntSportsRpcCall.DoubletrainMember(itemType, bizId, memberId, originBossId));
-                    Log.other("训练好友🥋训练[" + userName + "]" + name);
+                    Log.other("训练好友🥋训练[" + userName + "]" + name+"#["+UserIdMap.getShowName(UserIdMap.getCurrentUid())+"]");
                     if (!MessageUtil.checkResultCode(TAG, jo)) {
                         return;
                     }
@@ -1266,18 +1268,51 @@ public class AntSports extends ModelTask {
                     continue;
                 }
                 String originBossId = jo.getString("originBossId");
-                boolean isTradeMember = clubTradeMemberList.getValue().contains(originBossId);
+                String currentBossId = jo.getString("currentBossId");
+
+                //判断如果老板是当前账号则查找下一个
+                if(currentBossId.equals(UserIdMap.getCurrentUid())){
+                    continue;
+                }
+
+                //判断是否为购买列表中的好友
+                if(!clubTradeMemberList.getValue().contains(originBossId))
+                {
+                    continue;
+                }
+
+                /*原版本判断暂不理解
                 if (clubTradeMemberType.getValue() != TradeMemberType.TRADE) {
                     isTradeMember = !isTradeMember;
                 }
                 if (!isTradeMember) {
                     continue;
                 }
-                //如果购买好友成功则返回，继续检测下一个房间
-                if(buyMember(roomId,queryClubMember(jo))){
+                */
+
+                JSONObject joTrain = new JSONObject(AntSportsRpcCall.queryClubHome());
+                if (!MessageUtil.checkResultCode(TAG, joTrain)) {
                     return;
                 }
+                //标识为可购买的好友，如果在当前账户的训练房间中则标识为false
+                boolean canbuyMember=true;
+                JSONArray roomListTrain = joTrain.getJSONArray("roomList");
+                for (int j= 0; j < roomListTrain.length(); j++) {
+                    JSONObject roomTrain = roomListTrain.getJSONObject(j);
+                    if (roomTrain.getJSONArray("memberList").length() != 0) {
+                        JSONObject member=roomTrain.getJSONArray("memberList").getJSONObject(0);
+                        if(originBossId.equals(member.getString("originBossId")))
+                        {
+                            canbuyMember=false;
+                        }
+                    }
+                }
 
+                //不管是否购买好友成功，都返回继续检测下一个房间
+                if(canbuyMember){
+                    buyMember(roomId,queryClubMember(jo));
+                    return;
+                }
             }
         } catch (Throwable t) {
             Log.i(TAG, "queryMemberPriceRanking err:");

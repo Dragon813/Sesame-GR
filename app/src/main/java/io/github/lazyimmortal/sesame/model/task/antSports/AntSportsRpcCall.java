@@ -35,7 +35,8 @@ public class AntSportsRpcCall {
     }
 
     public static String signInCoinTask() {
-        String args = "[{\"apiVersion\":\"energy\",\"operatorType\":\"query\"}]";
+        String args = "[{\"operatorType\":\"signIn\"}]";
+        //String args = "[{\"apiVersion\":\"energy\",\"operatorType\":\"query\"}]";
         return ApplicationHook.requestString("com.alipay.sportshealth.biz.rpc.SportsHealthCoinTaskRpc.signInCoinTask", args);
     }
 
@@ -57,6 +58,11 @@ public static String receiveCoinAsset(String assetId) {
     String args = "[{\"apiVersion\":\"energy\",\"chInfo\":\"medical_health\",\"clientOS\":\"android\",\"features\":[\"DAILY_STEPS_RANK_V2\",\"STEP_BATTLE\",\"CLUB_HOME_CARD\",\"NEW_HOME_PAGE_STATIC\",\"CLOUD_SDK_AUTH\",\"STAY_ON_COMPLETE\",\"EXTRA_TREASURE_BOX\",\"NEW_HOME_PAGE_STATIC\",\"SUPPORT_AI\",\"SUPPORT_TAB3\",\"SUPPORT_FLYRABBIT\",\"SUPPORT_NEW_MATCH\",\"EXTERNAL_ADVERTISEMENT_TASK\",\"PROP\",\"PROPV2\",\"ASIAN_GAMES\"],\"medEnergyBallInfoRecordIds\":[\""+assetId+"\"],\"pickAllEnergyBall\":false,\"source\":\"SPORT\"}]";
     return ApplicationHook.requestString("com.alipay.neverland.biz.rpc.pickBubbleTaskEnergy", args);
 }
+
+    public static String pickAllEnergyBall() {
+        String args = "[{\"apiVersion\":\"energy\",\"chInfo\":\"ch_shouquan_shouye\",\"clientOS\":\"android\",\"features\":[\"DAILY_STEPS_RANK_V2\",\"STEP_BATTLE\",\"CLUB_HOME_CARD\",\"NEW_HOME_PAGE_STATIC\",\"CLOUD_SDK_AUTH\",\"STAY_ON_COMPLETE\",\"EXTRA_TREASURE_BOX\",\"NEW_HOME_PAGE_STATIC\",\"SUPPORT_AI\",\"SUPPORT_TAB3\",\"SUPPORT_FLYRABBIT\",\"SUPPORT_NEW_MATCH\",\"EXTERNAL_ADVERTISEMENT_TASK\",\"PROP\",\"PROPV2\",\"ASIAN_GAMES\"],\"medEnergyBallInfoRecordIds\":[],\"pickAllEnergyBall\":true,\"source\":\"SPORT\"}]";
+        return ApplicationHook.requestString("com.alipay.neverland.biz.rpc.pickBubbleTaskEnergy", args);
+    }
 
     public static String queryDonateRecord() {
         String args = "[{\"pageIndex\":1,\"pageSize\":10}]";

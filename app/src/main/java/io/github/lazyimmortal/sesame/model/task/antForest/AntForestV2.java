@@ -1545,7 +1545,7 @@ public class AntForestV2 extends ModelTask {
                     TimeUtil.sleep(300); // 等待300毫秒
                     if (MessageUtil.checkSuccess(TAG + "森林签到失败:", joSign)) {
                         int continuousCount = joSign.getInt("continuousCount");
-                        Log.forest("森林签到📆拯救第" + continuousCount + "天#复活[" + awardCount + "g能量]");
+                        Log.forest("森林签到📆拯救第" + continuousCount + "天#复活[" + awardCount + "g能量]"+"["+UserIdMap.getShowName(UserIdMap.getCurrentUid())+"]");
                         Statistics.addData(Statistics.DataType.COLLECTED, awardCount);
                         //return awardCount;
                     }
