@@ -1276,26 +1276,21 @@ public class AntSports extends ModelTask {
                 }
 
                 //判断是否为购买列表中的好友
-                if(!clubTradeMemberList.getValue().contains(originBossId))
-                {
-                    continue;
-                }
-
-                /*原版本判断暂不理解
+                boolean isTradeMember = clubTradeMemberList.getValue().contains(originBossId);
+                //判断是否购买好友
                 if (clubTradeMemberType.getValue() != TradeMemberType.TRADE) {
                     isTradeMember = !isTradeMember;
                 }
                 if (!isTradeMember) {
                     continue;
                 }
-                */
 
+                //标识为可购买的好友，如果在当前账户的训练房间中则标识为false
+                boolean canbuyMember=true;
                 JSONObject joTrain = new JSONObject(AntSportsRpcCall.queryClubHome());
                 if (!MessageUtil.checkResultCode(TAG, joTrain)) {
                     return;
                 }
-                //标识为可购买的好友，如果在当前账户的训练房间中则标识为false
-                boolean canbuyMember=true;
                 JSONArray roomListTrain = joTrain.getJSONArray("roomList");
                 for (int j= 0; j < roomListTrain.length(); j++) {
                     JSONObject roomTrain = roomListTrain.getJSONObject(j);
@@ -1351,7 +1346,7 @@ public class AntSports extends ModelTask {
             if (MessageUtil.checkResultCode(TAG, jo)) {
                 String userName = UserIdMap.getMaskName(originBossId);
                 int price = member.getInt("price");
-                Log.other("抢购好友🥋抢购[" + userName + "]花费[" + price + "健康能量]");
+                Log.other("抢购好友🥋抢购[" + userName + "]花费[" + price + "健康能量]"+"#["+UserIdMap.getShowName(UserIdMap.getCurrentUid())+"]");
                 return true;
             }
             else{
