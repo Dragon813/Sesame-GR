@@ -1242,7 +1242,6 @@ public class AntSports extends ModelTask {
     }
 
 
-
     // 抢好友大战-抢购好友
     private void queryMemberPriceRanking(String roomId) {
         int energyBalance;
