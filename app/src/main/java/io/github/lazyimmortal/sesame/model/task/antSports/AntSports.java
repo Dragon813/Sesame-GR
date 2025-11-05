@@ -1125,12 +1125,12 @@ public class AntSports extends ModelTask {
                 }
 
                 //购买好友
-                //if (clubTradeMemberType.getValue() != TradeMemberType.NONE) {
+                if (clubTradeMemberType.getValue() != TradeMemberType.NONE) {
                     queryMemberPriceRanking(roomId);
                     //JSONObject member = queryMemberPriceRanking();
                     //buyMember(roomId, member);
                     TimeUtil.sleep(1000);
-                //}
+                }
             }
             TimeUtil.sleep(1000);
 
@@ -1241,7 +1241,6 @@ public class AntSports extends ModelTask {
         }
     }
 
-
     // 抢好友大战-抢购好友
     private void queryMemberPriceRanking(String roomId) {
         int energyBalance;
@@ -1276,7 +1275,7 @@ public class AntSports extends ModelTask {
 
                 //判断是否为购买列表中的好友
                 boolean isTradeMember = clubTradeMemberList.getValue().contains(originBossId);
-                //判断是否购买好友
+                //判断是选中购买还是未选中购买
                 if (clubTradeMemberType.getValue() != TradeMemberType.TRADE) {
                     isTradeMember = !isTradeMember;
                 }
@@ -1303,7 +1302,8 @@ public class AntSports extends ModelTask {
                 }
                 //不管是否购买好友成功，都返回继续检测下一个房间
                 if(canbuyMember){
-                    buyMember(roomId,queryClubMember(jo));
+                    //buyMember(roomId,queryClubMember(jo));
+                    buyMember(roomId,jo);
                     return;
                 }
             }
