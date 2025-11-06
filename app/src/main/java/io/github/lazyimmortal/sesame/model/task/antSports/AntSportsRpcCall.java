@@ -313,7 +313,6 @@ public static String receiveCoinAsset(String assetId) {
                 "[{\"apiVersion\":\"energy\",\"bizNo\":\"" + bizId + "\",\"taskAction\":\"SHOW_AD\",\"taskId\":\"AP16235854\",\"taskType\":\"AD_TASK\"}]");
     }
 
-
     public static String queryMemberPriceRankingEnergy(int coinBalance) {
         String args = "[{\"apiVersion\":\"energy\",\"buyMember\":true,\"chInfo\":\"healthstep\",\"coinBalance\":\"" + coinBalance + "\"}]";
         return ApplicationHook.requestString("alipay.antsports.club.ranking.queryMemberPriceRanking", args);

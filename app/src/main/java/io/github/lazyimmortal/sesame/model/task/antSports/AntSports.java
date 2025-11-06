@@ -1299,8 +1299,7 @@ public class AntSports extends ModelTask {
                 }
                 //不管是否购买好友成功，都返回继续检测下一个房间
                 if (canbuyMember) {
-                    //buyMember(roomId,queryClubMember(jo));
-                    buyMember(roomId, jo);
+                    buyMember(roomId,queryClubMember(jo));
                     return;
                 }
             }
