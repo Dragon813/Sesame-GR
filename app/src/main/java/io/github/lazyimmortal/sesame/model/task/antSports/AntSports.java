@@ -1177,7 +1177,7 @@ public class AntSports extends ModelTask {
             String originBossId = member.getString("originBossId");
             JSONObject trainInfo = member.getJSONObject("trainInfo");
 
-            String userName = UserIdMap.getMaskName(originBossId);
+            String userName = UserIdMap.getShowName(originBossId);
             if (!trainInfo.getBoolean("training")) {
                 String itemType = TrainItemType.itemTypes[clubTrainItemType.getValue()];
                 if (StringUtil.isEmpty(itemType)) {
