@@ -159,7 +159,8 @@ public class AntSports extends ModelTask {
   @Override
   public void run() {
     try {
-      if (!Status.hasFlagToday("sport::syncStep") && TimeUtil.isNowAfterOrCompareTimeStr("0600")) {
+       // if (!Status.hasFlagToday("sport::syncStep") && TimeUtil.isNowAfterOrCompareTimeStr("0600")) {
+      if (!Status.hasFlagToday("sport::syncStep")) {
         addChildTask(
             new ChildModelTask(
                 "syncStep",
