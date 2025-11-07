@@ -263,7 +263,7 @@ public class AntSports extends ModelTask {
         try {
             JSONObject jo = new JSONObject(AntSportsRpcCall.completeTask(taskAction, taskId));
             if (MessageUtil.checkSuccess(TAG, jo)) {
-                Log.other("运动任务🧾完成[做任务得运动币:" + taskName + "]");
+                Log.other("运动任务🧾完成[得运动币:" + taskName + "]");
                 return true;
             }
         } catch (Throwable t) {
