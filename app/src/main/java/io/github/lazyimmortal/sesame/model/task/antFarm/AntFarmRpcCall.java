@@ -104,12 +104,14 @@ public class AntFarmRpcCall {
         return ApplicationHook.requestString("com.alipay.antfarm.getCharityAccount", args);
     }
 
+    //{"requestType":"NORMAL","sceneCode":"ANTFARM","source":"H5","version":"1.8.2302070202.46"}
     public static String listActivityInfo() {
         String args1 = "[{\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"version\":\""
                 + VERSION + "\"}]";
         return ApplicationHook.requestString("com.alipay.antfarm.listActivityInfo", args1);
     }
 
+    //{"activityId":"","projectId":"221","requestType":"NORMAL","sceneCode":"ANTFARM","source":"ANTFARM","version":"10.6.20.8000"}
     public static String getProjectInfo(String projectId) {
         String args = "[{\"activityId\":\"\",\"projectId\":\"" + projectId + "\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"ANTFARM\",\"version\":\"" + VERSION + "\"}]";
         return ApplicationHook.requestString("com.alipay.antfarm.getProjectInfo", args);
