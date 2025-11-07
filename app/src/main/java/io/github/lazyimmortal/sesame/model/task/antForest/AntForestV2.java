@@ -589,7 +589,7 @@ public class AntForestV2 extends ModelTask {
 
         // 真爱合种浇水
         if (loveteamWater.getValue()) {
-            Log.forest("loveteamWaterNum.getValue():"+loveteamWaterNum.getValue());
+          Log.forest("loveteamWaterNum.getValue():" + loveteamWaterNum.getValue());
           if (loveteamWaterNum.getValue() >= 20 && loveteamWaterNum.getValue() <= 10000) {
             loveteam(loveteamWaterNum.getValue());
           }
@@ -2797,16 +2797,16 @@ public class AntForestV2 extends ModelTask {
     if (!Status.hasFlagToday("Forest::loveteamWater")) {
       try {
         JSONObject jo = new JSONObject(AntForestRpcCall.loveteamHome());
-          Log.forest(jo.toString());
+        Log.forest(jo.toString());
         if (!MessageUtil.checkResultCode(TAG, jo)) {
           return;
         }
         if (jo.has("userInfo")) {
           JSONObject userInfo = jo.getJSONObject("userInfo");
-            Log.forest(userInfo.toString());
+          Log.forest(userInfo.toString());
           if (userInfo.has("teamId")) {
             String teamId = userInfo.getString("teamId");
-              Log.forest("teamId, loveteamWater:"+teamId+loveteamWater);
+            Log.forest("teamId, loveteamWater:" + teamId + loveteamWater);
             loveteamWater(teamId, loveteamWater);
           }
         }
@@ -2822,8 +2822,14 @@ public class AntForestV2 extends ModelTask {
       JSONObject jo =
           new JSONObject(AntForestRpcCall.loveteamWater(loveteamWater, loveteamWaterNum));
       if (MessageUtil.checkSuccess(TAG, jo)) {
-          Log.forest(jo.toString());
-        Log.forest("真爱浇水🚿给[" + loveteamWater + "]合种浇水" + loveteamWaterNum+"g#" + UserIdMap.getShowName(UserIdMap.getCurrentUid()));
+        Log.forest(jo.toString());
+        Log.forest(
+            "真爱浇水🚿给["
+                + loveteamWater
+                + "]合种浇水"
+                + loveteamWaterNum
+                + "g#"
+                + UserIdMap.getShowName(UserIdMap.getCurrentUid()));
         Status.flagToday("Forest::loveteamWater");
       }
     } catch (Throwable th) {
