@@ -854,7 +854,7 @@ public class AntSports extends ModelTask {
                     jo = new JSONObject(AntSportsRpcCall.userTaskComplete(bizType, taskId));
                     if (jo.optBoolean("success")) {
                         String taskName = taskInfo.optString("taskName", taskId);
-                        Log.other("完成任务🧾[" + taskName + "]");
+                        Log.other("文体中心🧾完成任务[" + taskName + "]");
                     } else {
                         Log.record("文体每日任务" + " " + jo);
                     }
@@ -1086,7 +1086,7 @@ public class AntSports extends ModelTask {
                 JSONArray bubbleList = mainRoom.getJSONArray("bubbleList");
                 for (int k = 0; k < bubbleList.length(); k++) {
                     String bubbleId = bubbleList.getJSONObject(k).getString("bubbleId");
-                    collectBubble(bubbleId, "[买卖好友]");
+                    collectBubble(bubbleId, "[买卖]");
                     TimeUtil.sleep(200);
                 }
             }
@@ -1107,7 +1107,7 @@ public class AntSports extends ModelTask {
                     for (int l = 0; l < roombubbleList.length(); l++) {
                         String bubbleId = roombubbleList.getJSONObject(l).getString("bubbleId");
                         //收取第i号房间需要收取训练好友的第l个能量球
-                        collectBubble(bubbleId, "[训练好友]");
+                        collectBubble(bubbleId, "[训练]");
                         TimeUtil.sleep(200);
                     }
                 }
@@ -1152,7 +1152,7 @@ public class AntSports extends ModelTask {
             if (jo.optBoolean("success")) {
                 JSONObject ja = jo.getJSONObject("data");
                 String collectCoin = ja.getString("changeAmount");
-                Log.other("收取" + bubbleType + "🥏获得[" + collectCoin + "运动能量]" + "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                Log.other("好友大战🥏收取"+bubbleType+"获得[" + collectCoin + "运动能量]" + "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
             }
         } catch (Throwable t) {
             Log.i(TAG, "collectBubble err:");
@@ -1188,7 +1188,7 @@ public class AntSports extends ModelTask {
                     queryTrainItemjo = queryTrainItemjo.getJSONObject("taskDetail");
                     String taskId = queryTrainItemjo.getString("taskId");
                     JSONObject jo = new JSONObject(AntSportsRpcCall.DoubletrainMember(itemType, bizId, memberId, originBossId));
-                    Log.other("训练好友🥋训练[" + userName + "]" + name + "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                    Log.other("好友大战🥋训练[" + userName + "]" + name + "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                     if (!MessageUtil.checkResultCode(TAG, jo)) {
                         return;
                     }
@@ -1197,13 +1197,13 @@ public class AntSports extends ModelTask {
                     if (!MessageUtil.checkSuccess(TAG, jo)) {
                         return;
                     }
-                    Log.other("翻倍训练好友🥋训练[" + userName + "]" + name+ "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                    Log.other("好友大战🥋翻倍训练[" + userName + "]" + name+ "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                 } else {
                     JSONObject jo = new JSONObject(AntSportsRpcCall.trainMember(itemType, memberId, originBossId));
                     if (!MessageUtil.checkResultCode(TAG, jo)) {
                         return;
                     }
-                    Log.other("训练好友🥋训练[" + userName + "]" + name+ "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                    Log.other("好友大战🥋训练[" + userName + "]" + name+ "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                     trainInfo = jo.getJSONObject("trainInfo");
                 }
             }
@@ -1226,7 +1226,7 @@ public class AntSports extends ModelTask {
                 AntSportsRpcCall.queryClubRoom(roomId);
             }, gmtEnd));
             int roomIdInt = Integer.parseInt(roomId.substring(2, 8));
-            Log.record("添加蹲点训练🥋[" + roomIdInt + "号房嘉宾]在[" + TimeUtil.getCommonDate(gmtEnd) + "]执行");
+            Log.record("蹲点训练🥋添加[" + roomIdInt + "号房嘉宾]在[" + TimeUtil.getCommonDate(gmtEnd) + "]执行");
         }
     }
 
@@ -1333,7 +1333,7 @@ public class AntSports extends ModelTask {
             if (MessageUtil.checkResultCode(TAG, jo)) {
                 String userName = UserIdMap.getShowName(originBossId);
                 int price = member.getInt("price");
-                Log.other("抢购好友🥋抢购[" + userName + "]来自["+currentBossShowName+"]花费[" + price + "健康能量]" + "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                Log.other("好友大战🥋抢购[" + userName + "]来自["+currentBossShowName+"]花费[" + price + "健康能量]" + "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                 return true;
             } else {
                 return false;
