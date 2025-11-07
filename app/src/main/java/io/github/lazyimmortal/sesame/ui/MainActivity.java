@@ -232,7 +232,7 @@ public class MainActivity extends BaseActivity {
             //   项目开源且公益  维护都是自愿
             //   但是如果打包改个名拿去卖钱忽悠小白
             //   那我只能说你妈死了 就当开源项目给你妈烧纸钱了
-            data = "https://github.com/LazyImmortal/Sesame";
+            data = "https://github.com/Dragon813/Sesame-GR";
         } else if (v.getId() == R.id.btn_settings) {
             selectSettingUid();
             return;

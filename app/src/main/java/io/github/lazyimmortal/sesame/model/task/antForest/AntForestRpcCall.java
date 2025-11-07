@@ -441,6 +441,18 @@ public class AntForestRpcCall {
         return ApplicationHook.requestString("com.alipay.creditapollon.biz.rpc.api.rent.green.generateEnergy", requestData);
     }
 
+    //真爱合种查询
+    public static String loveteamHome() {
+    String requestData = "[{\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]";
+        return ApplicationHook.requestString("alipay.greenmatrix.rpc.h5.love.loveHome", requestData);
+    }
+
+    public static String loveteamWater(String loveteamWater,int loveteamWaterNum) {
+    String requestData =
+        "[{\"donateNum\":"+loveteamWaterNum+",\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"teamId\":\""+loveteamWater+"\"}]";
+        return ApplicationHook.requestString("alipay.greenmatrix.rpc.h5.love.teamWater", requestData);
+    }
+
     //森林寻宝助力
     //
     //{"iepShareChannelType":"qrcode","requestType":"RPC","sceneCode":"FOREST_NORMAL_20251024_SHARE","shareId":"hhJxgLczlae8wY4uIrOdutR4O7FEYDgn0xx0OehP5jt9bxgpIW643h4FnWRjs9uZzng77VUJcjlcZsjGio6MsAtmwxkxkx","source":"chouchoule"}
@@ -536,11 +548,11 @@ public class AntForestRpcCall {
         return ApplicationHook.requestString("com.alipay.antiep.finishTask", requestData);
     }
 
-    /**
-     * 森林抽抽乐-抽奖
-     *///2025101301
-    //"activityId":"20251024","requestType":"RPC","sceneCode":"ANTFOREST_ACTIVITY_DRAW","source":"chouchoule","userId":"2088842736213752"
-    public static String drawopengreen(String activityId,String sceneCode, String source, String userId){
+  /** 森林抽抽乐-抽奖 */
+  // 2025101301
+  // "activityId":"20251024","requestType":"RPC","sceneCode":"ANTFOREST_ACTIVITY_DRAW","source":"chouchoule","userId":"2088842736213752"
+  public static String drawopengreen(
+      String activityId, String sceneCode, String source, String userId) {
         /*JSONObject params = new JSONObject();
         params.put("activityId", activityId);
         params.put("requestType", "RPC");

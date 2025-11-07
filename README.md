@@ -1,3 +1,5 @@
+本人是业余爱好者，在懒真人芝麻粒-TK v1.6.4.2(https://github.com/LazyImmortal/Sesame)的基础上，修复了一些失效的功能，并根据
+芝你麻咸鱼的粒-TK(https://github.com/Fansirsqi/Sesame-TK)的代码补充一些新功能。
 # Sesame
 
 [![License](https://img.shields.io/github/license/LazyImmortal/Sesame.svg)](LICENSE)

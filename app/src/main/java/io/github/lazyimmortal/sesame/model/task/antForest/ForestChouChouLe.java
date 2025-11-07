@@ -54,7 +54,7 @@ public class ForestChouChouLe {
             sceneCode,
             ForestHuntHelp,
             shareIds,
-                ACTIVITYForestHuntHelp);
+            ACTIVITYForestHuntHelp);
       }
     } catch (Exception e) {
       Log.printStackTrace(e);
@@ -114,10 +114,9 @@ public class ForestChouChouLe {
             int rightsTimes = taskRights.getInt("rightsTimes");
             int rightsTimesLimit = taskRights.getInt("rightsTimesLimit");
 
-
             if (taskType.contains("_DRAW_SHARE") && ForestHuntHelp) {
               // if (!Status.hasFlagToday("Forest::" + sceneCode)) {
-                 int forestHuntHelpTodayCount = Status.getforestHuntHelpToday(taskType);
+              int forestHuntHelpTodayCount = Status.getforestHuntHelpToday(taskType);
               if (forestHuntHelpTodayCount < shareIds.size()) {
                 JSONObject prodPlayParam = new JSONObject(taskBaseInfo.getString("prodPlayParam"));
                 String p2pSceneCode = prodPlayParam.getString("p2pSceneCode");
@@ -134,7 +133,8 @@ public class ForestChouChouLe {
             // 在最后一个任务时强制开启活动场景助力
             if ((i == (taskList.length() - 1)) && (!taskType.equals("FOREST_ACTIVITY_DRAW_SHARE")))
               if (ACTIVITYForestHuntHelp && sceneCode.equals("ANTFOREST_ACTIVITY_DRAW")) {
-                  int forestHuntHelpTodayCount = Status.getforestHuntHelpToday("FOREST_ACTIVITY_DRAW_SHARE");
+                int forestHuntHelpTodayCount =
+                    Status.getforestHuntHelpToday("FOREST_ACTIVITY_DRAW_SHARE");
                 if (forestHuntHelpTodayCount < shareIds.size()) {
                   // if (!Status.hasFlagToday("Forest::" + sceneCode)) {
                   Log.forest(
