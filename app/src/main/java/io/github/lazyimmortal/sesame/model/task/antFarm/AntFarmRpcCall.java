@@ -104,31 +104,21 @@ public class AntFarmRpcCall {
         return ApplicationHook.requestString("com.alipay.antfarm.getCharityAccount", args);
     }
 
-    //{"requestType":"NORMAL","sceneCode":"ANTFARM","source":"H5","version":"1.8.2302070202.46"}
     public static String listActivityInfo() {
         String args1 = "[{\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"version\":\""
                 + VERSION + "\"}]";
         return ApplicationHook.requestString("com.alipay.antfarm.listActivityInfo", args1);
     }
 
-    //{"activityId":"","projectId":"221","requestType":"NORMAL","sceneCode":"ANTFARM","source":"ANTFARM","version":"10.6.20.8000"}
     public static String getProjectInfo(String projectId) {
         String args = "[{\"activityId\":\"\",\"projectId\":\"" + projectId + "\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"ANTFARM\",\"version\":\"" + VERSION + "\"}]";
         return ApplicationHook.requestString("com.alipay.antfarm.getProjectInfo", args);
     }
 
-    //{"activityId":"2510241412230000022191747714","bizCode":"undefined","cele":1,
-    // "donationAmount":"1","requestType":"NORMAL","sceneCode":"ANTFARM","source":"ANTFARM",
-    // "subBizCode":"undefined","userToken":"","version":"10.6.20.8000"}
     public static String donation(String activityId, int donationAmount) {
-    String args1 =
-        "[{\"activityId\":\""
-            + activityId
-            + "\",\"bizCode\":\"undefined\",\"cele\":1,\"donationAmount\":"
-            + donationAmount
-            + ",\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"ANTFARM\",\"subBizCode\":\"undefined\",\"userToken\":\"\",\"version\":\""
-            + VERSION
-            + "\"}]";
+        String args1 = "[{\"activityId\":\"" + activityId + "\",\"donationAmount\":" + donationAmount +
+                ",\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"version\":\""
+                + VERSION + "\"}]";
         return ApplicationHook.requestString("com.alipay.antfarm.donation", args1);
     }
 
