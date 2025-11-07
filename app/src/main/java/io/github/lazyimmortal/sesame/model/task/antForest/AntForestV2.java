@@ -481,6 +481,9 @@ public class AntForestV2 extends ModelTask {
                         }
                     }
                 }
+
+                waterFriendEnergy();
+
                 if (ForestHunt.getValue()) {
                     ForestChouChouLe forestChouChouLe = new ForestChouChouLe();
                     forestChouChouLe.chouChouLe(ForestHuntDraw.getValue(), ForestHuntHelp.getValue(), ForestHuntHelpList.getValue(),qianlijiangshanForestHuntHelp.getValue());
@@ -525,7 +528,7 @@ public class AntForestV2 extends ModelTask {
                 if (ecoLife.getValue()) {
                     ecoLife();
                 }
-                waterFriendEnergy();
+
                 giveProp();
                 if (vitalityExchangeBenefit.getValue()) {
                     vitalityExchangeBenefit();
