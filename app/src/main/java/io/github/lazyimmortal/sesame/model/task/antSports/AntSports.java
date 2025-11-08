@@ -292,7 +292,8 @@ public class AntSports extends ModelTask {
         try {
             JSONObject jo = new JSONObject(AntSportsRpcCall.receiveCoinAsset(assetId));
             if (MessageUtil.checkSuccess(TAG, jo)) {
-                Log.other("运动中心🏧领取[" + title + "]奖励[" + coinAmount + "运动能量]"); return true;
+                //Log.other("运动中心🏧领取[" + title + "]奖励[" + coinAmount + "运动能量]"); return true;
+                Log.other("运动中心🧊领取[" + title + "]奖励[" + coinAmount + "运动能量]"); return true;
             }
         } catch (Throwable t) {
             Log.i(TAG, "receiveCoinAsset err:"); Log.printStackTrace(TAG, t);
@@ -924,7 +925,7 @@ public class AntSports extends ModelTask {
         try {
             JSONObject jo = new JSONObject(AntSportsRpcCall.collectBubble(bubbleId)); if (jo.optBoolean("success")) {
                 JSONObject ja = jo.getJSONObject("data"); String collectCoin = ja.getString("changeAmount");
-                Log.other("好友大战🏧收取" + bubbleType + "获得[" + collectCoin + "运动能量]" + "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                Log.other("好友大战🧊收取" + bubbleType + "获得[" + collectCoin + "运动能量]" + "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
             }
         } catch (Throwable t) {
             Log.i(TAG, "collectBubble err:"); Log.printStackTrace(TAG, t);

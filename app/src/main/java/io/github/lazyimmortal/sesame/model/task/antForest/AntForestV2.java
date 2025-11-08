@@ -547,6 +547,7 @@ public class AntForestV2 extends ModelTask {
 
             JSONObject userBaseInfo = jo.getJSONObject("userBaseInfo");
             int currentEnergy = userBaseInfo.optInt("currentEnergy", 0);
+            int totalCertCount = userBaseInfo.optInt("totalCertCount", 0);
 
             jo = new JSONObject(AntForestRpcCall.queryDynamicsIndex()); if (!MessageUtil.checkSuccess(TAG, jo)) {
                 return;
@@ -556,12 +557,105 @@ public class AntForestV2 extends ModelTask {
             int obtainTotal = todayEnergySummary.optInt("obtainTotal", 0);
             int robbedTotal = todayEnergySummary.optInt("robbedTotal", 0);
 
-            Log.forest("森林能量🌳[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]收取" + obtainTotal + "g;被收" + robbedTotal + "g;当前" + currentEnergy + "g");
+            //获取能量日榜top
+            jo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("energyRank","day"));
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            } if (!jo.has("myself")) {
+                return;
+            }
+            JSONObject myself = jo.getJSONObject("myself");
+            int dayenergySummation = myself.optInt("energySummation", 0);
+            int dayrank = myself.optInt("rank", 0);
+
+            //获取能量周榜top
+            jo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("energyRank","week"));
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            } if (!jo.has("myself")) {
+                return;
+            }
+            myself = jo.getJSONObject("myself");
+            int weekenergySummation = myself.optInt("energySummation", 0);
+            int weekrank = myself.optInt("rank", 0);
+
+            //获取能量总榜top
+            jo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("energyRank","total"));
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            } if (!jo.has("myself")) {
+                return;
+            }
+            myself = jo.getJSONObject("myself");
+            int totalenergySummation = myself.optInt("energySummation", 0);
+            int totalrank = myself.optInt("rank", 0);
+
+            //获取偷我日榜top
+            String dayenergySummationtop3="😡偷我日榜top3:";
+            String userId;
+            int energySummation;
+            jo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("robRank","day"));
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            } if (!jo.has("friendRanking")) {
+                return;
+            }
+            JSONArray friendRankings = jo.getJSONArray("friendRanking");
+            //friendRankings.length()
+            for (int i = 0; i < 3; i++) {
+                JSONObject friendRanking = friendRankings.getJSONObject(i);
+                energySummation = friendRanking.optInt("energySummation", 0);
+                userId=friendRanking.optString("userId", null);
+                dayenergySummationtop3=dayenergySummationtop3+"["+UserIdMap.getShowName(userId)+"]"+energySummation+"g;";
+            }
+
+            //获取偷我周榜top
+            String weekenergySummationtop3="😡偷我周榜top3:";
+            jo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("robRank","week"));
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            } if (!jo.has("friendRanking")) {
+                return;
+            }
+            friendRankings = jo.getJSONArray("friendRanking");
+            //friendRankings.length()
+            for (int i = 0; i < 3; i++) {
+                JSONObject friendRanking = friendRankings.getJSONObject(i);
+                energySummation = friendRanking.optInt("energySummation", 0);
+                userId=friendRanking.optString("userId", null);
+                weekenergySummationtop3=weekenergySummationtop3+"["+UserIdMap.getShowName(userId)+"]"+energySummation+"g;";
+            }
+
+            Log.forest("森林能量🌳[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]收取" + obtainTotal + "g;被收" + robbedTotal + "g;当前能量" + currentEnergy + "g;🪪获得证书"+totalCertCount +";"+dayenergySummationtop3+weekenergySummationtop3+ ";😁日榜第"+ dayrank + "名:"+ dayenergySummation + "g;😁周榜第"+ weekrank + "名:"+ weekenergySummation + "g;😁总榜第"+ totalrank + "名:"+ totalenergySummation + "g;");
 
         } catch (Throwable th) {
             Log.i(TAG, "ForestEnergyInfo err:"); Log.printStackTrace(TAG, th);
         }
 
+    }
+
+    //PK能量榜
+    private void queryTopEnergyChallengeRanking() {
+        try {
+            JSONObject jo = new JSONObject(AntForestRpcCall.queryTopEnergyChallengeRanking());
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            if (!jo.has("friendRanking")) {
+                return;
+            }
+            JSONArray friendRankings = jo.getJSONArray("friendRanking");
+            for (int i = 0; i < friendRankings.length(); i++) {
+                JSONObject friendRanking = friendRankings.getJSONObject(i);
+                boolean canCollectEnergy=friendRanking.optBoolean("canCollectEnergy", false);
+                int energySummation = friendRanking.optInt("energySummation", 0);
+                String userId=friendRanking.optString("userId", null);
+                //
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "queryTopEnergyChallengeRanking err:");
+            Log.printStackTrace(TAG, th);
+        }
     }
 
     private void notifyMain() {

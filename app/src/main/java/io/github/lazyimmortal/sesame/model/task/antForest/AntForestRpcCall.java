@@ -55,6 +55,18 @@ public class AntForestRpcCall {
                 "\":false,\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"version\":\"" + VERSION + "\"}]");
     }
 
+    //{"periodType":"day","rankType":"robRank","source":"chInfo_ch_appcenter__chsub_9patch","version":"20221001"}被偷
+    //{"periodType":"day","rankType":"energyRank","source":"chInfo_ch_appcenter__chsub_9patch","version":"20221001"}获取
+    public static String queryTopEnergyRanking(String rankType,String periodType) {
+        return ApplicationHook.requestString("alipay.antmember.forest.h5.queryTopEnergyRanking", "[{\"periodType\":\""+periodType+"\",\"rankType\":\""+rankType+"\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"version\":\""+VERSION+"\"}]");
+    }
+
+    //PK榜单
+    public static String queryTopEnergyChallengeRanking() {
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.queryTopEnergyChallengeRanking", "[{\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]");
+    }
+
+
     public static String queryFriendHomePage(String userId) {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.queryFriendHomePage", "[{\"canRobFlags" +
                 "\":\"F,F,F,F,F\",\"configVersionMap\":{\"redPacketConfig\":0,\"wateringBubbleConfig\":\"10\"}," +
