@@ -145,10 +145,10 @@ public class ForestChouChouLe {
                   Log.forest(
                       "森林寻宝🎰️执行["
                           + UserIdMap.getShowName(UserIdMap.getCurrentUid())
-                          + "]助力好友[活动场景](薅羊毛，如果服务器接口存在，失效后关闭配置选项)");
+                          + "]助力好友[活动场景](薅羊毛，如果助力结果不返回成功请关闭配置项)");
                   DoForestHuntHelp(
                       shareIds,
-                      "20251024",
+                          activityId,
                       "FOREST_NORMAL_20251024_SHARE",
                       "FOREST_ACTIVITY_DRAW_SHARE");
                   // Status.flagToday("Forest::" + sceneCode,taskUid);
@@ -295,7 +295,7 @@ public class ForestChouChouLe {
           continue;
         }
         String userId = shareComponentRecall(p2pSceneCode, shareId);
-        Log.forest("森林寻宝🎰️尝试助力#" + ForestHuntIdMap.get(shareUserId));
+        //Log.forest("森林寻宝🎰️尝试助力#" + ForestHuntIdMap.get(shareUserId));
         if (userId.equals("解析userID失败")) {
           continue;
         }
@@ -303,7 +303,12 @@ public class ForestChouChouLe {
         String resconfirmShareRecall =
             confirmShareRecall(activityId, p2pSceneCode, shareId, userId);
         TimeUtil.sleep(1500);
-        Log.forest("森林寻宝🎰️助力[" + userId + "]" + resconfirmShareRecall);
+
+          String userName =
+                  UserIdMap.getShowName(userId) != null
+                          ? UserIdMap.getShowName(userId)
+                          : userId;
+        Log.forest("森林寻宝🎰️助力[" + userName + "]" + resconfirmShareRecall);
         // 标记助力成功
         Status.flagToday(taskType + "::" + shareUserId, taskUid);
         // Status.ForestHuntHelpToday(taskType + "::" + shareUserId, taskUid);
