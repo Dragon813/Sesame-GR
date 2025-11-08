@@ -79,7 +79,7 @@ public class AntOrchard extends ModelTask {
                 if (jo.optBoolean("userOpenOrchard")) {
                     JSONObject taobaoData = new JSONObject(jo.getString("taobaoData"));
                     treeLevel = Integer.toString(taobaoData.getJSONObject("gameInfo").getJSONObject("plantInfo")
-                            .getJSONObject("seedStage").getInt("stageLevel"));
+                            .getJSONObject("seedStage").optInt("stageLevel",0));
                     JSONObject joo = new JSONObject(AntOrchardRpcCall.mowGrassInfo());
                     if ("100".equals(jo.getString("resultCode"))) {
                         userId = joo.getString("userId");
@@ -182,7 +182,7 @@ public class AntOrchard extends ModelTask {
                         return;
                     }
                     JSONObject seedStage = plantInfo.getJSONObject("seedStage");
-                    treeLevel = Integer.toString(seedStage.getInt("stageLevel"));
+                    treeLevel = Integer.toString(seedStage.optInt("stageLevel",0));
                     JSONObject accountInfo = jo.getJSONObject("gameInfo").getJSONObject("accountInfo");
                     int happyPoint = Integer.parseInt(accountInfo.getString("happyPoint"));
                     int wateringCost = accountInfo.getInt("wateringCost");
@@ -376,6 +376,7 @@ public class AntOrchard extends ModelTask {
 
     private void querySubplotsActivity(int taskRequire) {
         try {
+            if(treeLevel.equals("0")){return;}
             String s = AntOrchardRpcCall.querySubplotsActivity(treeLevel);
             JSONObject jo = new JSONObject(s);
             if ("100".equals(jo.getString("resultCode"))) {

@@ -2664,9 +2664,12 @@ public class AntFarm extends ModelTask {
     SHARETOOL,
     FENCETOOL,
     NEWEGGTOOL,
-    DOLLTOOL;
+    DOLLTOOL,
 
-    public static final CharSequence[] nickNames = {"蹭饭卡", "加速卡", "救济卡", "篱笆卡", "新蛋卡", "公仔补签卡"};
+      ORNAMENT_ORDINARY_TOOL,
+    ADVANCE_ORNAMENT_TOOL;
+
+    public static final CharSequence[] nickNames = {"蹭饭卡", "加速卡", "救济卡", "篱笆卡", "新蛋卡", "公仔补签卡","普通装扮补签","高级装扮补签"};
 
     public CharSequence nickName() {
       return nickNames[ordinal()];

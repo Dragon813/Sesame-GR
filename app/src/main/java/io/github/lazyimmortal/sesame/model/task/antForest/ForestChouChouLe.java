@@ -75,8 +75,10 @@ public class ForestChouChouLe {
       // ==================== 手动屏蔽任务集合 ====================
       Set<String> presetBad = new LinkedHashSet<>();
       presetBad.add("FOREST_NORMAL_DRAW_SHARE"); // 邀请好友任务（屏蔽）
-      // 你可以在这里继续添加更多要屏蔽的任务
       presetBad.add("FOREST_ACTIVITY_DRAW_SHARE");
+      presetBad.add("FOREST_ACTIVITY_DRAW_SGBHSD");
+      // 你可以在这里继续添加更多要屏蔽的任务
+
       // =====================================================
 
       int loopCount = 0; // 循环次数计数
@@ -109,6 +111,8 @@ public class ForestChouChouLe {
             String taskSceneCode = taskBaseInfo.getString("sceneCode");
             String taskStatus = taskBaseInfo.getString("taskStatus");
             String taskType = taskBaseInfo.getString("taskType");
+            System.out.println(i);
+            System.out.println(taskType);
 
             JSONObject taskRights = taskInfo.getJSONObject("taskRights");
             int rightsTimes = taskRights.getInt("rightsTimes");
@@ -131,7 +135,8 @@ public class ForestChouChouLe {
               }
             }
             // 在最后一个任务时强制开启活动场景助力
-            if ((i == (taskList.length() - 1)) && (!taskType.equals("FOREST_ACTIVITY_DRAW_SHARE")))
+            if ((i == (taskList.length() - 1))
+                && (!taskType.equals("FOREST_ACTIVITY_DRAW_SHARE"))) {
               if (ACTIVITYForestHuntHelp && sceneCode.equals("ANTFOREST_ACTIVITY_DRAW")) {
                 int forestHuntHelpTodayCount =
                     Status.getforestHuntHelpToday("FOREST_ACTIVITY_DRAW_SHARE");
@@ -149,6 +154,7 @@ public class ForestChouChouLe {
                   // Status.flagToday("Forest::" + sceneCode,taskUid);
                 }
               }
+            }
             // ==================== 活力值兑换任务 =====================
             if (taskType.equals("NORMAL_DRAW_EXCHANGE_VITALITY") && taskStatus.equals("TODO")) {
               JSONObject sginRes =

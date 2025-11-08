@@ -400,9 +400,10 @@ public class AntMember extends ModelTask {
     private void goldTicket() {
         try {
             // 签到
-            goldBillCollect("\"campId\":\"CP1417744\",\"directModeDisableCollect\":true,\"from\":\"antfarm\",");
+            //已失效
+            //goldBillCollect("\"campId\":\"CP1417744\",\"directModeDisableCollect\":true,\"from\":\"antfarm\",");
             // 收取其他
-            goldBillCollect("");
+            //goldBillCollect("");
         } catch (Throwable t) {
             Log.printStackTrace(TAG, t);
         }
