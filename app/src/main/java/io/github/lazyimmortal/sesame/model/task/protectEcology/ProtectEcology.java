@@ -13,6 +13,7 @@ import io.github.lazyimmortal.sesame.data.ModelFields;
 import io.github.lazyimmortal.sesame.data.ModelGroup;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.BooleanModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.ChoiceModelField;
+import io.github.lazyimmortal.sesame.data.modelFieldExt.IntegerModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectAndCountModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectModelField;
 import io.github.lazyimmortal.sesame.data.task.ModelTask;
@@ -51,6 +52,8 @@ public class ProtectEcology extends ModelTask {
     private static SelectAndCountModelField protectTreeList;
     private static BooleanModelField protectReserve;
     private static SelectAndCountModelField protectReserveList;
+    private static BooleanModelField protectBeachMinNum;
+    private IntegerModelField protectBeachNum;
     private static BooleanModelField protectBeach;
     private static SelectAndCountModelField protectBeachList;
     private static BooleanModelField protectAnimal;
@@ -72,6 +75,8 @@ public class ProtectEcology extends ModelTask {
         modelFields.addField(protectReserveList = new SelectAndCountModelField("reserveList", "保护动物 | 保护地列表", new LinkedHashMap<>(), AlipayReserve::getList, "请填写保护次数(每日)"));
         modelFields.addField(protectAnimal = new BooleanModelField("protectAnimal", "保护动物 | 护林员", false));
         modelFields.addField(protectAnimalList = new SelectModelField("protectAnimalList", "保护动物 | 护林员列表", new HashSet<>(), AlipayAnimal::getList, "请选择需要点亮的护林员"));
+        modelFields.addField(protectBeachMinNum = new BooleanModelField("protectBeachMinNum", "保护海洋 | 单个海滩保护下限", false));
+        modelFields.addField(protectBeachNum = new IntegerModelField("protectBeachNum", "单个海滩保护次数", 1));
         modelFields.addField(protectBeach = new BooleanModelField("protectBeach", "保护海洋 | 海滩", false));
         modelFields.addField(protectBeachList = new SelectAndCountModelField("protectOceanList", "保护海洋 | 海滩列表", new LinkedHashMap<>(), AlipayBeach::getList, "请填写保护次数(上限总量)"));
         return modelFields;
@@ -104,6 +109,11 @@ public class ProtectEcology extends ModelTask {
         if (protectAnimal.getValue()) {
             protectAnimal();
         }
+
+        if (protectBeachMinNum.getValue()) {
+            protectBeachMinNum(protectBeachNum.getValue());
+        }
+
         if (protectBeach.getValue()) {
             protectBeach();
         }
@@ -557,7 +567,34 @@ public class ProtectEcology extends ModelTask {
         }
         return null;
     }
-
+    private static void protectBeachMinNum(int protectBeachNum) {
+        if(protectBeachNum>0){
+            try {
+                JSONArray cultivationList = queryCultivationList();
+                if (cultivationList == null) {
+                    return;
+                }
+                for (int i = 0; i < cultivationList.length(); i++) {
+                    JSONObject jo = cultivationList.getJSONObject(i);
+                    if (!Objects.equals("AVAILABLE", jo.getString("applyAction"))) {
+                        continue;
+                    }
+                    String cultivationCode = jo.getString("cultivationCode");
+                    String projectCode = jo.getJSONObject("projectConfigVO").getString("code");
+                    int certNum = jo.getInt("certNum");
+                    int energy=jo.optInt("energy",0);
+                    if(energy>1000){continue;}
+                    while (protectBeachNum > certNum && queryCultivationDetail(cultivationCode, projectCode)) {
+                        certNum++;
+                        TimeUtil.sleep(300);
+                    }
+                }
+            } catch (Throwable t) {
+                Log.i(TAG, "protectBeachMinNum err:");
+                Log.printStackTrace(TAG, t);
+            }
+        };
+    }
     private static void protectBeach() {
         Map<String, Integer> map = protectBeachList.getValue();
         try {
