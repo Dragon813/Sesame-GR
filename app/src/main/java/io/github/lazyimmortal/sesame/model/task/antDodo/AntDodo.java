@@ -670,6 +670,9 @@ public class AntDodo extends ModelTask {
     private Boolean giftToFriend(JSONObject animal, String targetUserId) {
         try {
             String animalId = animal.getString("animalId");
+            if(targetUserId.equals(UserIdMap.getCurrentUid())) {
+                return false;
+            };
             JSONObject jo = new JSONObject(AntDodoRpcCall.social(animalId, targetUserId));
             if (MessageUtil.checkResultCode(TAG, jo)) {
                 Log.forest("赠送卡片🦕[" + UserIdMap.getMaskName(targetUserId) + "]" + getAnimalInfo(animal));
