@@ -7,8 +7,7 @@ public class MerchantServiceRpcCall {
 
     /* 商家服务 */
     public static String transcodeCheck() {
-        return ApplicationHook.requestString("alipay.mrchservbase.mrchbusiness.sign.transcode.check",
-                "[{}]");
+        return ApplicationHook.requestString("alipay.mrchservbase.mrchbusiness.sign.transcode.check", "[{}]");
     }
 
     // 签到

@@ -6,16 +6,14 @@ public class AncientTreeRpcCall {
     private static final String VERSION = "20230522";
 
     public static String homePage(String selectCityCode) {
-        return ApplicationHook.requestString("alipay.greenmatrix.rpc.h5.ancienttree.homePage",
-                "[{\"cityCode\":\"330100\",\"selectCityCode\":\"" + selectCityCode
-                        + "\",\"source\":\"antforesthome\"}]");
+        return ApplicationHook.requestString("alipay.greenmatrix.rpc.h5.ancienttree.homePage", "[{\"cityCode" +
+                "\":\"330100\",\"selectCityCode\":\"" + selectCityCode + "\",\"source\":\"antforesthome\"}]");
     }
 
     public static String queryTreeItemsForExchange(String cityCode) {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.queryTreeItemsForExchange",
-                "[{\"cityCode\":\"" + cityCode
-                        + "\",\"itemTypes\":\"\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"version\":\""
-                        + VERSION + "\"}]");
+                "[{\"cityCode" + "\":\"" + cityCode + "\",\"itemTypes\":\"\"," +
+                        "\"source\":\"chInfo_ch_appcenter__chsub_9patch\"," + "\"version\":\"" + VERSION + "\"}]");
     }
 
     public static String districtDetail(String districtCode) {
@@ -25,15 +23,11 @@ public class AncientTreeRpcCall {
 
     public static String projectDetail(String ancientTreeProjectId, String cityCode) {
         return ApplicationHook.requestString("alipay.greenmatrix.rpc.h5.ancienttree.projectDetail",
-                "[{\"ancientTreeProjectId\":\"" + ancientTreeProjectId
-                        + "\",\"channel\":\"ONLINE\",\"cityCode\":\"" + cityCode
-                        + "\",\"source\":\"ancientreethome\"}]");
+                "[{\"ancientTreeProjectId\":\"" + ancientTreeProjectId + "\",\"channel\":\"ONLINE\",\"cityCode\":\"" + cityCode + "\",\"source\":\"ancientreethome\"}]");
     }
 
     public static String protect(String activityId, String ancientTreeProjectId, String cityCode) {
         return ApplicationHook.requestString("alipay.greenmatrix.rpc.h5.ancienttree.protect",
-                "[{\"ancientTreeActivityId\":\"" + activityId + "\",\"ancientTreeProjectId\":\""
-                        + ancientTreeProjectId + "\",\"cityCode\":\"" + cityCode
-                        + "\",\"source\":\"ancientreethome\"}]");
+                "[{\"ancientTreeActivityId\":\"" + activityId + "\",\"ancientTreeProjectId\":\"" + ancientTreeProjectId + "\",\"cityCode\":\"" + cityCode + "\",\"source\":\"ancientreethome\"}]");
     }
 }

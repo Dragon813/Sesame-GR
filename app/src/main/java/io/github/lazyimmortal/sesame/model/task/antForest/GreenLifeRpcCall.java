@@ -12,7 +12,8 @@ public class GreenLifeRpcCall {
     }
 
     public static String sendEnergyByAction(String sourceType) {
-        String args = "[{\"actionType\":\"GOODS_BROWSE\",\"requestId\":\"" + RandomUtil.getRandomString(8) + "\",\"sourceType\":\"" + sourceType + "\"}]";
+        String args = "[{\"actionType\":\"GOODS_BROWSE\",\"requestId\":\"" + RandomUtil.getRandomString(8) + "\"," +
+                "\"sourceType\":\"" + sourceType + "\"}]";
         return ApplicationHook.requestString("alipay.bizfmcg.greenlife.sendEnergyByAction", args);
     }
 
@@ -21,7 +22,7 @@ public class GreenLifeRpcCall {
         String args = "[{}]";
         return ApplicationHook.requestString("alipay.bizfmcg.greenlife.retrieveCurrentActivity", args);
     }
-    
+
     public static String retrieveHotActivityPrize(String activityId) {
         String args = "[{\"activityId\":\"" + activityId + "\"}]";
         return ApplicationHook.requestString("alipay.bizfmcg.greenlife.retrieveHotActivityPrize", args);
