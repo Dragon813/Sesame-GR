@@ -650,7 +650,7 @@ public class AntForestV2 extends ModelTask {
                 boolean canCollectEnergy=friendRanking.optBoolean("canCollectEnergy", false);
                 int energySummation = friendRanking.optInt("energySummation", 0);
                 String userId=friendRanking.optString("userId", null);
-                //
+                //添加操作
             }
         } catch (Throwable th) {
             Log.i(TAG, "queryTopEnergyChallengeRanking err:");
