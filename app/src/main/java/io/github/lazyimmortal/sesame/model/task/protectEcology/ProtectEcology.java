@@ -75,8 +75,8 @@ public class ProtectEcology extends ModelTask {
         modelFields.addField(protectReserveList = new SelectAndCountModelField("reserveList", "保护动物 | 保护地列表", new LinkedHashMap<>(), AlipayReserve::getList, "请填写保护次数(每日)"));
         modelFields.addField(protectAnimal = new BooleanModelField("protectAnimal", "保护动物 | 护林员", false));
         modelFields.addField(protectAnimalList = new SelectModelField("protectAnimalList", "保护动物 | 护林员列表", new HashSet<>(), AlipayAnimal::getList, "请选择需要点亮的护林员"));
-        modelFields.addField(protectBeachMinNum = new BooleanModelField("protectBeachMinNum", "保护海洋 | 单个海滩保护下限", false));
-        modelFields.addField(protectBeachNum = new IntegerModelField("protectBeachNum", "单个海滩保护次数", 1));
+        modelFields.addField(protectBeachMinNum = new BooleanModelField("protectBeachMinNum", "保护海洋 | 单个海滩保护", false));
+        modelFields.addField(protectBeachNum = new IntegerModelField("protectBeachNum", "保护海洋 |海滩保护下限", 1));
         modelFields.addField(protectBeach = new BooleanModelField("protectBeach", "保护海洋 | 海滩", false));
         modelFields.addField(protectBeachList = new SelectAndCountModelField("protectOceanList", "保护海洋 | 海滩列表", new LinkedHashMap<>(), AlipayBeach::getList, "请填写保护次数(上限总量)"));
         return modelFields;

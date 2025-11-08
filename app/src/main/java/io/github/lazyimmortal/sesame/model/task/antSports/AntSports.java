@@ -383,7 +383,7 @@ public class AntSports extends ModelTask {
     try {
       JSONObject jo = new JSONObject(AntSportsRpcCall.receiveCoinAsset(assetId));
       if (MessageUtil.checkSuccess(TAG, jo)) {
-        Log.other("运动中心🥏领取[" + title + "]奖励[" + coinAmount + "运动能量]");
+        Log.other("运动中心🏧领取[" + title + "]奖励[" + coinAmount + "运动能量]");
         return true;
       }
     } catch (Throwable t) {
@@ -1211,7 +1211,7 @@ public class AntSports extends ModelTask {
         JSONObject ja = jo.getJSONObject("data");
         String collectCoin = ja.getString("changeAmount");
         Log.other(
-            "好友大战🥏收取"
+                "好友大战🏧收取"
                 + bubbleType
                 + "获得["
                 + collectCoin
@@ -1257,7 +1257,7 @@ public class AntSports extends ModelTask {
               new JSONObject(
                   AntSportsRpcCall.DoubletrainMember(itemType, bizId, memberId, originBossId));
           Log.other(
-              "好友大战🥋训练["
+                  "好友大战💪训练["
                   + userName
                   + "]"
                   + name
@@ -1273,7 +1273,7 @@ public class AntSports extends ModelTask {
             return;
           }
           Log.other(
-              "好友大战🥋翻倍训练["
+                  "好友大战💪翻倍训练["
                   + userName
                   + "]"
                   + name
@@ -1287,7 +1287,7 @@ public class AntSports extends ModelTask {
             return;
           }
           Log.other(
-              "好友大战🥋训练["
+                  "好友大战💪训练["
                   + userName
                   + "]"
                   + name
@@ -1326,7 +1326,7 @@ public class AntSports extends ModelTask {
               },
               gmtEnd));
       int roomIdInt = Integer.parseInt(roomId.substring(2, 8));
-      Log.record("蹲点训练🥋添加[" + roomIdInt + "号房嘉宾]在[" + TimeUtil.getCommonDate(gmtEnd) + "]执行");
+      Log.record("蹲点训练💪添加[" + roomIdInt + "号房嘉宾]在[" + TimeUtil.getCommonDate(gmtEnd) + "]执行");
     }
   }
 
@@ -1439,7 +1439,7 @@ public class AntSports extends ModelTask {
         String userName = UserIdMap.getShowName(originBossId);
         int price = member.getInt("price");
         Log.other(
-            "好友大战🥋抢购["
+                "好友大战🉐抢购["
                 + userName
                 + "]来自["
                 + currentBossShowName

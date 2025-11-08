@@ -50,6 +50,12 @@ public class AntForestRpcCall {
                         + VERSION + "\"}]", 3, 1000);
     }
 
+    public static String queryDynamicsIndex() {
+    return ApplicationHook.requestString(
+        "alipay.antforest.forest.h5.queryDynamicsIndex",
+        "[{\"autoRefresh\":false,\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"version\":\""+VERSION+"\"}]");
+    }
+
     public static String queryFriendHomePage(String userId) {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.queryFriendHomePage",
                 "[{\"canRobFlags\":\"F,F,F,F,F\",\"configVersionMap\":{\"redPacketConfig\":0,\"wateringBubbleConfig\":\"10\"},\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"userId\":\""

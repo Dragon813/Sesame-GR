@@ -200,7 +200,6 @@ public class AntForestV2 extends ModelTask {
   private BooleanModelField loveteamWater;
   private IntegerModelField loveteamWaterNum;
   private BooleanModelField ForestHunt;
-
   private BooleanModelField ForestHuntDraw;
   private BooleanModelField ForestHuntHelp;
   private SelectModelField ForestHuntHelpList;
@@ -662,6 +661,8 @@ public class AntForestV2 extends ModelTask {
         if (dress.getValue()) {
           dress();
         }
+
+        ForestEnergyInfo();
       }
     } catch (Throwable t) {
       Log.i(TAG, "AntForestV2.run err:");
@@ -690,6 +691,40 @@ public class AntForestV2 extends ModelTask {
       NotificationUtil.updateLastExecText("收:" + totalCollected + " 帮:" + totalHelpCollected);
     }
   }
+
+    private void ForestEnergyInfo(){
+        try {
+            JSONObject jo = new JSONObject(AntForestRpcCall.queryHomePage());
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            if(!jo.has("userBaseInfo")){
+                return;
+            }
+
+            JSONObject userBaseInfo = jo.getJSONObject("userBaseInfo");
+            int currentEnergy=userBaseInfo.optInt("currentEnergy",0);
+
+           jo = new JSONObject(AntForestRpcCall.queryDynamicsIndex());
+            if (!MessageUtil.checkSuccess(TAG, jo)) {
+                return;
+            }
+            if(!jo.has("todayEnergySummary")){
+                return;
+            }
+            JSONObject todayEnergySummary = jo.getJSONObject("todayEnergySummary");
+            int obtainTotal=todayEnergySummary.optInt("obtainTotal",0);
+            int robbedTotal=todayEnergySummary.optInt("robbedTotal",0);
+
+            Log.forest(
+                    "森林能量🌳["+UserIdMap.getShowName(UserIdMap.getCurrentUid())+"]收取"+obtainTotal+"g;被收"+robbedTotal+"g;当前"+currentEnergy+"g");
+
+        } catch (Throwable th) {
+            Log.i(TAG, "ForestEnergyInfo err:");
+            Log.printStackTrace(TAG, th);
+        }
+
+    }
 
   private void notifyMain() {
     if (taskCount.decrementAndGet() < 1) {
