@@ -591,7 +591,7 @@ public class AntForestV2 extends ModelTask {
             int totalrank = myself.optInt("rank", 0);
 
             //获取偷我日榜top
-            String dayenergySummationtop3="😡偷我日榜top3:";
+            String dayenergySummationtop3="偷我日榜top3:";
             String userId;
             int energySummation;
             jo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("robRank","day"));
@@ -605,12 +605,13 @@ public class AntForestV2 extends ModelTask {
             for (int i = 0; i < 3; i++) {
                 JSONObject friendRanking = friendRankings.getJSONObject(i);
                 energySummation = friendRanking.optInt("energySummation", 0);
+                if(energySummation==0){break;}
                 userId=friendRanking.optString("userId", null);
                 dayenergySummationtop3=dayenergySummationtop3+"["+UserIdMap.getShowName(userId)+"]"+energySummation+"g;";
             }
 
             //获取偷我周榜top
-            String weekenergySummationtop3="😡偷我周榜top3:";
+            String weekenergySummationtop3="偷我周榜top3:";
             jo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("robRank","week"));
             if (!MessageUtil.checkResultCode(TAG, jo)) {
                 return;
@@ -622,11 +623,12 @@ public class AntForestV2 extends ModelTask {
             for (int i = 0; i < 3; i++) {
                 JSONObject friendRanking = friendRankings.getJSONObject(i);
                 energySummation = friendRanking.optInt("energySummation", 0);
+                if(energySummation==0){break;}
                 userId=friendRanking.optString("userId", null);
                 weekenergySummationtop3=weekenergySummationtop3+"["+UserIdMap.getShowName(userId)+"]"+energySummation+"g;";
             }
 
-            Log.forest("森林能量🌳[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]收取" + obtainTotal + "g;被收" + robbedTotal + "g;当前能量" + currentEnergy + "g;🪪获得证书"+totalCertCount +";"+dayenergySummationtop3+weekenergySummationtop3+ ";😁日榜第"+ dayrank + "名:"+ dayenergySummation + "g;😁周榜第"+ weekrank + "名:"+ weekenergySummation + "g;😁总榜第"+ totalrank + "名:"+ totalenergySummation + "g;");
+            Log.forest("森林榜单🌳[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]收取" + obtainTotal + "g;被收" + robbedTotal + "g;当前能量" + currentEnergy + "g;证书"+totalCertCount +";😡"+dayenergySummationtop3+weekenergySummationtop3+ "😁日榜第"+ dayrank + "名:"+ dayenergySummation + "g;周榜第"+ weekrank + "名:"+ weekenergySummation + "g;总榜第"+ totalrank + "名:"+ totalenergySummation + "g;");
 
         } catch (Throwable th) {
             Log.i(TAG, "ForestEnergyInfo err:"); Log.printStackTrace(TAG, th);

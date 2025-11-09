@@ -140,7 +140,7 @@ public class AntSports extends ModelTask {
             }
 
             if (walk.getValue()) {
-                walk();
+                walk(syncStepCount.getValue());
             }
 
             if (donateCharityCoinType.getValue() != DonateCharityCoinType.ZERO)
@@ -303,7 +303,7 @@ public class AntSports extends ModelTask {
     /*
      * 新版行走路线 -- begin
      */
-    private void walk() {
+    private void walk(int syncStepCount) {
         String goingPathId = queryGoingPathId(); do {
             String tempPathId = (String) ExtensionsHandle.handleAlphaRequest("antSports", "walk", null);
             if (tempPathId != null) {
@@ -315,7 +315,7 @@ public class AntSports extends ModelTask {
                     } goingPathId = joinPathId;
                 }
             }
-        } while (walkGo(queryPath(goingPathId)));
+        } while (walkGo(queryPath(goingPathId),syncStepCount));
     }
 
     private Boolean isNeedJoinNewPath(String goingPathId) {
@@ -355,7 +355,16 @@ public class AntSports extends ModelTask {
         } return false;
     }
 
-    private Boolean walkGo(JSONObject pathData) {
+    private Boolean walkGo(JSONObject pathData,int syncStepCount) {
+        //按照每天走路20次收获宝箱奖励得健康能量
+        int MIN_STEP_FOR_TREASURE=500;
+        int MAX_STEP_FOR_TREASURE=1000;
+        if(syncStepCount>20000){
+            int walkcountmax=syncStepCount/20;
+            int walkcountmin=(syncStepCount-10000)/20;
+            MAX_STEP_FOR_TREASURE=walkcountmax;
+            MIN_STEP_FOR_TREASURE=walkcountmin;
+        }
         try {
             JSONObject path = pathData.getJSONObject("path");
             JSONObject userPathStep = pathData.getJSONObject("userPathStep");
@@ -365,7 +374,7 @@ public class AntSports extends ModelTask {
             } int forwardStepCount = userPathStep.getInt("forwardStepCount");
             int remainStepCount = userPathStep.getInt("remainStepCount");
             boolean dayLimit = userPathStep.getBoolean("dayLimit");
-            int useStepCount = Math.min(Math.min(remainStepCount, hasTreasureBox() ? RandomUtil.nextInt(500, 1000) :
+            int useStepCount = Math.min(Math.min(remainStepCount, hasTreasureBox() ? RandomUtil.nextInt(MIN_STEP_FOR_TREASURE, MAX_STEP_FOR_TREASURE) :
                     remainStepCount), Math.max(pathStepCount - forwardStepCount % pathStepCount, minGoStepCount));
             if (useStepCount < minGoStepCount || dayLimit) {
                 return false;
