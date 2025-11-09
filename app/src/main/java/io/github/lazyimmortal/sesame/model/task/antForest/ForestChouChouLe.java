@@ -124,12 +124,29 @@ public class ForestChouChouLe {
                         }
                         // ==================== 活力值兑换任务 =====================
                         if (taskType.equals("NORMAL_DRAW_EXCHANGE_VITALITY") && taskStatus.equals("TODO")) {
+                            //先判断活力值是否大于20
+                            int totalVitalityAmount=0;
+                            try {
+                                JSONObject jo = new JSONObject(AntForestRpcCall.queryHomePage());
+                                if (!MessageUtil.checkResultCode(TAG, jo)) {
+                                    return;}
+                                if (!jo.has("userVitalityInfo")) {
+                                    return;
+                                }
+                                JSONObject userVitalityInfo = jo.getJSONObject("userVitalityInfo");
+                                totalVitalityAmount = userVitalityInfo.optInt("totalVitalityAmount", 0);
+                                } catch(Throwable th){
+                                    Log.i(TAG, "chouChouLescene err:");
+                                    Log.printStackTrace(TAG, th);
+                                }
+                            if(totalVitalityAmount<20){continue;}
+                            //🏆
                             JSONObject sginRes =
                                     new JSONObject(AntForestRpcCall.exchangeTimesFromTaskopengreen(activityId,
                                             sceneCode, "task_entry", taskSceneCode, taskType));
                             if (MessageUtil.checkSuccess(TAG, sginRes)) {
                                 int times = sginRes.getInt("times");
-                                Log.forest("森林寻宝🏆[" + taskName + "]获得抽奖*" + times); doublecheck = true;
+                                Log.forest("森林寻宝🎖️[" + taskName + "]获得抽奖*" + times); doublecheck = true;
                             } continue; // 防止进入下面的 FOREST_NORMAL_DRAW 分支
                         }
 
@@ -162,7 +179,7 @@ public class ForestChouChouLe {
                                     "task_entry", taskSceneCode, taskType));
                             if (MessageUtil.checkSuccess(TAG, sginRes)) {
                                 int incAwardCount = sginRes.getInt("incAwardCount");
-                                Log.forest("森林寻宝🏆[" + taskName + "]获得抽奖*" + incAwardCount);
+                                Log.forest("森林寻宝🎖️[" + taskName + "]获得抽奖*" + incAwardCount);
                                 if (rightsTimesLimit - rightsTimes > 0) {
                                     doublecheck = true;
                                 }

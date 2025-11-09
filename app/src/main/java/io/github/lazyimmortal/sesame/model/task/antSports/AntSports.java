@@ -20,6 +20,7 @@ import io.github.lazyimmortal.sesame.data.task.ModelTask;
 import io.github.lazyimmortal.sesame.entity.AlipayUser;
 import io.github.lazyimmortal.sesame.entity.WalkPath;
 import io.github.lazyimmortal.sesame.hook.ApplicationHook;
+import io.github.lazyimmortal.sesame.hook.Toast;
 import io.github.lazyimmortal.sesame.model.base.TaskCommon;
 import io.github.lazyimmortal.sesame.model.extensions.ExtensionsHandle;
 import io.github.lazyimmortal.sesame.util.Log;
@@ -129,6 +130,7 @@ public class AntSports extends ModelTask {
                         if ((Boolean) XposedHelpers.callMethod(XposedHelpers.callStaticMethod(classLoader.loadClass(
                                 "com.alibaba.health.pedometer.intergation.rpc.RpcManager"), "a"), "a",
                                 new Object[]{step, Boolean.FALSE, "system"})) {
+                            Toast.show("同步步数🏃🏻‍♂️[" + step + "步]");
                             Log.other("同步步数🏃🏻‍♂️[" + step + "步]" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                         } else {
                             Log.record("同步运动步数失败:" + step);
@@ -1089,6 +1091,7 @@ public class AntSports extends ModelTask {
             if (MessageUtil.checkResultCode(TAG, jo)) {
                 String userName = UserIdMap.getShowName(originBossId); int price = member.getInt("price");
                 Log.other("好友大战🉐抢购[" + userName + "]来自[" + currentBossShowName + "]花费[" + price + "健康能量]" + "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                Toast.show("好友大战🉐抢购[" + userName + "]来自[" + currentBossShowName + "]花费[" + price + "健康能量]");
                 return true;
             } else {
                 return false;

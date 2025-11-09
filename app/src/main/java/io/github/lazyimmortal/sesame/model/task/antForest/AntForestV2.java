@@ -141,6 +141,8 @@ public class AntForestV2 extends ModelTask {
     private BooleanModelField collectWateringBubble;
     private BooleanModelField batchRobEnergy;
     private BooleanModelField balanceNetworkDelay;
+    //PK能量
+    private BooleanModelField pkEnergy;
     private BooleanModelField closeWhackMole;
     private BooleanModelField collectProp;
     private StringModelField queryInterval;
@@ -208,6 +210,7 @@ public class AntForestV2 extends ModelTask {
         ModelFields modelFields = new ModelFields();
         modelFields.addField(collectEnergy = new BooleanModelField("collectEnergy", "收集能量", false));
         modelFields.addField(batchRobEnergy = new BooleanModelField("batchRobEnergy", "一键收取", false));
+        modelFields.addField(pkEnergy = new BooleanModelField("pkEnergy", "Pk榜收取 | 开关", false));
         modelFields.addField(collectWateringBubble = new BooleanModelField("collectWateringBubble", "收取金球", false));
         modelFields.addField(expiredEnergy = new BooleanModelField("expiredEnergy", "收取过期能量", false));
         modelFields.addField(queryInterval = new StringModelField("queryInterval", "查询间隔(毫秒或毫秒范围)", "500-1000"));
@@ -445,6 +448,11 @@ public class AntForestV2 extends ModelTask {
                 }
 
                 waterFriendEnergy();
+                if(pkEnergy.getValue())
+                {
+                    collectPKEnergy();
+                }
+
 
                 // 真爱合种浇水
                 if (loveteamWater.getValue()) {
@@ -548,6 +556,12 @@ public class AntForestV2 extends ModelTask {
             JSONObject userBaseInfo = jo.getJSONObject("userBaseInfo");
             int currentEnergy = userBaseInfo.optInt("currentEnergy", 0);
             int totalCertCount = userBaseInfo.optInt("totalCertCount", 0);
+            if (!jo.has("userVitalityInfo")) {
+                return;
+            }
+            JSONObject userVitalityInfo = jo.getJSONObject("userVitalityInfo");
+            int totalVitalityAmount = userVitalityInfo.optInt("totalVitalityAmount", 0);
+
 
             jo = new JSONObject(AntForestRpcCall.queryDynamicsIndex()); if (!MessageUtil.checkSuccess(TAG, jo)) {
                 return;
@@ -627,8 +641,9 @@ public class AntForestV2 extends ModelTask {
                 userId=friendRanking.optString("userId", null);
                 weekenergySummationtop3=weekenergySummationtop3+"["+UserIdMap.getShowName(userId)+"]"+energySummation+"g;";
             }
-
-            Log.forest("森林榜单🌳[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]收取" + obtainTotal + "g;被收" + robbedTotal + "g;当前能量" + currentEnergy + "g;证书"+totalCertCount +";😡"+dayenergySummationtop3+weekenergySummationtop3+ "😁日榜第"+ dayrank + "名:"+ dayenergySummation + "g;周榜第"+ weekrank + "名:"+ weekenergySummation + "g;总榜第"+ totalrank + "名:"+ totalenergySummation + "g;");
+            String ForestInfo="森林榜单🌳[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]收取" + obtainTotal + "g;被收" + robbedTotal + "g;活力值"+totalVitalityAmount+";当前能量" + currentEnergy + "g;证书"+totalCertCount +";😡"+dayenergySummationtop3+weekenergySummationtop3+ "😁日榜第"+ dayrank + "名:"+ dayenergySummation + "g;周榜第"+ weekrank + "名:"+ weekenergySummation + "g;总榜第"+ totalrank + "名:"+ totalenergySummation + "g;";
+            Toast.show(ForestInfo);
+            Log.forest(ForestInfo);
 
         } catch (Throwable th) {
             Log.i(TAG, "ForestEnergyInfo err:"); Log.printStackTrace(TAG, th);
@@ -637,8 +652,8 @@ public class AntForestV2 extends ModelTask {
     }
 
     //PK能量榜
-    private void queryTopEnergyChallengeRanking() {
-        try {
+        //private void queryTopEnergyChallengeRanking() {
+        /*try {
             JSONObject jo = new JSONObject(AntForestRpcCall.queryTopEnergyChallengeRanking());
             if (!MessageUtil.checkResultCode(TAG, jo)) {
                 return;
@@ -657,6 +672,43 @@ public class AntForestV2 extends ModelTask {
         } catch (Throwable th) {
             Log.i(TAG, "queryTopEnergyChallengeRanking err:");
             Log.printStackTrace(TAG, th);
+        */
+
+        private void collectPKEnergy(){
+        try {
+            JSONObject pkObject = new JSONObject(AntForestRpcCall.queryTopEnergyChallengeRanking());
+            if (!MessageUtil.checkResultCode(TAG + "获取PK排行榜失败:", pkObject)) {
+                Log.error( "获取PK排行榜失败: " + pkObject.optString("resultDesc"));
+            } else {
+                if (!pkObject.getString("rankMemberStatus").equals("JOIN")) {
+                    Log.forest("未加入PK排行榜,跳过,尝试关闭");
+                    pkEnergy.setValue(false);
+                }
+                //collectUserEnergy(pkObject, "pk");
+                //继续处理靠后的PK好友
+                JSONArray totalData = pkObject.optJSONArray("totalData");
+                if (totalData == null || totalData.length() == 0) {
+                    Log.forest("pk好友排行榜为空，跳过");
+                    return;
+                }
+                List<String> pkIdList = new ArrayList<>();
+                for (int pos = 20; pos < totalData.length(); pos++) {
+                    JSONObject pkFriend = totalData.getJSONObject(pos);
+                    String userId = pkFriend.getString("userId");
+                    if (Objects.equals(userId, selfId)) continue; //如果是自己则跳过
+                    pkIdList.add(userId);
+                    if (pkIdList.size() == 20) {
+                        //processLastdEnergy(pkIdList, "pk");//20个id 一次处理
+                        pkIdList.clear();
+                    }
+                }
+                if (!pkIdList.isEmpty()) {
+                    //processLastdEnergy(pkIdList, "pk");
+                }
+                Log.forest("收取PK能量完成！");
+            }
+        } catch (Exception e) {
+            Log.printStackTrace(TAG, e);
         }
     }
 
@@ -1849,6 +1901,7 @@ public class AntForestV2 extends ModelTask {
             if (!MessageUtil.checkResultCode(TAG, jo)) {
                 return;
             } String toastMsg = jo.getJSONObject("data").getString("toastMsg");
+            Toast.show("光盘行动💿打卡完成#" + toastMsg);
             Log.forest("光盘行动💿打卡完成#" + toastMsg + "[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
         } catch (Throwable t) {
             Log.i(TAG, "photoGuangPan err:"); Log.printStackTrace(TAG, t);
