@@ -136,10 +136,13 @@ public class ForestChouChouLe {
                                 JSONObject userVitalityInfo = jo.getJSONObject("userVitalityInfo");
                                 totalVitalityAmount = userVitalityInfo.optInt("totalVitalityAmount", 0);
                                 } catch(Throwable th){
-                                    Log.i(TAG, "chouChouLescene err:");
+                                    Log.i(TAG, "chouChouLesceneEXCHANGE err:");
                                     Log.printStackTrace(TAG, th);
                                 }
-                            if(totalVitalityAmount<20){continue;}
+                            if(totalVitalityAmount<20){
+                                Log.forest("森林寻宝🧾活力值"+totalVitalityAmount+ "不能兑换#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                                continue;
+                            }
                             //🏆
                             JSONObject sginRes =
                                     new JSONObject(AntForestRpcCall.exchangeTimesFromTaskopengreen(activityId,

@@ -365,7 +365,7 @@ public class AntForestV2 extends ModelTask {
 
                                             if (collected > 0) {
                                                 String msg = "收取金球🍯[" + friendShowName + "]的浇水[" + collected + "g]";
-                                                Log.forest(msg + "[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                                                Log.forest(msg + "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                                                 Toast.show(msg); totalCollected += collected;
                                                 Statistics.addData(Statistics.DataType.COLLECTED, collected);
                                             } else {
@@ -378,7 +378,7 @@ public class AntForestV2 extends ModelTask {
                                         if (MessageUtil.checkResultCode("收取[我]的复活金球", joEnergy)) {
                                             collected = joEnergy.getInt("energy");
                                             String msg = "收取金球🍯复活[" + collected + "g]";
-                                            Log.forest(msg + "[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                                            Log.forest(msg + "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                                             Toast.show(msg); totalCollected += collected;
                                             Statistics.addData(Statistics.DataType.COLLECTED, collected);
                                         } break;
@@ -393,7 +393,7 @@ public class AntForestV2 extends ModelTask {
                                                 collected = bubbles.getJSONObject(j).getInt("collectedEnergy");
                                             } if (collected > 0) {
                                                 String msg = "收取金球🍯[" + friendShowName + "]复活回赠[" + collected + "g]";
-                                                Log.forest(msg + "[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                                                Log.forest(msg + "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                                                 Toast.show(msg); totalCollected += collected;
                                                 Statistics.addData(Statistics.DataType.COLLECTED, collected);
                                             } else {
@@ -629,12 +629,15 @@ public class AntForestV2 extends ModelTask {
                 weekenergySummationtop3 =
                         weekenergySummationtop3 + "[" + UserIdMap.getShowName(userId) + "]" + energySummation + "g;";
             }
-            String ForestInfo = "森林榜单🌳[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]收取" + obtainTotal +
+            String ForestInfo = "森林榜单🌳[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]("+UserIdMap.getCurrentUid()+")收取" + obtainTotal +
             "g;被收" + robbedTotal + "g;能量球"+bubblesNumber+"个;活力值" + totalVitalityAmount + ";当前能量" + currentEnergy +
             "g;证书" + totalCertCount + ";😡" + dayenergySummationtop3 + weekenergySummationtop3 + "😁日榜第" + dayrank +
             "名:" + dayenergySummation + "g;周榜第" + weekrank + "名:" + weekenergySummation + "g;总榜第" + totalrank +
             "名:" + totalenergySummation + "g;";
-            Toast.show(ForestInfo); Log.forest(ForestInfo);
+            Toast.show(ForestInfo);
+            Log.forest("");
+            Log.forest(ForestInfo);
+            Log.forest("");
 
         } catch (Throwable th) {
             Log.i(TAG, "ForestEnergyInfo err:"); Log.printStackTrace(TAG, th);
@@ -1452,7 +1455,7 @@ public class AntForestV2 extends ModelTask {
                     TimeUtil.sleep(300); // 等待300毫秒
                     if (MessageUtil.checkSuccess(TAG + "森林签到失败:", joSign)) {
                         int continuousCount = joSign.getInt("continuousCount");
-                        Log.forest("森林签到📆拯救第" + continuousCount + "天#复活[" + awardCount + "g能量]" + "[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                        Log.forest("森林签到📆拯救第" + continuousCount + "天#复活[" + awardCount + "g能量]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                         Statistics.addData(Statistics.DataType.COLLECTED, awardCount);
                         // return awardCount;
                     } break;
@@ -2166,7 +2169,7 @@ public class AntForestV2 extends ModelTask {
         try {
             JSONObject jo = new JSONObject(AntForestRpcCall.consumeProp(propId, propType));
             if (MessageUtil.checkResultCode(TAG, jo)) {
-                Log.forest("使用道具🎭[" + propName + "]#" + UserIdMap.getShowName(UserIdMap.getCurrentUid()));
+                Log.forest("使用道具🎭[" + propName + "]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid())+"]");
                 return true;
             }
         } catch (Throwable th) {
@@ -2295,7 +2298,7 @@ public class AntForestV2 extends ModelTask {
         try {
             JSONObject jo = new JSONObject(AntForestRpcCall.loveteamWater(loveteamWater, loveteamWaterNum));
             if (MessageUtil.checkSuccess(TAG, jo)) {
-                Log.forest("真爱浇水🚿给[" + loveteamWater + "]合种浇水" + loveteamWaterNum + "g#" + UserIdMap.getShowName(UserIdMap.getCurrentUid()));
+                Log.forest("真爱浇水🚿给[" + loveteamWater + "]合种浇水" + loveteamWaterNum + "g#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid())+"]");
                 Status.flagToday("Forest::loveteamWater");
             }
         } catch (Throwable th) {
