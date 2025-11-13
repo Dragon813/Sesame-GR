@@ -71,7 +71,7 @@ public class AntDodo extends ModelTask {
                 "useUniversalCardBookCollectedStatusType", "万能卡片 | 图鉴收集状态", BookCollectedStatusType.ALL,
                 BookCollectedStatusType.nickNames));
         modelFields.addField(useUniversalCardBookCollectedhasCollected = new BooleanModelField(
-                "useUniversalCardBookCollectedhasCollected", "万能卡片 | 兑换未获得状态", false));
+                "useUniversalCardBookCollectedhasCollected", "万能卡片 | 兑换未获得状态卡片", false));
         modelFields.addField(useUniversalCardMedalGenerationStatusType = new ChoiceModelField(
                 "useUniversalCardMedalGenerationStatusType", "万能卡片 | 勋章合成状态", MedalGenerationStatusType.ALL,
                 MedalGenerationStatusType.nickNames));
@@ -255,7 +255,11 @@ public class AntDodo extends ModelTask {
                     boolean isUseProp = usePropList.getValue().contains(propType); if (!isUseProp && !willExpireSoon) {
                         continue;
                     } if (PropGroup.UNIVERSAL_CARD.name().equals(propGroup)) {
-                        if (!usePropUniversalCard(propId, propType)) {
+                        //优先执行是否搜集未获得卡片
+                        if (!usePropUniversalCard(propId, propType,useUniversalCardBookCollectedhasCollected.getValue())) {
+                            continue;
+                        }
+                        if (!usePropUniversalCard(propId, propType,false)) {
                             continue;
                         }
                     } else {
@@ -275,7 +279,7 @@ public class AntDodo extends ModelTask {
     }
 
     // 使用万能卡
-    private Boolean usePropUniversalCard(String propId, String propType) {
+    private Boolean usePropUniversalCard(String propId, String propType,Boolean useUniversalCardBookCollectedhasCollected) {
         try {
             boolean hasMore; int pageStart = 0; JSONObject animal = null; do {
                 JSONObject jo = new JSONObject(AntDodoRpcCall.queryBookList(9, pageStart));
@@ -287,7 +291,7 @@ public class AntDodo extends ModelTask {
                     jo = bookForUserList.getJSONObject(i); if (isQueryBookInfo(jo, 0)) {
                         JSONObject animalBookResult = jo.getJSONObject("animalBookResult");
                         String bookId = animalBookResult.getString("bookId");
-                        animal = queryUniversalAnimal(bookId, animal);
+                        animal = queryUniversalAnimal(bookId, animal,useUniversalCardBookCollectedhasCollected);
                     }
                 }
             } while (hasMore); if (animal != null && consumeProp(propId, propType, animal.getString("animalId"))) {
@@ -318,7 +322,7 @@ public class AntDodo extends ModelTask {
         return MedalGenerationStatus.valueOf(medalGenerationStatus).match(MedalGenerationStatusType.types[medalGenerationStatusType]);
     }
 
-    private JSONObject queryUniversalAnimal(String bookId, JSONObject animal) {
+    private JSONObject queryUniversalAnimal(String bookId, JSONObject animal,boolean useUniversalCardBookCollectedhasCollected) {
         try {
             JSONObject jo = new JSONObject(AntDodoRpcCall.queryBookInfo(bookId));
             if (!MessageUtil.checkResultCode(TAG, jo)) {
@@ -335,7 +339,7 @@ public class AntDodo extends ModelTask {
                 int count = collectDetail.optInt("count", 1 << 30);
                 if (animal == null || count < animal.getInt("count") || (count == animal.getInt("count") && star > animal.getInt("star"))) {
                     //判断是否搜集“未获得”状态卡片
-                    if (useUniversalCardBookCollectedhasCollected.getValue()) {
+                    if (useUniversalCardBookCollectedhasCollected) {
                         //判断是否曾经获得过(hasCollected)
                         if (collectDetail.optBoolean("hasCollected", false)) {
                             return animal;
