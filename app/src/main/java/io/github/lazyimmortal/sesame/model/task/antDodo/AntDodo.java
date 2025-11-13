@@ -39,6 +39,7 @@ public class AntDodo extends ModelTask {
     }
 
     private BooleanModelField useProp;
+    private BooleanModelField useUniversalCardBookCollectedhasCollected;
     private SelectModelField usePropList;
     private ChoiceModelField useCollectTimingType;
     private ChoiceModelField useUniversalCardBookStatusType;
@@ -69,6 +70,8 @@ public class AntDodo extends ModelTask {
         modelFields.addField(useUniversalCardBookCollectedStatusType = new ChoiceModelField(
                 "useUniversalCardBookCollectedStatusType", "万能卡片 | 图鉴收集状态", BookCollectedStatusType.ALL,
                 BookCollectedStatusType.nickNames));
+        modelFields.addField(useUniversalCardBookCollectedhasCollected = new BooleanModelField(
+                "useUniversalCardBookCollectedhasCollected", "万能卡片 | 兑换未获得状态", false));
         modelFields.addField(useUniversalCardMedalGenerationStatusType = new ChoiceModelField(
                 "useUniversalCardMedalGenerationStatusType", "万能卡片 | 勋章合成状态", MedalGenerationStatusType.ALL,
                 MedalGenerationStatusType.nickNames));
@@ -331,7 +334,13 @@ public class AntDodo extends ModelTask {
                 } JSONObject collectDetail = jo.getJSONObject("collectDetail");
                 int count = collectDetail.optInt("count", 1 << 30);
                 if (animal == null || count < animal.getInt("count") || (count == animal.getInt("count") && star > animal.getInt("star"))) {
-                    animal = jo.getJSONObject("animal"); animal.put("star", star); animal.put("count", count);
+                    //判断是否搜集“未获得”状态卡片
+                    if (useUniversalCardBookCollectedhasCollected.getValue()) {
+                        //判断是否曾经获得过(hasCollected)
+                        if (collectDetail.optBoolean("hasCollected", false)) {
+                            return animal;
+                        }
+                    } animal = jo.getJSONObject("animal"); animal.put("star", star); animal.put("count", count);
                 }
             }
         } catch (Throwable t) {
