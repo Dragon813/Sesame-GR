@@ -71,7 +71,7 @@ public class AntDodo extends ModelTask {
                 "useUniversalCardBookCollectedStatusType", "万能卡片 | 图鉴收集状态", BookCollectedStatusType.ALL,
                 BookCollectedStatusType.nickNames));
         modelFields.addField(useUniversalCardBookCollectedhasCollected = new BooleanModelField(
-                "useUniversalCardBookCollectedhasCollected", "万能卡片 | 兑换未获得状态卡片", false));
+                "useUniversalCardBookCollectedhasCollected", "万能卡片 | 优先兑换未获得状态卡片", false));
         modelFields.addField(useUniversalCardMedalGenerationStatusType = new ChoiceModelField(
                 "useUniversalCardMedalGenerationStatusType", "万能卡片 | 勋章合成状态", MedalGenerationStatusType.ALL,
                 MedalGenerationStatusType.nickNames));
@@ -255,11 +255,7 @@ public class AntDodo extends ModelTask {
                     boolean isUseProp = usePropList.getValue().contains(propType); if (!isUseProp && !willExpireSoon) {
                         continue;
                     } if (PropGroup.UNIVERSAL_CARD.name().equals(propGroup)) {
-                        //优先执行是否搜集未获得卡片
-                        if (!usePropUniversalCard(propId, propType,useUniversalCardBookCollectedhasCollected.getValue())) {
-                            continue;
-                        }
-                        if (!usePropUniversalCard(propId, propType,false)) {
+                        if (!usePropUniversalCard(propId, propType)) {
                             continue;
                         }
                     } else {
@@ -279,7 +275,7 @@ public class AntDodo extends ModelTask {
     }
 
     // 使用万能卡
-    private Boolean usePropUniversalCard(String propId, String propType,Boolean useUniversalCardBookCollectedhasCollected) {
+    private Boolean usePropUniversalCard(String propId, String propType) {
         try {
             boolean hasMore; int pageStart = 0; JSONObject animal = null; do {
                 JSONObject jo = new JSONObject(AntDodoRpcCall.queryBookList(9, pageStart));
@@ -291,7 +287,7 @@ public class AntDodo extends ModelTask {
                     jo = bookForUserList.getJSONObject(i); if (isQueryBookInfo(jo, 0)) {
                         JSONObject animalBookResult = jo.getJSONObject("animalBookResult");
                         String bookId = animalBookResult.getString("bookId");
-                        animal = queryUniversalAnimal(bookId, animal,useUniversalCardBookCollectedhasCollected);
+                        animal = queryUniversalAnimal(bookId, animal);
                     }
                 }
             } while (hasMore); if (animal != null && consumeProp(propId, propType, animal.getString("animalId"))) {
@@ -322,7 +318,7 @@ public class AntDodo extends ModelTask {
         return MedalGenerationStatus.valueOf(medalGenerationStatus).match(MedalGenerationStatusType.types[medalGenerationStatusType]);
     }
 
-    private JSONObject queryUniversalAnimal(String bookId, JSONObject animal,boolean useUniversalCardBookCollectedhasCollected) {
+    private JSONObject queryUniversalAnimal(String bookId, JSONObject animal) {
         try {
             JSONObject jo = new JSONObject(AntDodoRpcCall.queryBookInfo(bookId));
             if (!MessageUtil.checkResultCode(TAG, jo)) {
@@ -337,14 +333,43 @@ public class AntDodo extends ModelTask {
                     break;
                 } JSONObject collectDetail = jo.getJSONObject("collectDetail");
                 int count = collectDetail.optInt("count", 1 << 30);
-                if (animal == null || count < animal.getInt("count") || (count == animal.getInt("count") && star > animal.getInt("star"))) {
+                boolean hasCollected = collectDetail.optBoolean("hasCollected", false);
+               /* if (animal == null || count < animal.getInt("count") || (count == animal.getInt("count") && star > animal.getInt("star"))) {
                     //判断是否搜集“未获得”状态卡片
-                    if (useUniversalCardBookCollectedhasCollected) {
+                    if (useUniversalCardBookCollectedhasCollected.getValue()) {
                         //判断是否曾经获得过(hasCollected)
                         if (collectDetail.optBoolean("hasCollected", false)) {
                             return animal;
                         }
                     } animal = jo.getJSONObject("animal"); animal.put("star", star); animal.put("count", count);
+                }*/
+                //hasCollected=true(曾经获取);hasCollected=false(未获取)
+                boolean isbetteranimal=false;
+                //animal为空直接选该animal
+                if(animal==null) {
+                    isbetteranimal = true;
+                }
+                //开启优先搜集“未获取”
+                else if(useUniversalCardBookCollectedhasCollected.getValue()){
+                    // 规则1: 如果之前的最优是“已收集”，而当前是“未收集”，则当前更好
+                    if(animal.optBoolean("hasCollected", true)&&!hasCollected){
+                        isbetteranimal = true;
+                    }
+                    // 规则2: 如果两者状态相同（都已收集或都未收集），则比较数量和星级
+                    if(animal.optBoolean("hasCollected", true)==hasCollected){
+                        if (count < animal.getInt("count") || (count == animal.getInt("count") && star > animal.getInt("star"))) {
+                            isbetteranimal = true;
+                        }
+                    }
+                }
+                //对比搜集数量和星级，优先选数量少的，数量相同选星级高的
+                else{
+                    if (count < animal.getInt("count") || (count == animal.getInt("count") && star > animal.getInt("star"))) {
+                        isbetteranimal = true;
+                    }
+                }
+                if (isbetteranimal) {
+                    animal = jo.getJSONObject("animal"); animal.put("star", star); animal.put("count", count);animal.put("hasCollected", hasCollected);
                 }
             }
         } catch (Throwable t) {
