@@ -1002,7 +1002,7 @@ public class AntSports extends ModelTask {
             addChildTask(new ChildModelTask(taskId, "TRAIN", () -> {
                 AntSportsRpcCall.queryClubRoom(roomId);
             }, gmtEnd)); int roomIdInt = Integer.parseInt(roomId.substring(2, 8));
-            Log.record("蹲点训练💪添加[" + roomIdInt + "号房嘉宾]在[" + TimeUtil.getCommonDate(gmtEnd) + "]执行");
+            Log.record("蹲点训练💪添加[" + roomIdInt + "号房]在[" + TimeUtil.getCommonDate(gmtEnd) + "]执行");
         }
     }
 

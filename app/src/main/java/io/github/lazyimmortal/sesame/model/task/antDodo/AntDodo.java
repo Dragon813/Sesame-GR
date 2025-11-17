@@ -334,15 +334,6 @@ public class AntDodo extends ModelTask {
                 } JSONObject collectDetail = jo.getJSONObject("collectDetail");
                 int count = collectDetail.optInt("count", 1 << 30);
                 boolean hasCollected = collectDetail.optBoolean("hasCollected", false);
-               /* if (animal == null || count < animal.getInt("count") || (count == animal.getInt("count") && star > animal.getInt("star"))) {
-                    //判断是否搜集“未获得”状态卡片
-                    if (useUniversalCardBookCollectedhasCollected.getValue()) {
-                        //判断是否曾经获得过(hasCollected)
-                        if (collectDetail.optBoolean("hasCollected", false)) {
-                            return animal;
-                        }
-                    } animal = jo.getJSONObject("animal"); animal.put("star", star); animal.put("count", count);
-                }*/
                 //hasCollected=true(曾经获取);hasCollected=false(未获取)
                 boolean isbetteranimal=false;
                 //animal为空直接选该animal

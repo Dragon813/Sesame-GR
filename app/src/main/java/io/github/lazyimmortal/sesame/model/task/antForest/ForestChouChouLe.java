@@ -102,7 +102,7 @@ public class ForestChouChouLe {
                             if (forestHuntHelpTodayCount < shareIds.size()) {
                                 JSONObject prodPlayParam = new JSONObject(taskBaseInfo.getString("prodPlayParam"));
                                 String p2pSceneCode = prodPlayParam.getString("p2pSceneCode");
-                                Log.forest("森林寻宝🎰️执行[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]助力好友[" + drawScenename + "]");
+                                Log.forest("森林寻宝🎰️执行[" + drawScenename + "]助力好友[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                                 DoForestHuntHelp(shareIds, activityId, p2pSceneCode, taskType);
                                 // Status.flagToday("Forest::" + sceneCode,taskUid);
                             }
@@ -114,8 +114,7 @@ public class ForestChouChouLe {
                                         "FOREST_ACTIVITY_DRAW_SHARE");
                                 if (forestHuntHelpTodayCount < shareIds.size()) {
                                     // if (!Status.hasFlagToday("Forest::" + sceneCode)) {
-                                    Log.forest("森林寻宝🎰️执行[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) +
-                                            "]助力好友[活动场景](薅羊毛，如果助力结果不返回成功请关闭配置项)");
+                                    Log.forest("森林寻宝🎰️执行[活动场景]助力好友["+UserIdMap.getShowName(UserIdMap.getCurrentUid())+"](薅羊毛，如果助力结果不返回成功请关闭配置项)");
                                     DoForestHuntHelp(shareIds, activityId, "FOREST_NORMAL_20251024_SHARE",
                                             "FOREST_ACTIVITY_DRAW_SHARE");
                                     // Status.flagToday("Forest::" + sceneCode,taskUid);
