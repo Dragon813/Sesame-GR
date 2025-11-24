@@ -4,10 +4,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import de.robv.android.xposed.XC_MethodHook;
@@ -108,7 +106,7 @@ public class AntSports extends ModelTask {
         modelFields.addField(latestExchangeTime = new IntegerModelField("latestExchangeTime", "行走捐 | 最晚捐步时间(24小时制)", 22));
         modelFields.addField(syncStepCount = new IntegerModelField("syncStepCount", "自定义同步步数", 22000));
         modelFields.addField(neverLand = new BooleanModelField("neverLand", "健康岛 | 开启", false));
-        modelFields.addField(energyStrategy = new ChoiceModelField("energyStrategy", "能量策略", NeverLand.EnergyStrategy.NONE, NeverLand.EnergyStrategy.nickNames));
+        modelFields.addField(energyStrategy = new ChoiceModelField("energyStrategy", "能量策略", EnergyStrategy.NONE, EnergyStrategy.nickNames));
         modelFields.addField(QUERY_SIGN = new BooleanModelField("QUERY_SIGN", "健康岛 | 每日签到", false));
         modelFields.addField(QUERY_TASK_CENTER = new BooleanModelField("QUERY_TASK_CENTER", "健康岛 | 做任务 加能量", false));
         modelFields.addField(QUERY_BUBBLE_TASK = new BooleanModelField("QUERY_BUBBLE_TASK", "健康岛 | 领取能量球奖励", false));
@@ -122,9 +120,6 @@ public class AntSports extends ModelTask {
         return modelFields;
     }
     
-    
-    // 模块常量
-    public static final NeverLand INSTANCE = new NeverLand();
     public static final String MODULE_NAME = "NeverLand";
     public static final String DISPLAY_NAME = "悦动健康岛";
     public static final ModelGroup MODULE_GROUP = ModelGroup.SPORTS;
@@ -225,7 +220,10 @@ public class AntSports extends ModelTask {
             }
             
             //执行悦动健康岛
-            neverlandrun();
+            if (neverLand.getValue() && checkAuth()) {
+                neverlandrun();
+            }
+            
         }
         catch (Throwable t) {
             Log.i(TAG, "start.run err:");
@@ -2062,40 +2060,29 @@ public class AntSports extends ModelTask {
     }
     
     public void neverlandrun() {
-        if (!neverLand.getValue() || !checkAuth()) {
-            return;
-        }
-        
         try {
-            Log.other("开始执行悦动健康岛任务...");
-            
+            Log.other("悦动健康🗺️开始执行]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
             // 处理签到
             if (QUERY_SIGN.getValue()) {
                 processSignIn();
             }
-            
             // 处理任务中心
             if (QUERY_TASK_CENTER.getValue()) {
                 processTaskCenter();
             }
-            
             // 处理浏览任务
             processBrowseTasks();
-            
             // 处理气泡任务
             if (QUERY_BUBBLE_TASK.getValue()) {
                 queryAndProcessBubbleTasks();
             }
-            
             // 处理基础信息相关任务
             queryBaseInfoAndProcess();
-            
             // 兑换权益
             if (QUERY_ITEM_LIST.getValue()) {
                 exchangeBenefits();
             }
-            
-            Log.other("悦动健康岛任务执行完成");
+            Log.other("悦动健康🗺️执行完成]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
         }
         catch (Exception e) {
             Log.i(MODULE_NAME, "run err:");
