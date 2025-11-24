@@ -29,11 +29,21 @@ import java.util.*;
 public class AntOcean extends ModelTask {
     private static final String TAG = AntOcean.class.getSimpleName();
     
+    /**
+     * 获取任务名称
+     *
+     * @return 海洋任务名称
+     */
     @Override
     public String getName() {
         return "海洋";
     }
     
+    /**
+     * 获取任务分组
+     *
+     * @return 森林分组
+     */
     @Override
     public ModelGroup getGroup() {
         return ModelGroup.FOREST;
@@ -569,6 +579,7 @@ public class AntOcean extends ModelTask {
         }
     }
     
+    //日常任务
     private static void receiveTaskAward(String sceneCode, String taskType, String taskTitle) {
         try {
             JSONObject jo = new JSONObject(AntOceanRpcCall.receiveTaskAward(sceneCode, taskType));
