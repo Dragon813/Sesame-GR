@@ -25,7 +25,7 @@ import io.github.lazyimmortal.sesame.util.TimeUtil;
 /**
  * 悦动健康岛任务模块
  */
-public final class NeverLand extends ModelTask {
+public class NeverLand extends ModelTask {
     // 模块常量
     public static final NeverLand INSTANCE = new NeverLand();
     public static final String MODULE_NAME = "NeverLand";
@@ -57,10 +57,7 @@ public final class NeverLand extends ModelTask {
      */
     public static void receiveSpecialPrize(String sceneType, String rewardName) {
         try {
-            String args = "[{\"sceneType\":\"" + sceneType + "\"}]";
-            String result = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.receiveSpecialPrize", args);
-            JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
-            
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.receiveSpecialPrize(sceneType));
             if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 int energy = data.getInt("modifyCount");
@@ -82,10 +79,7 @@ public final class NeverLand extends ModelTask {
      */
     public static boolean signIn() {
         try {
-            String args = "[{\"signType\":3,\"source\":\"jkdprizesign\"}]";
-            String result = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.takeSign", args);
-            JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
-            
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.takeSign());
             if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 int continuousDay = data.getJSONObject("continuousSignInfo").getInt("continuitySignedDayCount");
@@ -110,16 +104,14 @@ public final class NeverLand extends ModelTask {
     public static boolean receiveTaskReward(JSONObject task) {
         try {
             task.put("scene", "MED_TASK_HALL").put("source", "jkdprizesign");
-            String args = "[" + task.toString() + "]";
-            String result = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.taskReceive", args);
-            JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
+            String arg = "[" + task.toString() + "]";
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.neverlandtaskReceive(arg));
             
             if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 String taskName = task.getString("title");
                 JSONObject data = jsonResult.getJSONObject("data");
                 JSONArray rewards = data.getJSONArray("userItems");
                 ArrayList<String> rewardList = parseRewards(rewards);
-                
                 Log.other("悦动健康🗺️领取奖励[" + taskName + "]#获得" + rewardList);
                 return true;
             }
@@ -140,10 +132,8 @@ public final class NeverLand extends ModelTask {
     public static boolean completeTask(JSONObject task) {
         try {
             task.put("scene", "MED_TASK_HALL");
-            String args = "[" + task.toString() + "]";
-            String result = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.taskSend", args);
-            JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
-            
+            String arg = "[" + task.toString() + "]";
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.neverlandtaskSend(arg));
             if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 String taskName = task.getString("title");
                 Log.other("悦动健康🗺️完成任务[" + taskName + "]");
@@ -167,10 +157,7 @@ public final class NeverLand extends ModelTask {
      */
     public static boolean walkGrid(String branchId, String mapId, String mapName) {
         try {
-            String args = "[{\"branchId\":\"" + branchId + "\",\"drilling\":false,\"mapId\":\"" + mapId + "\"}]";
-            String result = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.walkGrid", args);
-            JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
-            
+            JSONObject jsonResult =new JSONObject(AntSportsRpcCall.neverlandwalkGrid(branchId,mapId));
             if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 int step = data.getJSONArray("mapAwards").getJSONObject(0).getInt("step");
@@ -208,9 +195,8 @@ public final class NeverLand extends ModelTask {
         
         try {
             task.put("type", "LIGHT_FEEDS_TASK");
-            String args = "[" + task.toString() + "]";
-            String result = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.energyReceive", args);
-            JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
+            String arg = "[" + task.toString() + "]";
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.neverlandenergyReceive(arg));
             
             if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
@@ -237,10 +223,7 @@ public final class NeverLand extends ModelTask {
      */
     public static void receiveOfflineReward() {
         try {
-            String args = "[{\"isAdvertisement\":true}]";
-            String result = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.offlineAward", args);
-            JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
-            
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.offlineAward());
             if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 JSONArray rewards = data.getJSONArray("userItems");
@@ -293,10 +276,7 @@ public final class NeverLand extends ModelTask {
      */
     public static void receiveBubbleReward(String recordId, String rewardName) {
         try {
-            String args = "[{\"medEnergyBallInfoRecordIds\":[\"" + recordId + "\"],\"pickAllEnergyBall\":false}]";
-            String result = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.pickBubbleTaskEnergy", args);
-            JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
-            
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.neverlandpickBubbleTaskEnergy(recordId));
             if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 String energy = data.getString("changeAmount");
@@ -314,13 +294,10 @@ public final class NeverLand extends ModelTask {
      */
     public void queryBaseInfoAndProcess() {
         try {
-            String result = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.queryBaseinfo", "[{}]");
-            JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
-            
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryBaseinfo());
             if (!MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 return;
             }
-            
             JSONObject data = jsonResult.getJSONObject("data");
             // 处理离线奖励
             if (data.getJSONArray("offlineAwards").length() > 0) {
@@ -351,13 +328,10 @@ public final class NeverLand extends ModelTask {
      */
     public static void queryAndProcessBubbleTasks() {
         try {
-            String result = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.queryBubbleTask", "[{\"sportsAuthed\":true}]");
-            JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
-            
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryBubbleTask());
             if (!MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 return;
             }
-            
             JSONObject data = jsonResult.getJSONObject("data");
             JSONArray tasks = data.getJSONArray("bubbleTaskVOS");
             boolean needRetry = false;
@@ -367,7 +341,6 @@ public final class NeverLand extends ModelTask {
                 if (!task.has("bubbleTaskStatus")) {
                     continue;
                 }
-                
                 String title = task.getString("title");
                 String status = task.getString("bubbleTaskStatus");
                 
@@ -415,9 +388,7 @@ public final class NeverLand extends ModelTask {
         
         try {
             while (hasMore) {
-                String result = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.queryItemList", "[{\"page\":" + page + "}]");
-                JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
-                
+                JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryItemList(page));
                 if (!MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                     break;
                 }
@@ -444,7 +415,7 @@ public final class NeverLand extends ModelTask {
                     // 检查是否可兑换
                     if (remainCount >= 1 && neverLandBenefitList.contains(itemId) && currentEnergy >= cost) {
                         if (item.getString("status").equals("ITEM_SALE")) {
-                            String exchangeResult = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.createOrder", "[{\"benefitId\":\"" + benefitId + "\",\"itemId\":\"" + itemId + "\"}]");
+                            String exchangeResult = AntSportsRpcCall.createOrder(benefitId,itemId);
                             if (MessageUtil.checkSuccess(MODULE_NAME, new JSONObject(exchangeResult))) {
                                 Log.other("悦动健康🗺️兑换权益[" + itemName + "]#消耗[" + cost + "g健康能量]");
                                 currentEnergy -= cost;
@@ -470,10 +441,7 @@ public final class NeverLand extends ModelTask {
      */
     public static boolean canWalkGrid(String branchId, String mapId) {
         try {
-            String args = "[{\"branchId\":\"" + branchId + "\",\"drilling\":false,\"mapId\":\"" + mapId + "\"}]";
-            String result = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.queryMapInfo", args);
-            JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
-            
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryMapInfo(branchId,mapId));
             if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 JSONObject starData = data.getJSONObject("starData");
@@ -496,9 +464,7 @@ public final class NeverLand extends ModelTask {
         }
         
         try {
-            String result = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.querySign", "[{\"signType\":3,\"source\":\"jkdprizesign\"}]");
-            JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
-            
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.querySign());
             if (!MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 return;
             }
@@ -538,9 +504,7 @@ public final class NeverLand extends ModelTask {
      */
     public static void processTaskCenter() {
         try {
-            String result = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.queryTaskCenter", "[{\"source\":\"jkdprizesign\"}]");
-            JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
-            
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryTaskCenter());
             if (!MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 return;
             }
@@ -594,9 +558,7 @@ public final class NeverLand extends ModelTask {
      */
     public static void processBrowseTasks() {
         try {
-            String result = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.queryTaskInfo", "[{\"source\":\"health-island\",\"type\":\"LIGHT_FEEDS_TASK\"}]");
-            JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
-            
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryTaskInfo());
             if (!MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 return;
             }
@@ -634,9 +596,7 @@ public final class NeverLand extends ModelTask {
      */
     public static int queryUserEnergy() {
         try {
-            String result = ApplicationHook.requestString("com.alipay.neverland.biz.rpc.queryUserAccount", "[{}]");
-            JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
-            
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryUserAccount());
             if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 return Integer.parseInt(data.getString("balance"));
@@ -737,8 +697,7 @@ public final class NeverLand extends ModelTask {
      */
     private boolean checkAuth() {
         try {
-            String result = ApplicationHook.requestString("alipay.antsigncenter.checkAuth", "[{\"assetSceneList\":[\"AS_106240429002783499\"]}]");
-            JSONObject jsonResult = new JSONObject(result == null ? "{}" : result);
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.checkAuth());
             if (MessageUtil.checkSuccess("NeverLandAuth", jsonResult)) {
                 return jsonResult.getJSONObject("resultObj").optBoolean("authStatus");
             }
