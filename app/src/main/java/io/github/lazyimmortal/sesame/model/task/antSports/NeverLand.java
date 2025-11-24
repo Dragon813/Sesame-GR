@@ -344,7 +344,7 @@ public class NeverLand extends ModelTask {
                 String title = task.getString("title");
                 String status = task.getString("bubbleTaskStatus");
                 
-                switch (TaskStatus.valueOf(status)) {
+                switch (neverlandTaskStatus.valueOf(status)) {
                     case TODO:
                         // 待完成任务（如广告气泡）
                         if ("AD_BALL".equals(task.getString("taskId"))) {
@@ -610,7 +610,7 @@ public class NeverLand extends ModelTask {
     }
     
     // 任务状态枚举
-    public enum TaskStatus {
+    public enum neverlandTaskStatus {
         TODO, FINISHED, EXPIRED, DISABLED
     }
     
