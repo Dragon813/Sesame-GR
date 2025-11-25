@@ -119,8 +119,7 @@ public class AntSports extends ModelTask {
         
         return modelFields;
     }
-    
-    public static final String MODULE_NAME = "NeverLand";
+   
     public static final String DISPLAY_NAME = "悦动健康岛";
     public static final ModelGroup MODULE_GROUP = ModelGroup.SPORTS;
     
@@ -1509,7 +1508,7 @@ public class AntSports extends ModelTask {
     public static void receiveSpecialPrize(String sceneType, String rewardName) {
         try {
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.receiveSpecialPrize(sceneType));
-            if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
+            if (MessageUtil.checkSuccess(TAG, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 int energy = data.getInt("modifyCount");
                 if (energy > 0) {
@@ -1518,8 +1517,8 @@ public class AntSports extends ModelTask {
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "receiveSpecialPrize err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "receiveSpecialPrize err:");
+            Log.printStackTrace(TAG, e);
         }
     }
     
@@ -1531,7 +1530,7 @@ public class AntSports extends ModelTask {
     public static boolean signIn() {
         try {
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.takeSign());
-            if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
+            if (MessageUtil.checkSuccess(TAG, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 int continuousDay = data.getJSONObject("continuousSignInfo").getInt("continuitySignedDayCount");
                 int reward = data.getJSONObject("continuousDoSignInVO").getInt("rewardAmount");
@@ -1540,8 +1539,8 @@ public class AntSports extends ModelTask {
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "takeSign err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "takeSign err:");
+            Log.printStackTrace(TAG, e);
         }
         return false;
     }
@@ -1558,7 +1557,7 @@ public class AntSports extends ModelTask {
             String arg = "[" + task.toString() + "]";
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.neverlandtaskReceive(arg));
             
-            if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
+            if (MessageUtil.checkSuccess(TAG, jsonResult)) {
                 String taskName = task.getString("title");
                 JSONObject data = jsonResult.getJSONObject("data");
                 JSONArray rewards = data.getJSONArray("userItems");
@@ -1568,8 +1567,8 @@ public class AntSports extends ModelTask {
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "taskReceive err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "taskReceive err:");
+            Log.printStackTrace(TAG, e);
         }
         return false;
     }
@@ -1585,15 +1584,15 @@ public class AntSports extends ModelTask {
             task.put("scene", "MED_TASK_HALL");
             String arg = "[" + task.toString() + "]";
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.neverlandtaskSend(arg));
-            if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
+            if (MessageUtil.checkSuccess(TAG, jsonResult)) {
                 String taskName = task.getString("title");
                 Log.other("悦动健康🗺️完成任务[" + taskName + "]completeTask");
                 return true;
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "taskSend err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "taskSend err:");
+            Log.printStackTrace(TAG, e);
         }
         return false;
     }
@@ -1609,7 +1608,7 @@ public class AntSports extends ModelTask {
     public static boolean walkGrid(String branchId, String mapId, String mapName) {
         try {
             JSONObject jsonResult =new JSONObject(AntSportsRpcCall.neverlandwalkGrid(branchId,mapId));
-            if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
+            if (MessageUtil.checkSuccess(TAG, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 int step = data.getJSONArray("mapAwards").getJSONObject(0).getInt("step");
                 int leftCount = data.getInt("leftCount");
@@ -1627,8 +1626,8 @@ public class AntSports extends ModelTask {
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "walkGrid err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "walkGrid err:");
+            Log.printStackTrace(TAG, e);
         }
         return false;
     }
@@ -1649,7 +1648,7 @@ public class AntSports extends ModelTask {
             String arg = "[" + task.toString() + "]";
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.neverlandenergyReceive(arg));
             
-            if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
+            if (MessageUtil.checkSuccess(TAG, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 JSONArray prizes = data.getJSONArray("prizes");
                 int totalEnergy = 0;
@@ -1663,8 +1662,8 @@ public class AntSports extends ModelTask {
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "energyReceive err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "energyReceive err:");
+            Log.printStackTrace(TAG, e);
         }
         return false;
     }
@@ -1675,7 +1674,7 @@ public class AntSports extends ModelTask {
     public static void receiveOfflineReward() {
         try {
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.offlineAward());
-            if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
+            if (MessageUtil.checkSuccess(TAG, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 JSONArray rewards = data.getJSONArray("userItems");
                 ArrayList<String> rewardList = parseRewards(rewards);
@@ -1686,8 +1685,8 @@ public class AntSports extends ModelTask {
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "offlineAward err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "offlineAward err:");
+            Log.printStackTrace(TAG, e);
         }
     }
     
@@ -1713,8 +1712,8 @@ public class AntSports extends ModelTask {
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "parseRewards err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "parseRewards err:");
+            Log.printStackTrace(TAG, e);
         }
         return rewardList;
     }
@@ -1728,15 +1727,15 @@ public class AntSports extends ModelTask {
     public static void receiveBubbleReward(String recordId, String rewardName) {
         try {
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.neverlandpickBubbleTaskEnergy(recordId));
-            if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
+            if (MessageUtil.checkSuccess(TAG, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 String energy = data.getString("changeAmount");
                 Log.other("悦动健康🗺️领取奖励[" + rewardName + "]#获得[" + energy + "g健康能量]receiveBubbleReward");
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "pickBubbleTaskEnergy err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "pickBubbleTaskEnergy err:");
+            Log.printStackTrace(TAG, e);
         }
     }
     
@@ -1746,7 +1745,7 @@ public class AntSports extends ModelTask {
     public void queryBaseInfoAndProcess() {
         try {
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryBaseinfo());
-            if (!MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
+            if (!MessageUtil.checkSuccess(TAG, jsonResult)) {
                 return;
             }
             JSONObject data = jsonResult.getJSONObject("data");
@@ -1769,8 +1768,8 @@ public class AntSports extends ModelTask {
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "queryBaseInfo err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "queryBaseInfo err:");
+            Log.printStackTrace(TAG, e);
         }
     }
     
@@ -1780,7 +1779,7 @@ public class AntSports extends ModelTask {
     public static void queryAndProcessBubbleTasks() {
         try {
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryBubbleTask());
-            if (!MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
+            if (!MessageUtil.checkSuccess(TAG, jsonResult)) {
                 return;
             }
             JSONObject data = jsonResult.getJSONObject("data");
@@ -1793,39 +1792,35 @@ public class AntSports extends ModelTask {
                     continue;
                 }
                 String title = task.getString("title");
-                String status = task.getString("bubbleTaskStatus");
+                String bubbleTaskStatus = task.getString("bubbleTaskStatus");
                 
-                switch (neverlandTaskStatus.valueOf(status)) {
-                    case TODO:
-                        // 待完成任务（如广告气泡）
-                        if ("AD_BALL".equals(task.getString("taskId"))) {
-                            task.put("lightTaskId", "adBubble");
-                            if (receiveBrowseReward(task)) {
-                                TimeUtil.sleep(1000);
-                                needRetry = true;
-                            }
+                if (bubbleTaskStatus.equals("INIT")){
+                    if ("AD_BALL".equals(task.getString("taskId"))) {
+                        task.put("lightTaskId", "adBubble");
+                        if (receiveBrowseReward(task)) {
+                            TimeUtil.sleep(1000);
+                            needRetry = true;
                         }
-                        else if ("STRATEGY_BALL".equals(task.getString("taskId"))) {
-                            receiveSpecialPrize(task.getString("taskId") + "_ACTIVITY", title);
-                        }
-                        break;
-                    case FINISHED:
-                        // 已完成任务，领取奖励
-                        receiveBubbleReward(task.getString("medEnergyBallInfoRecordId"), title);
-                        break;
-                    default:
-                        break;
+                    }
+                    else if ("STRATEGY_BALL".equals(task.getString("taskId"))) {
+                        receiveSpecialPrize(task.getString("taskId") + "_ACTIVITY", title);
+                    }
+                    break;
+                }
+                if (bubbleTaskStatus.equals("TO_RECEIVE")) {
+                    // 已完成任务，领取奖励
+                    receiveBubbleReward(task.getString("medEnergyBallInfoRecordId"), title);
+                    break;
                 }
             }
-            
             // 如果有任务触发了状态变更，重试一次
             if (needRetry) {
                 queryAndProcessBubbleTasks();
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "queryBubbleTask err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "queryBubbleTask err:");
+            Log.printStackTrace(TAG, e);
         }
     }
     
@@ -1840,7 +1835,7 @@ public class AntSports extends ModelTask {
         try {
             while (hasMore) {
                 JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryItemList(page));
-                if (!MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
+                if (!MessageUtil.checkSuccess(TAG, jsonResult)) {
                     break;
                 }
                 
@@ -1867,7 +1862,7 @@ public class AntSports extends ModelTask {
                     if (remainCount >= 1 && neverLandBenefitList.contains(itemId) && currentEnergy >= cost) {
                         if (item.getString("status").equals("ITEM_SALE")) {
                             String exchangeResult = AntSportsRpcCall.createOrder(benefitId,itemId);
-                            if (MessageUtil.checkSuccess(MODULE_NAME, new JSONObject(exchangeResult))) {
+                            if (MessageUtil.checkSuccess(TAG, new JSONObject(exchangeResult))) {
                                 Log.other("悦动健康🗺️兑换权益[" + itemName + "]#消耗[" + cost + "g健康能量]exchangeBenefits");
                                 currentEnergy -= cost;
                             }
@@ -1878,8 +1873,8 @@ public class AntSports extends ModelTask {
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "exchangeBenefits err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "exchangeBenefits err:");
+            Log.printStackTrace(TAG, e);
         }
     }
     
@@ -1893,15 +1888,15 @@ public class AntSports extends ModelTask {
     public static boolean canWalkGrid(String branchId, String mapId) {
         try {
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryMapInfo(branchId,mapId));
-            if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
+            if (MessageUtil.checkSuccess(TAG, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 JSONObject starData = data.getJSONObject("starData");
                 return data.getBoolean("canWalk") && starData.getInt("curr") < starData.getInt("count");
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "canWalkGrid err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "canWalkGrid err:");
+            Log.printStackTrace(TAG, e);
         }
         return false;
     }
@@ -1916,7 +1911,7 @@ public class AntSports extends ModelTask {
         
         try {
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.querySign());
-            if (!MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
+            if (!MessageUtil.checkSuccess(TAG, jsonResult)) {
                 return;
             }
             
@@ -1945,8 +1940,8 @@ public class AntSports extends ModelTask {
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "processSignIn err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "processSignIn err:");
+            Log.printStackTrace(TAG, e);
         }
     }
     
@@ -1956,7 +1951,7 @@ public class AntSports extends ModelTask {
     public static void processTaskCenter() {
         try {
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryTaskCenter());
-            if (!MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
+            if (!MessageUtil.checkSuccess(TAG, jsonResult)) {
                 return;
             }
             
@@ -1999,8 +1994,8 @@ public class AntSports extends ModelTask {
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "processTaskCenter err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "processTaskCenter err:");
+            Log.printStackTrace(TAG, e);
         }
     }
     
@@ -2010,7 +2005,7 @@ public class AntSports extends ModelTask {
     public static void processBrowseTasks() {
         try {
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryTaskInfo());
-            if (!MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
+            if (!MessageUtil.checkSuccess(TAG, jsonResult)) {
                 return;
             }
             
@@ -2035,8 +2030,8 @@ public class AntSports extends ModelTask {
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "processBrowseTasks err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "processBrowseTasks err:");
+            Log.printStackTrace(TAG, e);
         }
     }
     
@@ -2048,21 +2043,21 @@ public class AntSports extends ModelTask {
     public static int queryUserEnergy() {
         try {
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryUserAccount());
-            if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
+            if (MessageUtil.checkSuccess(TAG, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 return Integer.parseInt(data.getString("balance"));
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "queryUserEnergy err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "queryUserEnergy err:");
+            Log.printStackTrace(TAG, e);
         }
         return 0;
     }
     
     public void neverlandrun() {
         try {
-            Log.other("悦动健康🗺️开始执行]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+            Log.other("悦动健康🗺️开始执行#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
             // 处理签到
             if (QUERY_SIGN.getValue()) {
                 processSignIn();
@@ -2083,11 +2078,11 @@ public class AntSports extends ModelTask {
             if (QUERY_ITEM_LIST.getValue()) {
                 exchangeBenefits();
             }
-            Log.other("悦动健康🗺️执行完成]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+            Log.other("悦动健康🗺️执行完成#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "run err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "run err:");
+            Log.printStackTrace(TAG, e);
         }
     }
     
@@ -2104,8 +2099,8 @@ public class AntSports extends ModelTask {
             }
         }
         catch (Exception e) {
-            Log.i(MODULE_NAME, "checkAuth err:");
-            Log.printStackTrace(MODULE_NAME, e);
+            Log.i(TAG, "checkAuth err:");
+            Log.printStackTrace(TAG, e);
         }
         return false;
     }
