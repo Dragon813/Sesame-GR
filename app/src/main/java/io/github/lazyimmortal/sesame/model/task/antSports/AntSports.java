@@ -220,7 +220,8 @@ public class AntSports extends ModelTask {
             }
             
             //执行悦动健康岛
-            if (neverLand.getValue() && checkAuth()) {
+            //if (neverLand.getValue() && checkAuth()) {
+            if (neverLand.getValue()) {
                 neverlandrun();
             }
             
@@ -1512,7 +1513,7 @@ public class AntSports extends ModelTask {
                 JSONObject data = jsonResult.getJSONObject("data");
                 int energy = data.getInt("modifyCount");
                 if (energy > 0) {
-                    Log.other("悦动健康🗺️领取奖励[" + rewardName + "]#获得[" + energy + "g健康能量]");
+                    Log.other("悦动健康🗺️领取奖励[" + rewardName + "]#获得[" + energy + "g健康能量]receiveSpecialPrize");
                 }
             }
         }
@@ -1534,7 +1535,7 @@ public class AntSports extends ModelTask {
                 JSONObject data = jsonResult.getJSONObject("data");
                 int continuousDay = data.getJSONObject("continuousSignInfo").getInt("continuitySignedDayCount");
                 int reward = data.getJSONObject("continuousDoSignInVO").getInt("rewardAmount");
-                Log.other("悦动健康🗺️连续签到[第" + continuousDay + "天]#获得[" + reward + "g健康能量]");
+                Log.other("悦动健康🗺️连续签到[第" + continuousDay + "天]#获得[" + reward + "g健康能量]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                 return true;
             }
         }
@@ -1562,7 +1563,7 @@ public class AntSports extends ModelTask {
                 JSONObject data = jsonResult.getJSONObject("data");
                 JSONArray rewards = data.getJSONArray("userItems");
                 ArrayList<String> rewardList = parseRewards(rewards);
-                Log.other("悦动健康🗺️领取奖励[" + taskName + "]#获得" + rewardList);
+                Log.other("悦动健康🗺️领取奖励[" + taskName + "]#获得" + rewardList+"receiveTaskReward");
                 return true;
             }
         }
@@ -1586,7 +1587,7 @@ public class AntSports extends ModelTask {
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.neverlandtaskSend(arg));
             if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 String taskName = task.getString("title");
-                Log.other("悦动健康🗺️完成任务[" + taskName + "]");
+                Log.other("悦动健康🗺️完成任务[" + taskName + "]completeTask");
                 return true;
             }
         }
@@ -1657,7 +1658,7 @@ public class AntSports extends ModelTask {
                 }
                 
                 String taskName = task.optString("title", "浏览商品15s得健康能量");
-                Log.other("悦动健康🗺️完成任务[" + taskName + "]#获得[" + totalEnergy + "g健康能量]");
+                Log.other("悦动健康🗺️完成任务[" + taskName + "]#获得[" + totalEnergy + "g健康能量]receiveBrowseReward");
                 return true;
             }
         }
@@ -1680,7 +1681,7 @@ public class AntSports extends ModelTask {
                 ArrayList<String> rewardList = parseRewards(rewards);
                 
                 if (!rewardList.isEmpty()) {
-                    Log.other("悦动健康🗺️领取奖励[离线奖励]#获得" + rewardList);
+                    Log.other("悦动健康🗺️领取奖励[离线奖励]#获得" + rewardList+"receiveOfflineReward");
                 }
             }
         }
@@ -1730,7 +1731,7 @@ public class AntSports extends ModelTask {
             if (MessageUtil.checkSuccess(MODULE_NAME, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 String energy = data.getString("changeAmount");
-                Log.other("悦动健康🗺️领取奖励[" + rewardName + "]#获得[" + energy + "g健康能量]");
+                Log.other("悦动健康🗺️领取奖励[" + rewardName + "]#获得[" + energy + "g健康能量]receiveBubbleReward");
             }
         }
         catch (Exception e) {
@@ -1867,7 +1868,7 @@ public class AntSports extends ModelTask {
                         if (item.getString("status").equals("ITEM_SALE")) {
                             String exchangeResult = AntSportsRpcCall.createOrder(benefitId,itemId);
                             if (MessageUtil.checkSuccess(MODULE_NAME, new JSONObject(exchangeResult))) {
-                                Log.other("悦动健康🗺️兑换权益[" + itemName + "]#消耗[" + cost + "g健康能量]");
+                                Log.other("悦动健康🗺️兑换权益[" + itemName + "]#消耗[" + cost + "g健康能量]exchangeBenefits");
                                 currentEnergy -= cost;
                             }
                         }
