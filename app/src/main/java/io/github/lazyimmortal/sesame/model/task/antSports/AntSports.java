@@ -1805,6 +1805,9 @@ public class AntSports extends ModelTask {
                     else if ("STRATEGY_BALL".equals(task.getString("taskId"))) {
                         receiveSpecialPrize(task.getString("taskId") + "_ACTIVITY", title);
                     }
+                    else if("SIGN_BALL".equals(task.getString("taskId"))) {
+                        signIn();
+                    }
                     break;
                 }
                 if (bubbleTaskStatus.equals("TO_RECEIVE")) {
