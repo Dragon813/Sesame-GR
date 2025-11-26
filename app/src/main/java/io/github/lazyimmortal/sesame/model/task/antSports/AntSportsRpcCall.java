@@ -428,4 +428,16 @@ public class AntSportsRpcCall {
         String arg = "[{\"assetSceneList\":[\"AS_106240429002783499\"]}]";
         return ApplicationHook.requestString("alipay.antsigncenter.checkAuth", arg);
     }
+    
+    //requestData":[{"source":"jkdsportcard"}]
+    public static String queryMapList() {
+        String arg = "[{\"source\":\"jkdsportcard\"}]";
+        return ApplicationHook.requestString("com.alipay.neverland.biz.rpc.queryMapList", arg);
+    }
+    
+    //{"branchId":"MASTER","mapId":"MM120","source":"jkdsportcard"}
+    public static String mapChooseFree(String branchId,String mapId) {
+        String arg = "[{\"branchId\":\""+branchId+"\",\"mapId\":\""+mapId+"\",\"source\":\"jkdsportcard\"}]";
+        return ApplicationHook.requestString("com.alipay.neverland.biz.rpc.mapChooseFree", arg);
+    }
 }

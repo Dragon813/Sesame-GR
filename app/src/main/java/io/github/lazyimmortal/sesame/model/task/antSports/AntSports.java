@@ -2081,10 +2081,72 @@ public class AntSports extends ModelTask {
             if (QUERY_ITEM_LIST.getValue()) {
                 exchangeBenefits();
             }
+            
+            queryMapListSwitch();
+            
             Log.other("悦动健康🚑️执行完成#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
         }
         catch (Exception e) {
             Log.i(TAG, "run err:");
+            Log.printStackTrace(TAG, e);
+        }
+    }
+    
+    private void queryMapListSwitch() {
+        try {
+            //获取当前岛名字
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryBaseinfo());
+            if (!MessageUtil.checkSuccess(TAG, jsonResult)) {
+                return;
+            }
+            JSONObject thisdata = jsonResult.getJSONObject("data");
+            String thismapName = thisdata.optString("mapName");
+            
+            //获取岛地图
+            JSONObject jsonLandMap = new JSONObject(AntSportsRpcCall.queryMapList());
+            if (MessageUtil.checkSuccess("queryMapList", jsonLandMap)) {
+                JSONObject data = jsonLandMap.getJSONObject("data");
+                
+                
+                JSONArray mapList = data.getJSONArray("mapList");
+                boolean needSwitch = false;
+                
+                for (int i = 0; i < mapList.length(); i++) {
+                    JSONObject map = mapList.getJSONObject(i);
+                    String mapName = map.getString("mapName");
+                    String status = map.getString("status");
+                    
+                    if (mapName.equals(thismapName) && status.contains("FINISH")) {
+                        needSwitch=true;
+                    }
+                }
+                if(needSwitch) {
+                    for (int i = 0; i < mapList.length(); i++) {
+                        JSONObject map = mapList.getJSONObject(i);
+                        String mapName = map.getString("mapName");
+                        String mapId = map.getString("mapId");
+                        String status = map.getString("status");
+                        String branchId = map.getString("branchId");
+                        
+                        if (!mapName.equals(thismapName)){
+                            if(!status.contains("FINISH")){
+                                JSONObject jo = new JSONObject(AntSportsRpcCall.mapChooseFree(branchId,mapId));
+                                if (MessageUtil.checkSuccess("mapChooseFree", jo)) {
+                                    Log.other("悦动健康🚑️切换到["+mapName+"]("+mapId +")#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                                    break;
+                                }
+                            }
+                        }
+                    
+                    }
+                    queryBaseInfoAndProcess();
+                    
+                }
+             
+            }
+        }
+        catch (Exception e) {
+            Log.i(TAG, "queryMapListSwitch err:");
             Log.printStackTrace(TAG, e);
         }
     }
