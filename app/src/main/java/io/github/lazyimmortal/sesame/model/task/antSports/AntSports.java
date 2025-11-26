@@ -71,6 +71,11 @@ public class AntSports extends ModelTask {
     //能量泵
     private BooleanModelField WALK_GRID;
     
+    private IntegerModelField WALK_GRID_LIMIT;
+    
+    private IntegerModelField WALK_GRID_MAX;
+    
+    private BooleanModelField MapListSwitch;
     
     //private SelectModelField neverLandOptions;
     private SelectModelField neverLandBenefitList;
@@ -106,12 +111,15 @@ public class AntSports extends ModelTask {
         modelFields.addField(latestExchangeTime = new IntegerModelField("latestExchangeTime", "行走捐 | 最晚捐步时间(24小时制)", 22));
         modelFields.addField(syncStepCount = new IntegerModelField("syncStepCount", "自定义同步步数", 22000));
         modelFields.addField(neverLand = new BooleanModelField("neverLand", "健康岛 | 开启", false));
-        modelFields.addField(energyStrategy = new ChoiceModelField("energyStrategy", "能量策略", EnergyStrategy.NONE, EnergyStrategy.nickNames));
+        //modelFields.addField(energyStrategy = new ChoiceModelField("energyStrategy", "能量策略", EnergyStrategy.NONE, EnergyStrategy.nickNames));
         modelFields.addField(QUERY_SIGN = new BooleanModelField("QUERY_SIGN", "健康岛 | 每日签到", false));
         modelFields.addField(QUERY_TASK_CENTER = new BooleanModelField("QUERY_TASK_CENTER", "健康岛 | 做任务 加能量", false));
         modelFields.addField(QUERY_BUBBLE_TASK = new BooleanModelField("QUERY_BUBBLE_TASK", "健康岛 | 领取能量球奖励", false));
         modelFields.addField(QUERY_ITEM_LIST = new BooleanModelField("QUERY_ITEM_LIST", "健康岛 | 健康能量兑好礼", false));
         modelFields.addField(WALK_GRID = new BooleanModelField("WALK_GRID", "健康岛 | 能量泵", false));
+        modelFields.addField(WALK_GRID_MAX = new IntegerModelField("WALK_GRID_MAX", "健康岛 | 单次执行能量泵最大次数(不限:0)", 60));
+        modelFields.addField(WALK_GRID_LIMIT = new IntegerModelField("WALK_GRID_LIMIT", "健康岛 | 使用能量泵剩余能量值", 10000));
+        modelFields.addField(MapListSwitch = new BooleanModelField("MapListSwitch", "健康岛 | 自动切岛", false));
         
         //modelFields.addField(neverLandOptions = new SelectModelField("neverLandOptions", "健康岛 | 选项", new LinkedHashSet<>(), neverLandOptionsList::getList));
         //需要修改AlipayUser::getList
@@ -119,13 +127,9 @@ public class AntSports extends ModelTask {
         
         return modelFields;
     }
-   
+    
     public static final String DISPLAY_NAME = "悦动健康岛";
     public static final ModelGroup MODULE_GROUP = ModelGroup.SPORTS;
-    
-    
-
-
     
     @Override
     public void boot(ClassLoader classLoader) {
@@ -1512,7 +1516,7 @@ public class AntSports extends ModelTask {
                 JSONObject data = jsonResult.getJSONObject("data");
                 int energy = data.getInt("modifyCount");
                 if (energy > 0) {
-                    Log.other("悦动健康🚑️领取奖励[" + rewardName + "]#获得[" + energy + "g健康能量]receiveSpecialPrize");
+                    Log.other("悦动健康🚑️领取奖励[" + rewardName + "]#获得[" + energy + "g健康能量]");
                 }
             }
         }
@@ -1562,7 +1566,7 @@ public class AntSports extends ModelTask {
                 JSONObject data = jsonResult.getJSONObject("data");
                 JSONArray rewards = data.getJSONArray("userItems");
                 ArrayList<String> rewardList = parseRewards(rewards);
-                Log.other("悦动健康🚑️领取奖励[" + taskName + "]#获得" + rewardList+"receiveTaskReward");
+                Log.other("悦动健康🚑️领取奖励[" + taskName + "]#获得" + rewardList);
                 return true;
             }
         }
@@ -1607,7 +1611,7 @@ public class AntSports extends ModelTask {
      */
     public static boolean walkGrid(String branchId, String mapId, String mapName) {
         try {
-            JSONObject jsonResult =new JSONObject(AntSportsRpcCall.neverlandwalkGrid(branchId,mapId));
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.neverlandwalkGrid(branchId, mapId));
             if (MessageUtil.checkSuccess(TAG, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 int step = data.getJSONArray("mapAwards").getJSONObject(0).getInt("step");
@@ -1657,7 +1661,7 @@ public class AntSports extends ModelTask {
                 }
                 
                 String taskName = task.optString("title", "浏览商品15s得健康能量");
-                Log.other("悦动健康🚑️完成任务[" + taskName + "]#获得[" + totalEnergy + "g健康能量]receiveBrowseReward");
+                Log.other("悦动健康🚑️完成任务[" + taskName + "]#获得[" + totalEnergy + "g健康能量]");
                 return true;
             }
         }
@@ -1680,7 +1684,7 @@ public class AntSports extends ModelTask {
                 ArrayList<String> rewardList = parseRewards(rewards);
                 
                 if (!rewardList.isEmpty()) {
-                    Log.other("悦动健康🚑️领取奖励[离线奖励]#获得" + rewardList+"receiveOfflineReward");
+                    Log.other("悦动健康🚑️领取奖励[离线奖励]#获得" + rewardList);
                 }
             }
         }
@@ -1730,7 +1734,7 @@ public class AntSports extends ModelTask {
             if (MessageUtil.checkSuccess(TAG, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 String energy = data.getString("changeAmount");
-                Log.other("悦动健康🚑️领取奖励[" + rewardName + "]#获得[" + energy + "g健康能量]receiveBubbleReward");
+                Log.other("悦动健康🚑️领取奖励[" + rewardName + "]#获得[" + energy + "g健康能量]");
             }
         }
         catch (Exception e) {
@@ -1759,10 +1763,18 @@ public class AntSports extends ModelTask {
                 String branchId = data.getString("branchId");
                 String mapId = data.getString("mapId");
                 String mapName = data.getString("mapName");
-                
-                if (canWalkGrid(branchId, mapId) && queryUserEnergy() >= 5) {
+                int walkGridcount = 0;
+                if (canWalkGrid(branchId, mapId) && queryUserEnergy() >= 5 && queryUserEnergy() >= WALK_GRID_LIMIT.getValue()) {
                     while (walkGrid(branchId, mapId, mapName)) {
                         TimeUtil.sleep(2000);
+                        if (WALK_GRID_MAX.getValue() == 0) {
+                            continue;
+                        }
+                        walkGridcount++;
+                        if (walkGridcount > WALK_GRID_MAX.getValue()) {
+                            break;
+                        }
+                        
                     }
                 }
             }
@@ -1794,7 +1806,7 @@ public class AntSports extends ModelTask {
                 String title = task.getString("title");
                 String bubbleTaskStatus = task.getString("bubbleTaskStatus");
                 
-                if (bubbleTaskStatus.equals("INIT")){
+                if (bubbleTaskStatus.equals("INIT")) {
                     if ("AD_BALL".equals(task.getString("taskId"))) {
                         task.put("lightTaskId", "adBubble");
                         if (receiveBrowseReward(task)) {
@@ -1805,7 +1817,7 @@ public class AntSports extends ModelTask {
                     else if ("STRATEGY_BALL".equals(task.getString("taskId"))) {
                         receiveSpecialPrize(task.getString("taskId") + "_ACTIVITY", title);
                     }
-                    else if("SIGN_BALL".equals(task.getString("taskId"))) {
+                    else if ("SIGN_BALL".equals(task.getString("taskId"))) {
                         signIn();
                     }
                     break;
@@ -1864,7 +1876,7 @@ public class AntSports extends ModelTask {
                     // 检查是否可兑换
                     if (remainCount >= 1 && neverLandBenefitList.contains(itemId) && currentEnergy >= cost) {
                         if (item.getString("status").equals("ITEM_SALE")) {
-                            String exchangeResult = AntSportsRpcCall.createOrder(benefitId,itemId);
+                            String exchangeResult = AntSportsRpcCall.createOrder(benefitId, itemId);
                             if (MessageUtil.checkSuccess(TAG, new JSONObject(exchangeResult))) {
                                 Log.other("悦动健康🚑️兑换权益[" + itemName + "]#消耗[" + cost + "g健康能量]exchangeBenefits");
                                 currentEnergy -= cost;
@@ -1890,7 +1902,7 @@ public class AntSports extends ModelTask {
      */
     public static boolean canWalkGrid(String branchId, String mapId) {
         try {
-            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryMapInfo(branchId,mapId));
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryMapInfo(branchId, mapId));
             if (MessageUtil.checkSuccess(TAG, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
                 JSONObject starData = data.getJSONObject("starData");
@@ -2081,8 +2093,9 @@ public class AntSports extends ModelTask {
             if (QUERY_ITEM_LIST.getValue()) {
                 exchangeBenefits();
             }
-            
-            queryMapListSwitch();
+            if (MapListSwitch.getValue()) {
+                queryMapListSwitch();
+            }
             
             Log.other("悦动健康🚑️执行完成#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
         }
@@ -2107,7 +2120,6 @@ public class AntSports extends ModelTask {
             if (MessageUtil.checkSuccess("queryMapList", jsonLandMap)) {
                 JSONObject data = jsonLandMap.getJSONObject("data");
                 
-                
                 JSONArray mapList = data.getJSONArray("mapList");
                 boolean needSwitch = false;
                 
@@ -2117,10 +2129,10 @@ public class AntSports extends ModelTask {
                     String status = map.getString("status");
                     
                     if (mapName.equals(thismapName) && status.contains("FINISH")) {
-                        needSwitch=true;
+                        needSwitch = true;
                     }
                 }
-                if(needSwitch) {
+                if (needSwitch) {
                     for (int i = 0; i < mapList.length(); i++) {
                         JSONObject map = mapList.getJSONObject(i);
                         String mapName = map.getString("mapName");
@@ -2128,21 +2140,20 @@ public class AntSports extends ModelTask {
                         String status = map.getString("status");
                         String branchId = map.getString("branchId");
                         
-                        if (!mapName.equals(thismapName)){
-                            if(!status.contains("FINISH")){
-                                JSONObject jo = new JSONObject(AntSportsRpcCall.mapChooseFree(branchId,mapId));
+                        if (!mapName.equals(thismapName)) {
+                            if (!status.contains("FINISH")) {
+                                JSONObject jo = new JSONObject(AntSportsRpcCall.mapChooseFree(branchId, mapId));
                                 if (MessageUtil.checkSuccess("mapChooseFree", jo)) {
-                                    Log.other("悦动健康🚑️切换到["+mapName+"]("+mapId +")#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                                    Log.other("悦动健康🚑️切换到[" + mapName + "](" + mapId + ")#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                                     break;
                                 }
                             }
                         }
-                    
+                        
                     }
                     queryBaseInfoAndProcess();
-                    
                 }
-             
+                
             }
         }
         catch (Exception e) {
@@ -2177,12 +2188,11 @@ public class AntSports extends ModelTask {
     
     // 能量策略枚举
     public interface EnergyStrategy {
-        int NONE=0;
-        int CONSERVE=1;
-        int MAXIMIZE=2;
+        int NONE = 0;
+        int CONSERVE = 1;
+        int MAXIMIZE = 2;
         String[] nickNames = {"不操作", "保守策略", "最大化收益"};
     }
-    
     
     // 任务选项接口
     public interface NeverLandOption {
