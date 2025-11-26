@@ -2139,9 +2139,10 @@ public class AntSports extends ModelTask {
                         String mapId = map.getString("mapId");
                         String status = map.getString("status");
                         String branchId = map.getString("branchId");
+                        boolean newIsLandFlg = map.optBoolean("newIsLandFlg");
                         
                         if (!mapName.equals(thismapName)) {
-                            if (!status.contains("FINISH")) {
+                            if (!status.contains("FINISH") && !newIsLandFlg) {
                                 JSONObject jo = new JSONObject(AntSportsRpcCall.mapChooseFree(branchId, mapId));
                                 if (MessageUtil.checkSuccess("mapChooseFree", jo)) {
                                     Log.other("悦动健康🚑️切换到[" + mapName + "](" + mapId + ")#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
