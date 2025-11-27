@@ -1771,10 +1771,9 @@ public class AntSports extends ModelTask {
                             continue;
                         }
                         walkGridcount++;
-                        if (walkGridcount > WALK_GRID_MAX.getValue()) {
+                        if (walkGridcount >=WALK_GRID_MAX.getValue()) {
                             break;
                         }
-                        
                     }
                 }
             }
@@ -2150,7 +2149,6 @@ public class AntSports extends ModelTask {
                                 }
                             }
                         }
-                        
                     }
                     queryBaseInfoAndProcess();
                 }
