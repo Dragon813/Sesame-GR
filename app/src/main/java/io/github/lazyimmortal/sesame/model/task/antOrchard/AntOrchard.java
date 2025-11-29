@@ -454,10 +454,7 @@ public class AntOrchard extends ModelTask {
             
             // 处理任务列表
             JSONArray taskArray = jo.getJSONArray("taskList");
-            while (handleTaskList(taskArray)) {
-                // 循环处理直到没有可完成的任务
-                TimeUtil.sleep(500);
-            }
+            handleTaskList(taskArray);
         }
         catch (Throwable t) {
             Log.i(TAG, "orchardListTask err:");
@@ -501,37 +498,30 @@ public class AntOrchard extends ModelTask {
     /**
      * 处理任务列表
      */
-    private boolean handleTaskList(JSONArray taskArray) {
-        boolean hasFinished = false;
+    private void handleTaskList(JSONArray taskArray) {
         try {
-            for (int i = 0; i < taskArray.length(); i++) {
-                JSONObject task = taskArray.getJSONObject(i);
-                String taskStatus = task.getString("taskStatus");
-                
-                switch (TaskStatus.valueOf(taskStatus)) {
-                    case TODO:
-                        if (finishOrchardTask(task)) {
-                            hasFinished = true;
-                            TimeUtil.sleep(500);
+                for (int i = 0; i < taskArray.length(); i++) {
+                    JSONObject jo = taskArray.getJSONObject(i);
+                    String taskStatus = jo.getString("taskStatus");
+                    if (TaskStatus.RECEIVED.name().equals(taskStatus)) {
+                        continue;
+                    }
+                    if (TaskStatus.TODO.name().equals(taskStatus)) {
+                        if (!finishOrchardTask(jo)) {
+                            continue;
                         }
-                        break;
-                    case FINISHED:
-                        String taskId = task.getString("taskId");
-                        String taskType = task.getString("taskPlantType");
-                        String title = task.getJSONObject("taskDisplayConfig").getString("title");
-                        receiveTaskReward(taskId, taskType, title);
-                        hasFinished = true;
-                        break;
-                    default:
-                        break;
+                        TimeUtil.sleep(500);
+                    }
+                    String taskId = jo.getString("taskId");
+                    String taskPlantType = jo.getString("taskPlantType");
+                    String title = jo.getJSONObject("taskDisplayConfig").getString("title");
+                    receiveTaskReward(taskId, taskPlantType, title);
                 }
-            }
         }
         catch (Throwable t) {
             Log.i(TAG, "handleTaskList err:");
             Log.printStackTrace(TAG, t);
         }
-        return hasFinished;
     }
     
     /**
@@ -549,10 +539,10 @@ public class AntOrchard extends ModelTask {
                 String result = AntOrchardRpcCall.finishTask(sceneCode, taskId);
                 if (MessageUtil.checkResultCode(TAG, new JSONObject(result))) {
                     Log.farm("农场任务🧾完成任务[" + title + "]");
-                    return true;
                 }
+                return true;
             }
-            return false;
+            return true;
         }
         catch (Throwable t) {
             Log.i(TAG, "finishOrchardTask err:");
@@ -802,9 +792,8 @@ public class AntOrchard extends ModelTask {
             // 待完成任务
             if ("TO_DO_TASK".equals(status)) {
                 JSONArray tasks = currentInfo.getJSONArray("taskList");
-                if (handleTaskList(tasks)) {
-                    querySubplotsActivity("CAMP_TAKEOVER"); // 重新查询状态
-                }
+                handleTaskList(tasks);
+                querySubplotsActivity("CAMP_TAKEOVER"); // 重新查询状态
             }
         }
         catch (Throwable t) {
