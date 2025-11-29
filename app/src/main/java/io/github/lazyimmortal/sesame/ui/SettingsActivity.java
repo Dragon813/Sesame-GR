@@ -69,6 +69,7 @@ public class SettingsActivity extends BaseActivity {
         MarathonIdMap.load();
         NewAncientTreeIdMap.load();
         BeachIdMap.load();
+        PlantSceneIdMap.load();
         ForestHuntIdMap.load();
         WalkPathIdMap.load();
         ConfigV2.load(userId);

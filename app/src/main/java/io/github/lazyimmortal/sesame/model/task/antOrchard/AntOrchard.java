@@ -1,129 +1,333 @@
 package io.github.lazyimmortal.sesame.model.task.antOrchard;
 
+import io.github.lazyimmortal.sesame.entity.AlipayPlantScene;
+import io.github.lazyimmortal.sesame.entity.AlipayUser;
+import io.github.lazyimmortal.sesame.data.ModelFields;
+import io.github.lazyimmortal.sesame.data.ModelGroup;
+import io.github.lazyimmortal.sesame.data.task.ModelTask;
+import io.github.lazyimmortal.sesame.hook.Toast;
+import io.github.lazyimmortal.sesame.model.base.TaskCommon;
+import io.github.lazyimmortal.sesame.data.modelFieldExt.BooleanModelField;
+import io.github.lazyimmortal.sesame.data.modelFieldExt.ChoiceModelField;
+import io.github.lazyimmortal.sesame.data.modelFieldExt.IntegerModelField;
+import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectAndCountModelField;
+import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectModelField;
+import io.github.lazyimmortal.sesame.util.Log;
+import io.github.lazyimmortal.sesame.util.MessageUtil;
+import io.github.lazyimmortal.sesame.util.Status;
+import io.github.lazyimmortal.sesame.util.TimeUtil;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import io.github.lazyimmortal.sesame.data.ModelFields;
-import io.github.lazyimmortal.sesame.data.ModelGroup;
-import io.github.lazyimmortal.sesame.data.modelFieldExt.BooleanModelField;
-import io.github.lazyimmortal.sesame.data.modelFieldExt.IntegerModelField;
-import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectModelField;
-import io.github.lazyimmortal.sesame.data.task.ModelTask;
-import io.github.lazyimmortal.sesame.entity.AlipayUser;
-import io.github.lazyimmortal.sesame.model.base.TaskCommon;
-import io.github.lazyimmortal.sesame.model.task.antFarm.AntFarm.TaskStatus;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 import io.github.lazyimmortal.sesame.util.*;
+import io.github.lazyimmortal.sesame.util.idMap.BeachIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.PlantSceneIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
 import java.util.*;
 
 public class AntOrchard extends ModelTask {
-    private static final String TAG = AntOrchard.class.getSimpleName();
-
-    private String userId;
-    private String treeLevel;
-
+    private static final String TAG = "AntOrchard";
+    private static final String NAME = "农场";
+    private static final ModelGroup GROUP = ModelGroup.ORCHARD;
     private String[] wuaList;
-
-    private Integer executeIntervalInt;
-
+    
+    // 模型字段定义
     private IntegerModelField executeInterval;
     private BooleanModelField orchardListTask;
-    private IntegerModelField orchardSpreadManureCount;
+    private BooleanModelField orchardSpreadManure;
+    private SelectAndCountModelField orchardSpreadManureSceneList;
+    private ChoiceModelField driveAnimalType;
+    private SelectModelField driveAnimalList;
     private BooleanModelField batchHireAnimal;
-    private SelectModelField dontHireList;
-    private SelectModelField dontWeedingList;
+    private SelectModelField doNotHireList;
+    private SelectModelField doNotWeedingList;
     private BooleanModelField assistFriend;
     private SelectModelField assistFriendList;
-
+    private static int fertilizerProgress = 0;
+    private static final ArrayList<String> enableSceneList = new ArrayList<>();
+    
+    static {
+    
+    }
+    
     @Override
     public String getName() {
-        return "农场";
+        return NAME;
     }
-
+    
     @Override
     public ModelGroup getGroup() {
-        return ModelGroup.ORCHARD;
+        return GROUP;
     }
-
+    
     @Override
     public ModelFields getFields() {
         ModelFields modelFields = new ModelFields();
-        modelFields.addField(executeInterval = new IntegerModelField("executeInterval", "执行间隔(毫秒)", 500));
+        modelFields.addField(executeInterval = new IntegerModelField("executeInterval", "执行间隔(毫秒)", 500, 500, null));
         modelFields.addField(orchardListTask = new BooleanModelField("orchardListTask", "农场任务", false));
-        modelFields.addField(orchardSpreadManureCount = new IntegerModelField("orchardSpreadManureCount", "农场每日施肥次数", 0));
+        modelFields.addField(orchardSpreadManure = new BooleanModelField("orchardSpreadManure", "农场施肥 | 开启", false));
+        modelFields.addField(orchardSpreadManureSceneList = new SelectAndCountModelField("orchardSpreadManureSceneList", "农场施肥 | 场景列表", new LinkedHashMap<>(), AlipayPlantScene::getList, "请填写每日施肥次数"));
+        modelFields.addField(driveAnimalType = new ChoiceModelField("driveAnimalType", "驱赶小鸡 | 动作", 0, DriveAnimalType.getNickNames()));
+        modelFields.addField(driveAnimalList = new SelectModelField("driveAnimalList", "驱赶小鸡 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
+        modelFields.addField(batchHireAnimal = new BooleanModelField("batchHireAnimal", "捉鸡除草 | 开启", false));
+        modelFields.addField(doNotHireList = new SelectModelField("doNotHireList", "捉鸡除草 | 不捉鸡列表", new LinkedHashSet<>(), AlipayUser::getList));
+        modelFields.addField(doNotWeedingList = new SelectModelField("doNotWeedingList", "捉鸡除草 | 不除草列表", new LinkedHashSet<>(), AlipayUser::getList));
         modelFields.addField(assistFriend = new BooleanModelField("assistFriend", "分享助力 | 开启", false));
         modelFields.addField(assistFriendList = new SelectModelField("assistFriendList", "分享助力 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
-        modelFields.addField(batchHireAnimal = new BooleanModelField("batchHireAnimal", "一键捉鸡除草", false));
-        modelFields.addField(dontHireList = new SelectModelField("dontHireList", "除草 | 不雇佣好友列表", new LinkedHashSet<>(), AlipayUser::getList));
-        modelFields.addField(dontWeedingList = new SelectModelField("dontWeedingList", "除草 | 不除草好友列表", new LinkedHashSet<>(), AlipayUser::getList));
         return modelFields;
     }
-
+    
     @Override
     public Boolean check() {
         if (TaskCommon.IS_ENERGY_TIME) {
-            Log.farm("任务暂停⏸️芭芭农场:当前为仅收能量时间");
+            Log.farm("任务暂停⏸️芭芭农场:当前为只收能量时间");
             return false;
         }
         return true;
     }
-
+    
     @Override
     public void run() {
         try {
-            executeIntervalInt = Math.max(executeInterval.getValue(), 500);
-            String s = AntOrchardRpcCall.orchardIndex();
-            JSONObject jo = new JSONObject(s);
-            if ("100".equals(jo.getString("resultCode"))) {
-                if (jo.optBoolean("userOpenOrchard")) {
-                    JSONObject taobaoData = new JSONObject(jo.getString("taobaoData")); treeLevel = Integer.toString(taobaoData.getJSONObject("gameInfo").getJSONObject("plantInfo")
-                            .getJSONObject("seedStage").optInt("stageLevel",0));
-                    JSONObject joo = new JSONObject(AntOrchardRpcCall.mowGrassInfo());
-                    if ("100".equals(jo.getString("resultCode"))) {
-                        userId = joo.getString("userId");
-                        if (jo.has("lotteryPlusInfo"))
-                            drawLotteryPlus(jo.getJSONObject("lotteryPlusInfo"));
-                        extraInfoGet();
-                        if (batchHireAnimal.getValue()) {
-                            if (!joo.optBoolean("hireCountOnceLimit", true)
-                                    && !joo.optBoolean("hireCountOneDayLimit", true))
-                                batchHireAnimalRecommend();
-                        }
-                        if (orchardListTask.getValue()) {
-                            orchardListTask();
-                        }
-                        Integer orchardSpreadManureCountValue = orchardSpreadManureCount.getValue();
-                        if (orchardSpreadManureCountValue > 0 && !Status.hasFlagToday("orchard::spreadManureLimit"))
-                            orchardSpreadManure();
-
-                        if (orchardSpreadManureCountValue >= 3
-                                && orchardSpreadManureCountValue < 10) {
-                            querySubplotsActivity(3);
-                        } else if (orchardSpreadManureCountValue >= 10) {
-                            querySubplotsActivity(10);
-                        }
-                        // 助力
-                        if (assistFriend.getValue()) {
-                            orchardAssistFriend();
-                        }
-                    } else {
-                        Log.record(jo.getString("resultDesc"));
-                        Log.i(jo.toString());
-                    }
-                } else {
-                    getEnableField().setValue(false);
-                    Log.record("请先开启芭芭农场！");
-                }
-            } else {
-                Log.i(TAG, jo.getString("resultDesc"));
+            super.startTask();
+            if (!checkOrchardOpen()) {
+                return;
             }
-        } catch (Throwable t) {
+            
+            // 额外信息获取（每日肥料包）
+            extraInfoGet();
+            
+            // 执行农场任务
+            if (orchardListTask.getValue()) {
+                orchardListTask();
+            }
+            
+            // 执行施肥逻辑
+            if (orchardSpreadManure.getValue()) {
+                orchardSpreadManure();
+            }
+            
+            // 好友助力
+            if (assistFriend.getValue()) {
+                orchardAssistFriend();
+            }
+            
+        }
+        
+        catch (Throwable t) {
             Log.i(TAG, "start.run err:");
             Log.printStackTrace(TAG, t);
         }
     }
-
+    
+    /**
+     * 检查农场是否已开启
+     */
+    private boolean checkOrchardOpen() {
+        try {
+            JSONObject jo = new JSONObject(AntOrchardRpcCall.orchardIndex());
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return false;
+            }
+            
+            if (!jo.optBoolean("userOpenOrchard")) {
+                getEnableField().setValue(false);
+                Log.record("请先开启芭芭农场！");
+                return false;
+            }
+            
+            // 处理七日礼包
+            if (jo.has("lotteryPlusInfo")) {
+                drawLotteryPlus(jo.getJSONObject("lotteryPlusInfo"));
+            }
+            
+            //获取场景列表
+            initPlantScene(jo);
+            
+            // 处理可用场景列表
+            handleEnableScenes(jo);
+            
+            // 处理淘宝数据（果树状态）
+            handleTaobaoData(jo.getString("taobaoData"));
+            
+            return true;
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "orchardIndex err:");
+            Log.printStackTrace(TAG, t);
+            return false;
+        }
+    }
+    /**
+     * 处理可用场景列表
+     */
+    
+    public static void initPlantScene(JSONObject jo) {
+        try {
+            JSONArray sceneArray = jo.getJSONArray("enableSwitchSceneList");
+            if (sceneArray == null) {
+                return;
+            }
+            PlantSceneIdMap.load();
+            for (int i = 0; i < sceneArray.length(); i++) {
+                String scene = sceneArray.getString(i);
+                PlantSceneIdMap.add(scene, scene);
+            }
+            PlantSceneIdMap.save();
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "initPlantScene err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    private void handleEnableScenes(JSONObject jo) {
+        try {
+            
+            JSONArray sceneArray = jo.getJSONArray("enableSwitchSceneList");
+            enableSceneList.clear();
+            for (int i = 0; i < sceneArray.length(); i++) {
+                String scene = sceneArray.getString(i);
+                enableSceneList.add(scene);
+                
+                // 主场景处理
+                if ("main".equals(scene)) {
+                    if (jo.getString("currentPlantScene").equals(scene) || switchPlantScene(PlantScene.main)) {
+                        querySubplotsActivity("WISH");
+                        querySubplotsActivity("CAMP_TAKEOVER");
+                    }
+                }
+                
+                // 余额宝场景处理
+                if ("yeb".equals(scene)) {
+                    JSONObject yebInfo = jo.getJSONObject("yebSceneActivityInfo");
+                    if ("NOT_PLANTED".equals(yebInfo.getString("yebSceneStatus"))) {
+                        enableSceneList.remove(scene);
+                    }
+                    else if (yebInfo.optBoolean("revenueNotReceived")) {
+                        queryYebRevenueDetail();
+                    }
+                }
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "handleEnableScenes err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    /**
+     * 处理淘宝数据（果树生长状态）
+     */
+    private void handleTaobaoData(String taobaoData) {
+        try {
+            JSONObject jo = new JSONObject(taobaoData);
+            JSONObject plantInfo = jo.getJSONObject("gameInfo").getJSONObject("plantInfo");
+            JSONObject seedStage = plantInfo.getJSONObject("seedStage");
+            
+            // 检查是否可兑换
+            if (plantInfo.getBoolean("canExchange")) {
+                Log.farm("农场果树似乎可以兑换了！");
+                Toast.show("芭芭农场果树似乎可以兑换了！");
+            }
+            // 更新施肥进度
+            fertilizerProgress = seedStage.getInt("totalValue");
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "handleTaoBaoData err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    /**
+     * 农场施肥逻辑
+     */
+    private void orchardSpreadManure() {
+        try {
+            while (true) {
+                boolean hasSpread = false;
+                // 遍历可用场景进行施肥
+                for (PlantScene scene : PlantScene.getEntries()) {
+                    if (enableSceneList.contains(scene.name()) && orchardSpreadManureSceneList.contains(scene.name())) {
+                        // 切换场景
+                        if (!switchPlantScene(scene)) {
+                            continue;
+                        }
+                        // 检查是否可施肥
+                        if (!canSpreadManure(scene)) {
+                            continue;
+                        }
+                        // 执行施肥
+                        if (doSpreadManure(scene)) {
+                            hasSpread = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // 查询施肥活动奖励
+                querySpreadManureActivity();
+                
+                // 等待间隔时间
+                int interval = executeInterval.getValue() != null ? executeInterval.getValue() : 500;
+                TimeUtil.sleep(interval);
+                
+                if (!hasSpread) {
+                    break;
+                }
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "orchardSpreadManure err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    /**
+     * 执行施肥操作
+     */
+    private boolean doSpreadManure(PlantScene scene) {
+        try {
+            String sceneName = scene.name();
+            String result = AntOrchardRpcCall.orchardSpreadManure(getWua());
+            JSONObject jo = new JSONObject(result);
+            
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return false;
+            }
+            
+            JSONObject taobaoData = new JSONObject(jo.getString("taobaoData"));
+            int cost = taobaoData.getInt("currentCost");
+            Log.farm("芭芭农场🌳" + scene.nickname() + "施肥#消耗[" + cost + "g肥料]");
+            
+            // 检查施肥进度
+            if (taobaoData.has("currentStage")) {
+                JSONObject stage = taobaoData.getJSONObject("currentStage");
+                int newProgress = stage.optInt("totalValue", fertilizerProgress);
+                if (newProgress - fertilizerProgress <= 1) {
+                    Log.record("施肥只加0.01%进度今日停止施肥！");
+                    Status.flagToday("spreadManureLimit:" + sceneName);
+                }
+                fertilizerProgress = newProgress;
+            }
+            
+            return true;
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "doSpreadManure err:");
+            Log.printStackTrace(TAG, t);
+            return false;
+        }
+    }
+    
+    
     private String getWua() {
         if (wuaList == null) {
             try {
@@ -138,363 +342,556 @@ public class AntOrchard extends ModelTask {
         }
         return "null";
     }
-
-    private boolean canSpreadManureContinue(int stageBefore, int stageAfter) {
-        if (stageAfter - stageBefore > 1) {
-            return true;
+    
+    /**
+     * 检查是否可以施肥
+     */
+    private boolean canSpreadManure(PlantScene scene) {
+        // 检查是否达到今日限制
+        if (Status.hasFlagToday("spreadManureLimit:" + scene.name())) {
+            return false;
         }
-        Log.record("施肥只加0.01%进度今日停止施肥！");
-        return false;
-    }
-
-    private void orchardSpreadManure() {
+        
+        Integer limit = orchardSpreadManureSceneList.get(scene.name());
+        if (limit == null) {
+            return false;
+        }
+        
         try {
-            do {
-                try {
-                    JSONObject jo = new JSONObject(AntOrchardRpcCall.orchardIndex());
-                    if (!"100".equals(jo.getString("resultCode"))) {
-                        Log.i(TAG, jo.getString("resultDesc"));
-                        return;
+            switch (scene) {
+                case main:
+                    // 主场景施肥检查
+                    JSONObject mainAccount = new JSONObject(AntOrchardRpcCall.orchardSyncIndex());
+                    if (!MessageUtil.checkResultCode(TAG, mainAccount)) {
+                        return false;
                     }
-                    if (jo.has("spreadManureActivity")) {
-                        JSONObject spreadManureStage = jo.getJSONObject("spreadManureActivity")
-                                .getJSONObject("spreadManureStage");
-                        if ("FINISHED".equals(spreadManureStage.getString("status"))) {
-                            String sceneCode = spreadManureStage.getString("sceneCode");
-                            String taskType = spreadManureStage.getString("taskType");
-                            int awardCount = spreadManureStage.getInt("awardCount");
-                            JSONObject joo = new JSONObject(AntOrchardRpcCall.receiveTaskAward(sceneCode, taskType));
-                            if (joo.optBoolean("success")) {
-                                Log.farm("丰收礼包🎁[肥料*" + awardCount + "]");
-                            } else {
-                                Log.record(joo.getString("desc"));
-                                Log.i(joo.toString());
-                            }
-                        }
-                    }
-                    String taobaoData = jo.getString("taobaoData");
-                    jo = new JSONObject(taobaoData);
-                    JSONObject plantInfo = jo.getJSONObject("gameInfo").getJSONObject("plantInfo");
-                    boolean canExchange = plantInfo.getBoolean("canExchange");
-                    if (canExchange) {
-                        Log.farm("农场果树似乎可以兑换了！");
-                        return;
-                    }
-                    JSONObject seedStage = plantInfo.getJSONObject("seedStage");
-                    treeLevel = Integer.toString(seedStage.optInt("stageLevel",0));
-                    JSONObject accountInfo = jo.getJSONObject("gameInfo").getJSONObject("accountInfo");
+                    JSONObject accountInfo = mainAccount.getJSONObject("farmMainAccountInfo");
                     int happyPoint = Integer.parseInt(accountInfo.getString("happyPoint"));
                     int wateringCost = accountInfo.getInt("wateringCost");
-                    int wateringLeftTimes = accountInfo.getInt("wateringLeftTimes");
-                    if (happyPoint > wateringCost && wateringLeftTimes > 0
-                            && (200 - wateringLeftTimes < orchardSpreadManureCount.getValue())) {
-                        jo = new JSONObject(AntOrchardRpcCall.orchardSpreadManure(getWua()));
-                        if (!"100".equals(jo.getString("resultCode"))) {
-                            Log.record(jo.getString("resultDesc"));
-                            Log.i(jo.toString());
-                            return;
-                        }
-                        taobaoData = jo.getString("taobaoData");
-                        jo = new JSONObject(taobaoData);
-                        String stageText = jo.getJSONObject("currentStage").getString("stageText");
-                        Log.farm("农场施肥💩[" + stageText + "]");
-                        if (!canSpreadManureContinue(seedStage.getInt("totalValue"), jo.getJSONObject("currentStage").getInt("totalValue"))) {
-                            Status.flagToday("orchard::spreadManureLimit");
-                            return;
-                        }
-                        continue;
+                    int leftTimes = accountInfo.getInt("wateringLeftTimes");
+                    
+                    return happyPoint >= wateringCost && (200 - leftTimes) < limit;
+                
+                case yeb:
+                    // 余额宝场景施肥检查
+                    JSONObject yebProgress = new JSONObject(AntOrchardRpcCall.orchardIndex());
+                    if (!MessageUtil.checkResultCode(TAG, yebProgress) || !yebProgress.has("yebScenePlantInfo")) {
+                        return false;
                     }
-                } finally {
-                    TimeUtil.sleep(executeIntervalInt);
-                }
-                break;
-            } while (true);
-        } catch (Throwable t) {
-            Log.i(TAG, "orchardSpreadManure err:");
-            Log.printStackTrace(TAG, t);
-        }
-    }
-
-    private void extraInfoGet() {
-        try {
-            String s = AntOrchardRpcCall.extraInfoGet();
-            JSONObject jo = new JSONObject(s);
-            if ("100".equals(jo.getString("resultCode"))) {
-                JSONObject fertilizerPacket = jo.getJSONObject("data").getJSONObject("extraData")
-                        .getJSONObject("fertilizerPacket");
-                if (!"todayFertilizerWaitTake".equals(fertilizerPacket.getString("status")))
-                    return;
-                int todayFertilizerNum = fertilizerPacket.getInt("todayFertilizerNum");
-                jo = new JSONObject(AntOrchardRpcCall.extraInfoSet());
-                if ("100".equals(jo.getString("resultCode"))) {
-                    Log.farm("每日肥料💩[" + todayFertilizerNum + "g]");
-                } else {
-                    Log.i(jo.getString("resultDesc"), jo.toString());
-                }
-            } else {
-                Log.i(jo.getString("resultDesc"), jo.toString());
+                    JSONObject progressInfo = yebProgress.getJSONObject("yebScenePlantInfo").getJSONObject("plantProgressInfo");
+                    int currentProgress = progressInfo.getInt("spreadProgress");
+                    int dailyLimit = progressInfo.getInt("dailySpreadLimit");
+                    
+                    return currentProgress < limit && limit < dailyLimit;
+                
+                default:
+                    return false;
             }
-        } catch (Throwable t) {
-            Log.i(TAG, "extraInfoGet err:");
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "canSpreadManure err:");
             Log.printStackTrace(TAG, t);
+            return false;
         }
     }
-
-    private void drawLotteryPlus(JSONObject lotteryPlusInfo) {
+    
+    /**
+     * 切换种植场景
+     */
+    private boolean switchPlantScene(PlantScene scene) {
         try {
-            if (!lotteryPlusInfo.has("userSevenDaysGiftsItem"))
-                return;
-            String itemId = lotteryPlusInfo.getString("itemId");
-            JSONObject jo = lotteryPlusInfo.getJSONObject("userSevenDaysGiftsItem");
-            JSONArray ja = jo.getJSONArray("userEverydayGiftItems");
-            for (int i = 0; i < ja.length(); i++) {
-                jo = ja.getJSONObject(i);
-                if (jo.getString("itemId").equals(itemId)) {
-                    if (!jo.getBoolean("received")) {
-                        jo = new JSONObject(AntOrchardRpcCall.drawLottery());
-                        if ("100".equals(jo.getString("resultCode"))) {
-                            JSONArray userEverydayGiftItems = jo.getJSONObject("lotteryPlusInfo")
-                                    .getJSONObject("userSevenDaysGiftsItem").getJSONArray("userEverydayGiftItems");
-                            for (int j = 0; j < userEverydayGiftItems.length(); j++) {
-                                jo = userEverydayGiftItems.getJSONObject(j);
-                                if (jo.getString("itemId").equals(itemId)) {
-                                    int awardCount = jo.optInt("awardCount", 1);
-                                    Log.farm("七日礼包🎁[获得肥料]#" + awardCount + "g");
-                                    break;
-                                }
-                            }
-                        } else {
-                            Log.i(jo.getString("resultDesc"), jo.toString());
-                        }
-                    } else {
-                        Log.record("七日礼包已领取");
+            String sceneName = scene.name();
+            String result = AntOrchardRpcCall.switchPlantScene(sceneName);
+            return MessageUtil.checkResultCode(TAG, new JSONObject(result));
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "switchPlantScene err:");
+            Log.printStackTrace(TAG, t);
+            return false;
+        }
+    }
+    
+    /**
+     * 查询施肥活动奖励
+     */
+    private void querySpreadManureActivity() {
+        try {
+            JSONObject jo = new JSONObject(AntOrchardRpcCall.orchardIndex());
+            if (MessageUtil.checkResultCode(TAG, jo) && jo.has("spreadManureActivity")) {
+                JSONObject activity = jo.getJSONObject("spreadManureActivity");
+                JSONObject stage = activity.getJSONObject("spreadManureStage");
+                if ("FINISHED".equals(stage.getString("status"))) {
+                    String result = AntOrchardRpcCall.receiveTaskAward(stage.getString("sceneCode"), stage.getString("taskType"));
+                    JSONObject awardJo = new JSONObject(result);
+                    if (MessageUtil.checkResultCode(TAG, awardJo)) {
+                        int awardCount = awardJo.getInt("incAwardCount");
+                        Log.farm("芭芭农场🎁丰收礼包#获得[" + awardCount + "g肥料]");
                     }
-                    break;
                 }
             }
-        } catch (Throwable t) {
-            Log.i(TAG, "drawLotteryPlus err:");
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "querySpreadManureActivity err:");
             Log.printStackTrace(TAG, t);
         }
     }
-
-    private static void orchardListTask() {
+    
+    /**
+     * 农场任务列表处理
+     */
+    private void orchardListTask() {
         try {
-            JSONObject jo = new JSONObject(AntOrchardRpcCall.orchardListTask());
+            String result = AntOrchardRpcCall.orchardListTask();
+            JSONObject jo = new JSONObject(result);
             if (!MessageUtil.checkResultCode(TAG, jo)) {
                 return;
             }
+            
+            // 处理签到任务
             if (jo.has("signTaskInfo")) {
-                orchardSign(jo.getJSONObject("signTaskInfo"));
+                handleSignTask(jo.getJSONObject("signTaskInfo"));
             }
-            JSONArray ja = jo.getJSONArray("taskList");
-            for (int i = 0; i < ja.length(); i++) {
-                jo = ja.getJSONObject(i);
-                String taskStatus = jo.getString("taskStatus");
-                if (TaskStatus.RECEIVED.name().equals(taskStatus)) {
-                    continue;
-                }
-                if (TaskStatus.TODO.name().equals(taskStatus)) {
-                    if (!finishOrchardTask(jo)) {
-                        continue;
-                    }
-                    TimeUtil.sleep(500);
-                }
-                String taskId = jo.getString("taskId");
-                String taskPlantType = jo.getString("taskPlantType");
-                String title = jo.getJSONObject("taskDisplayConfig").getString("title");
-                triggerTbTask(taskId, taskPlantType, title);
+            
+            // 处理任务列表
+            JSONArray taskArray = jo.getJSONArray("taskList");
+            while (handleTaskList(taskArray)) {
+                // 循环处理直到没有可完成的任务
+                TimeUtil.sleep(500);
             }
-        } catch (Throwable t) {
+        }
+        catch (Throwable t) {
             Log.i(TAG, "orchardListTask err:");
             Log.printStackTrace(TAG, t);
         }
     }
-
-    private static void orchardSign(JSONObject signTaskInfo) {
-        if (Status.hasFlagToday("orchard::sign")) {
+    
+    /**
+     * 处理签到任务
+     */
+    private void handleSignTask(JSONObject signInfo) {
+        if (Status.hasFlagToday("orchardSign")) {
             return;
         }
+        
         try {
-            boolean signed = signTaskInfo.getJSONObject("currentSignItem").getBoolean("signed");
-            if (!signed) {
-                JSONObject jo = new JSONObject(AntOrchardRpcCall.orchardSign());
-                if (MessageUtil.checkResultCode(TAG, jo)) {
-                    jo = jo.getJSONObject("signTaskInfo").getJSONObject("currentSignItem");
-                    int currentContinuousCount = jo.getInt("currentContinuousCount");
-                    int awardCount = jo.getInt("awardCount");
-                    Log.farm("农场任务📅签到[坚持" + currentContinuousCount + "天]#获得[" + awardCount + "g肥料]");
-                    signed = true;
-                }
-            } else {
+            JSONObject currentSign = signInfo.getJSONObject("currentSignItem");
+            if (currentSign.getBoolean("signed")) {
                 Log.record("农场今日已签到");
+                Status.flagToday("orchardSign");
+                return;
             }
-            if (signed) {
-                Status.flagToday("orchard::sign");
+            
+            // 执行签到
+            String result = AntOrchardRpcCall.orchardSign();
+            JSONObject signJo = new JSONObject(result);
+            if (MessageUtil.checkResultCode(TAG, signJo)) {
+                JSONObject newSignInfo = signJo.getJSONObject("signTaskInfo").getJSONObject("currentSignItem");
+                int continuousDays = newSignInfo.getInt("currentContinuousCount");
+                int award = newSignInfo.getInt("awardCount");
+                Log.farm("农场任务📅七天签到[第" + continuousDays + "天]#获得[" + award + "g肥料]");
+                Status.flagToday("orchardSign");
             }
-        } catch (Throwable t) {
-            Log.i(TAG, "orchardSign err:");
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "handleSignTask err:");
             Log.printStackTrace(TAG, t);
         }
     }
-
-    private static Boolean finishOrchardTask(JSONObject task) {
+    
+    /**
+     * 处理任务列表
+     */
+    private boolean handleTaskList(JSONArray taskArray) {
+        boolean hasFinished = false;
+        try {
+            for (int i = 0; i < taskArray.length(); i++) {
+                JSONObject task = taskArray.getJSONObject(i);
+                String taskStatus = task.getString("taskStatus");
+                
+                switch (TaskStatus.valueOf(taskStatus)) {
+                    case TODO:
+                        if (finishOrchardTask(task)) {
+                            hasFinished = true;
+                            TimeUtil.sleep(500);
+                        }
+                        break;
+                    case FINISHED:
+                        String taskId = task.getString("taskId");
+                        String taskType = task.getString("taskPlantType");
+                        String title = task.getJSONObject("taskDisplayConfig").getString("title");
+                        receiveTaskReward(taskId, taskType, title);
+                        hasFinished = true;
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "handleTaskList err:");
+            Log.printStackTrace(TAG, t);
+        }
+        return hasFinished;
+    }
+    
+    /**
+     * 完成农场任务
+     */
+    private boolean finishOrchardTask(JSONObject task) {
         try {
             String title = task.getJSONObject("taskDisplayConfig").getString("title");
             String actionType = task.getString("actionType");
-            if (Objects.equals("TRIGGER", actionType)
-                    || Objects.equals("ADD_HOME", actionType)
-                    || Objects.equals("PUSH_SUBSCRIBE", actionType)) {
-                String taskId = task.getString("taskId");
+            
+            // 处理触发型任务
+            if ("TRIGGER".equals(actionType) || "ADD_HOME".equals(actionType) || "PUSH_SUBSCRIBE".equals(actionType)) {
                 String sceneCode = task.getString("sceneCode");
-                JSONObject jo = new JSONObject(AntOrchardRpcCall.finishTask(sceneCode, taskId));
-                if (MessageUtil.checkResultCode(TAG, jo)) {
-                    Log.farm("农场任务🧾完成[" + title + "]");
+                String taskId = task.getString("taskId");
+                String result = AntOrchardRpcCall.finishTask(sceneCode, taskId);
+                if (MessageUtil.checkResultCode(TAG, new JSONObject(result))) {
+                    Log.farm("农场任务🧾完成任务[" + title + "]");
                     return true;
                 }
             }
-        } catch (Throwable t) {
+            return false;
+        }
+        catch (Throwable t) {
             Log.i(TAG, "finishOrchardTask err:");
             Log.printStackTrace(TAG, t);
+            return false;
         }
-        return false;
     }
-
-    private static void triggerTbTask(String taskId, String taskPlantType, String title) {
+    
+    /**
+     * 领取任务奖励
+     */
+    private void receiveTaskReward(String taskId, String taskType, String title) {
         try {
-            JSONObject jo = new JSONObject(AntOrchardRpcCall.triggerTbTask(taskId, taskPlantType));
+            String result = AntOrchardRpcCall.triggerTbTask(taskId, taskType);
+            JSONObject jo = new JSONObject(result);
             if (MessageUtil.checkResultCode(TAG, jo)) {
-                int incAwardCount = jo.getInt("incAwardCount");
-                Log.farm("农场任务🎖️领取[" + title + "]奖励#获得[" + incAwardCount + "g肥料]");
+                int award = jo.getInt("incAwardCount");
+                Log.farm("农场任务🎖️领取奖励[" + title + "]#获得[" + award + "g肥料]");
             }
-        } catch (Throwable t) {
-            Log.i(TAG, "triggerTbTask err:");
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "receiveTaskReward err:");
             Log.printStackTrace(TAG, t);
         }
     }
-
-    private void querySubplotsActivity(int taskRequire) {
-        try {
-            if(treeLevel.equals("0")){return;}
-            String s = AntOrchardRpcCall.querySubplotsActivity(treeLevel);
-            JSONObject jo = new JSONObject(s);
-            if ("100".equals(jo.getString("resultCode"))) {
-                JSONArray subplotsActivityList = jo.getJSONArray("subplotsActivityList");
-                for (int i = 0; i < subplotsActivityList.length(); i++) {
-                    jo = subplotsActivityList.getJSONObject(i);
-                    if (!"WISH".equals(jo.getString("activityType")))
-                        continue;
-                    String activityId = jo.getString("activityId");
-                    if ("NOT_STARTED".equals(jo.getString("status"))) {
-                        String extend = jo.getString("extend");
-                        jo = new JSONObject(extend);
-                        JSONArray wishActivityOptionList = jo.getJSONArray("wishActivityOptionList");
-                        String optionKey = null;
-                        for (int j = 0; j < wishActivityOptionList.length(); j++) {
-                            jo = wishActivityOptionList.getJSONObject(j);
-                            if (taskRequire == jo.getInt("taskRequire")) {
-                                optionKey = jo.getString("optionKey");
-                                break;
-                            }
-                        }
-                        if (optionKey != null) {
-                            jo = new JSONObject(
-                                    AntOrchardRpcCall.triggerSubplotsActivity(activityId, "WISH", optionKey));
-                            if ("100".equals(jo.getString("resultCode"))) {
-                                Log.farm("农场许愿✨[每日施肥" + taskRequire + "次]");
-                            } else {
-                                Log.record(jo.getString("resultDesc"));
-                                Log.i(jo.toString());
-                            }
-                        }
-                    } else if ("FINISHED".equals(jo.getString("status"))) {
-                        jo = new JSONObject(AntOrchardRpcCall.receiveOrchardRights(activityId, "WISH"));
-                        if ("100".equals(jo.getString("resultCode"))) {
-                            Log.farm("许愿奖励✨[肥料" + jo.getInt("amount") + "g]");
-                            querySubplotsActivity(taskRequire);
-                            return;
-                        } else {
-                            Log.record(jo.getString("resultDesc"));
-                            Log.i(jo.toString());
-                        }
-                    }
-                }
-            } else {
-                Log.record(jo.getString("resultDesc"));
-                Log.i(s);
-            }
-        } catch (Throwable t) {
-            Log.i(TAG, "triggerTbTask err:");
-            Log.printStackTrace(TAG, t);
-        }
-    }
-
-    private void batchHireAnimalRecommend() {
-        try {
-            JSONObject jo = new JSONObject(AntOrchardRpcCall.batchHireAnimalRecommend(UserIdMap.getCurrentUid()));
-            if ("100".equals(jo.getString("resultCode"))) {
-                JSONArray recommendGroupList = jo.optJSONArray("recommendGroupList");
-                if (recommendGroupList != null && recommendGroupList.length() > 0) {
-                    List<String> GroupList = new ArrayList<>();
-                    for (int i = 0; i < recommendGroupList.length(); i++) {
-                        jo = recommendGroupList.getJSONObject(i);
-                        String animalUserId = jo.getString("animalUserId");
-                        if (dontHireList.getValue().contains(animalUserId)) {
-                            continue;
-                        }
-                        int earnManureCount = jo.getInt("earnManureCount");
-                        String groupId = jo.getString("groupId");
-                        String orchardUserId = jo.getString("orchardUserId");
-                        if (dontWeedingList.getValue().contains(orchardUserId)) {
-                            continue;
-                        }
-                        GroupList.add("{\"animalUserId\":\"" + animalUserId + "\",\"earnManureCount\":"
-                                + earnManureCount + ",\"groupId\":\"" + groupId + "\",\"orchardUserId\":\""
-                                + orchardUserId + "\"}");
-                    }
-                    if (!GroupList.isEmpty()) {
-                        jo = new JSONObject(AntOrchardRpcCall.batchHireAnimal(GroupList));
-                        if ("100".equals(jo.getString("resultCode"))) {
-                            Log.farm("一键捉鸡🐣[除草]");
-                        }
-                    }
-                }
-            } else {
-                Log.record(jo.getString("resultDesc"));
-                Log.i(jo.toString());
-            }
-        } catch (Throwable t) {
-            Log.i(TAG, "batchHireAnimalRecommend err:");
-            Log.printStackTrace(TAG, t);
-        }
-    }
-
-    // 助力
-    private void orchardAssistFriend() {
-        if (Status.hasFlagToday("orchard::shareP2PLimit")) {
+    
+    /**
+     * 领取七日礼包
+     */
+    private void drawLotteryPlus(JSONObject lotteryInfo) {
+        if (Status.hasFlagToday("orchardLotteryPlus")) {
             return;
         }
+        
         try {
-            Set<String> friendSet = assistFriendList.getValue();
-            for (String friendUserId : friendSet) {
-                if (!Status.canOrchardShareP2PToday(friendUserId)) {
-                    continue;
-                }
-                JSONObject jo = new JSONObject(AntOrchardRpcCall.achieveBeShareP2P(friendUserId));
-                TimeUtil.sleep(5000);
-                if (MessageUtil.checkSuccess(TAG, jo)) {
-                    Log.farm("农场助力🎉助力[" + UserIdMap.getMaskName(friendUserId) + "]成功");
-                    Status.orchardShareP2PToday(friendUserId);
-                } else if (Objects.equals("600000027", jo.getString("code"))) {
-                    Status.flagToday("orchard::shareP2PLimit");
+            if (!lotteryInfo.has("userSevenDaysGiftsItem")) {
+                return;
+            }
+            
+            JSONObject giftItem = lotteryInfo.getJSONObject("userSevenDaysGiftsItem");
+            JSONArray dailyGifts = giftItem.getJSONArray("userEverydayGiftItems");
+            String itemId = lotteryInfo.getString("itemId");
+            
+            // 检查今日是否已领取
+            for (int i = 0; i < dailyGifts.length(); i++) {
+                JSONObject daily = dailyGifts.getJSONObject(i);
+                if (daily.getString("itemId").equals(itemId) && daily.getBoolean("received")) {
+                    Log.record("芭芭农场七日礼包当日奖励已领取");
+                    Status.flagToday("orchardLotteryPlus");
                     return;
-                } else {
-                    Status.flagToday("orchard::shareP2PLimit::" + friendUserId);
                 }
             }
-        } catch (Throwable t) {
+            
+            // 领取礼包
+            String result = AntOrchardRpcCall.drawLottery();
+            JSONObject drawJo = new JSONObject(result);
+            if (MessageUtil.checkResultCode(TAG, drawJo)) {
+                JSONArray awardArray = drawJo.getJSONObject("lotteryPlusInfo").getJSONObject("userSevenDaysGiftsItem").getJSONArray("userEverydayGiftItems");
+                
+                for (int i = 0; i < awardArray.length(); i++) {
+                    JSONObject award = awardArray.getJSONObject(i);
+                    if (award.getString("itemId").equals(itemId)) {
+                        int count = award.optInt("awardCount", 1);
+                        Log.farm("芭芭农场🎁七日礼包#获得[" + count + "g肥料]");
+                        Status.flagToday("orchardLotteryPlus");
+                        return;
+                    }
+                }
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "drawLotteryPlus err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    /**
+     * 获取额外信息（每日肥料包）
+     */
+    private void extraInfoGet() {
+        try {
+            String result = AntOrchardRpcCall.extraInfoGet();
+            JSONObject jo = new JSONObject(result);
+            if (MessageUtil.checkResultCode(TAG, jo)) {
+                JSONObject fertilizerPacket = jo.getJSONObject("data").getJSONObject("extraData").getJSONObject("fertilizerPacket");
+                
+                if ("todayFertilizerWaitTake".equals(fertilizerPacket.getString("status"))) {
+                    int fertilizerNum = fertilizerPacket.getInt("todayFertilizerNum");
+                    String takeResult = AntOrchardRpcCall.extraInfoSet();
+                    if (MessageUtil.checkResultCode(TAG, new JSONObject(takeResult))) {
+                        Log.farm("每日肥料💩[" + fertilizerNum + "g]");
+                    }
+                }
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "extraInfoGet err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    /**
+     * 好友助力
+     */
+    private void orchardAssistFriend() {
+        if (Status.hasFlagToday("orchardAssistLimit")) {
+            return;
+        }
+        
+        Set<String> friendList = assistFriendList.getValue();
+        if (friendList == null || friendList.isEmpty()) {
+            return;
+        }
+        
+        try {
+            for (String friendId : friendList) {
+                if (Status.hasFlagToday("orchardAssist:" + friendId)) {
+                    continue;
+                }
+                
+                String result = AntOrchardRpcCall.achieveBeShareP2P(friendId);
+                JSONObject jo = new JSONObject(result);
+                if (MessageUtil.checkResultCode(TAG, jo)) {
+                    Log.farm("芭芭农场🌳助力好友[" + UserIdMap.getShowName(friendId) + "]");
+                }
+                else if ("600000027".equals(jo.optString("code"))) {
+                    Status.flagToday("orchardAssistLimit");
+                    return;
+                }
+                
+                Status.flagToday("orchardAssist:" + friendId);
+                TimeUtil.sleep(5000);
+            }
+        }
+        catch (Throwable t) {
             Log.i(TAG, "orchardAssistFriend err:");
             Log.printStackTrace(TAG, t);
         }
+    }
+    
+    /**
+     * 查询子场景活动（许愿、营地接管等）
+     */
+    private void querySubplotsActivity(String activityType) {
+        try {
+            String result = AntOrchardRpcCall.querySubplotsActivity(activityType);
+            JSONObject jo = new JSONObject(result);
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            
+            JSONArray activityList = jo.getJSONArray("subplotsActivityList");
+            for (int i = 0; i < activityList.length(); i++) {
+                JSONObject activity = activityList.getJSONObject(i);
+                if (!activityType.equals(activity.getString("activityType"))) {
+                    continue;
+                }
+                
+                if ("WISH".equals(activityType)) {
+                    handleWishActivity(activity);
+                }
+                else if ("CAMP_TAKEOVER".equals(activityType)) {
+                    handleCampTakeoverActivity(activity);
+                }
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "querySubplotsActivity err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    /**
+     * 处理许愿活动
+     */
+    private void handleWishActivity(JSONObject activity) {
+        try {
+            String activityId = activity.getString("activityId");
+            String status = activity.getString("status");
+            
+            // 已完成则领取奖励
+            if ("FINISHED".equals(status)) {
+                String result = AntOrchardRpcCall.receiveOrchardRights(activityId, "WISH");
+                JSONObject jo = new JSONObject(result);
+                if (MessageUtil.checkResultCode(TAG, jo)) {
+                    int amount = jo.getInt("amount");
+                    Log.farm("农场许愿✨完成承诺#获得[" + amount + "g肥料]");
+                    querySubplotsActivity("WISH"); // 重新查询状态
+                }
+                return;
+            }
+            
+            // 未开始则许下承诺
+            if ("NOT_STARTED".equals(status)) {
+                Integer mainCount = orchardSpreadManureSceneList.get("main");
+                int targetCount = mainCount != null && mainCount >= 10 ? 10 : (mainCount != null && mainCount >= 3 ? 3 : 0);
+                
+                if (targetCount > 0) {
+                    JSONObject extend = new JSONObject(activity.getString("extend"));
+                    JSONArray options = extend.getJSONArray("wishActivityOptionList");
+                    
+                    for (int i = 0; i < options.length(); i++) {
+                        JSONObject option = options.getJSONObject(i);
+                        if (option.getInt("taskRequire") == targetCount) {
+                            String result = AntOrchardRpcCall.triggerSubplotsActivity(activityId, "WISH", option.getString("optionKey"));
+                            if (MessageUtil.checkResultCode(TAG, new JSONObject(result))) {
+                                Log.farm("农场许愿✨许下承诺[每日施肥" + targetCount + "次]");
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "handleWishActivity err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    /**
+     * 处理营地接管活动
+     */
+    private void handleCampTakeoverActivity(JSONObject activity) {
+        try {
+            JSONObject extend = new JSONObject(activity.getString("extend"));
+            JSONObject currentInfo = extend.getJSONObject("currentActivityInfo");
+            String status = currentInfo.getString("activityStatus");
+            
+            // 待选择奖励
+            if ("TO_CHOOSE_PRIZE".equals(status)) {
+                JSONArray prizes = currentInfo.getJSONArray("recommendPrizeList");
+                for (int i = 0; i < prizes.length(); i++) {
+                    JSONObject prize = prizes.getJSONObject(i);
+                    if ("FEILIAO".equals(prize.getString("prizeType"))) {
+                        String result = AntOrchardRpcCall.choosePrize(prize.getString("sendOrderId"));
+                        JSONObject jo = new JSONObject(result);
+                        if (MessageUtil.checkResultCode(TAG, jo)) {
+                            String prizeName = jo.getJSONObject("currentActivityInfo").getJSONObject("currentPrize").getString("prizeName");
+                            Log.farm("速成奖励✨接受挑战#选择[" + prizeName + "]");
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // 待完成任务
+            if ("TO_DO_TASK".equals(status)) {
+                JSONArray tasks = currentInfo.getJSONArray("taskList");
+                if (handleTaskList(tasks)) {
+                    querySubplotsActivity("CAMP_TAKEOVER"); // 重新查询状态
+                }
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "handleCampTakeoverActivity err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    /**
+     * 查询余额宝收益
+     */
+    private void queryYebRevenueDetail() {
+        try {
+            String result = AntOrchardRpcCall.yebPlantSceneRevenuePage();
+            JSONObject jo = new JSONObject(result);
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            
+            JSONArray revenueList = jo.getJSONArray("yebRevenueDetailList");
+            for (int i = 0; i < revenueList.length(); i++) {
+                JSONObject revenue = revenueList.getJSONObject(i);
+                if ("I".equals(revenue.getString("orderStatus"))) {
+                    String triggerResult = AntOrchardRpcCall.triggerYebMoneyTree();
+                    JSONObject triggerJo = new JSONObject(triggerResult);
+                    if (MessageUtil.checkResultCode(TAG, triggerJo)) {
+                        JSONObject awardInfo = triggerJo.getJSONObject("result").optJSONObject("awardInfo");
+                        if (awardInfo != null) {
+                            String amount = awardInfo.getString("totalAmount");
+                            Log.farm("芭芭农场🌳领取奖励[摇钱树]#获得[" + amount + "元余额宝收益]");
+                        }
+                    }
+                }
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "queryYebRevenueDetail err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    // 内部枚举定义
+    public enum PlantScene {
+        main("主场景"), yeb("余额宝场景");
+        
+        private final String nickname;
+        
+        PlantScene(String nickname) {
+            this.nickname = nickname;
+        }
+        
+        public String nickname() {
+            return nickname;
+        }
+        
+        public static PlantScene[] getEntries() {
+            return values();
+        }
+        
+        // 用于获取选项列表的静态方法
+        public static List<String> getList() {
+            List<String> list = new ArrayList<>();
+            for (PlantScene scene : values()) {
+                list.add(scene.name());
+            }
+            return list;
+        }
+    }
+    
+    public enum DriveAnimalType {
+        NONE(0, "不操作"), ALL(1, "驱赶所有");
+        
+        private final int code;
+        private final String nickname;
+        
+        DriveAnimalType(int code, String nickname) {
+            this.code = code;
+            this.nickname = nickname;
+        }
+        
+        public static String[] getNickNames() {
+            //return Arrays.stream(values()).map(t -> t.nickname).toArray(String[]::new);
+            return null;
+        }
+    }
+    
+    public enum TaskStatus {
+        TODO, FINISHED, RECEIVED
     }
 }

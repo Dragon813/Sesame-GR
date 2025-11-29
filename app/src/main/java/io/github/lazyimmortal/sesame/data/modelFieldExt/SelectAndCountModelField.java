@@ -100,7 +100,9 @@ public class SelectAndCountModelField extends ModelField<Map<String, Integer>> i
         return getValue().containsKey(id);
     }
 
-    public interface SelectListFunc {
+        
+        
+        public interface SelectListFunc {
         List<? extends IdAndName> getList();
     }
 }

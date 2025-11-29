@@ -105,6 +105,7 @@ public class BaseModel extends Model {
             MarathonIdMap.clear();
             NewAncientTreeIdMap.clear();
             BeachIdMap.clear();
+            PlantSceneIdMap.clear();
             ForestHuntIdMap.clear();
         } catch (Exception e) {
             Log.printStackTrace(e);
