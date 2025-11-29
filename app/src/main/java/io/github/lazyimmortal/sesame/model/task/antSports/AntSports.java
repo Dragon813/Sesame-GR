@@ -2071,7 +2071,7 @@ public class AntSports extends ModelTask {
     
     public void neverlandrun() {
         try {
-            //Log.other("悦动健康🚑️开始执行#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+            Log.record("悦动健康🚑️开始执行#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
             // 处理签到
             if (QUERY_SIGN.getValue()) {
                 processSignIn();
@@ -2096,7 +2096,7 @@ public class AntSports extends ModelTask {
                 queryMapListSwitch();
             }
             
-            //Log.other("悦动健康🚑️执行完成#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+            Log.record("悦动健康🚑️执行完成#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
         }
         catch (Exception e) {
             Log.i(TAG, "run err:");
