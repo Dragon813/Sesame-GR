@@ -262,7 +262,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(ForestHunt = new BooleanModelField("ForestHunt", "森林寻宝", false));
         modelFields.addField(ForestHuntDraw = new BooleanModelField("ForestHuntDraw", "森林寻宝抽奖", false));
         modelFields.addField(ForestHuntHelp = new BooleanModelField("ForestHuntHelp", "森林普通寻宝助力", false));
-        modelFields.addField(ACTIVITYForestHuntHelp = new BooleanModelField("ACTIVITYForestHuntHelp", "活动场景助力" + "(如果日志显示失效请关闭)", false));
+        modelFields.addField(ACTIVITYForestHuntHelp = new BooleanModelField("ACTIVITYForestHuntHelp", "森林强制助力" + "(助力任务不在列表中时使用，如果日志显示失效请关闭)", false));
         modelFields.addField(ForestHuntHelpList = new SelectModelField("ForestHuntHelpList", "点击配置寻宝助力列表" + "(填写shareId中开头的22-24位字符在\"4O7FEYDgn\"前的)", new LinkedHashSet<>(), AlipayForestHunt::getList));
         modelFields.addField(dress = new BooleanModelField("dress", "装扮保护 | 开启", false));
         modelFields.addField(dressDetailList = new TextModelField("dressDetailList", "装扮保护 | " + "装扮信息", ""));
@@ -1330,7 +1330,7 @@ public class AntForestV2 extends ModelTask {
         try {
             JSONObject jo = new JSONObject(extInfo);
             double leftEnergy = Double.parseDouble(jo.optString("leftEnergy", "0"));
-            if (leftEnergy > 3000 || (Objects.equals(jo.optString("overLimitToday", "false"), "true") && leftEnergy > 0)) {
+            if (leftEnergy > 500 || (Objects.equals(jo.optString("overLimitToday", "false"), "true") && leftEnergy > 0)) {
                 String propId = jo.getString("propId");
                 String propType = jo.getString("propType");
                 collectRobExpandEnergy(propId, propType);

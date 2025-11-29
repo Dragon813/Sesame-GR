@@ -57,6 +57,8 @@ public class ForestChouChouLe {
             presetBad.add("FOREST_NORMAL_DRAW_SHARE"); // 邀请好友任务（屏蔽）
             presetBad.add("FOREST_ACTIVITY_DRAW_SHARE");
             presetBad.add("FOREST_ACTIVITY_DRAW_SGBHSD");
+            presetBad.add("FOREST_NORMAL_DRAW_XJSKP_ZH");
+            
             // 你可以在这里继续添加更多要屏蔽的任务
             
             // =====================================================
@@ -106,8 +108,17 @@ public class ForestChouChouLe {
                                 // Status.flagToday("Forest::" + sceneCode,taskUid);
                             }
                         }
-                        // 在最后一个任务时强制开启活动场景助力
-                        if ((i == (taskList.length() - 1)) && (!taskType.equals("FOREST_ACTIVITY_DRAW_SHARE"))) {
+                        // 在最后一个任务时强制开启助力
+                        if (i == (taskList.length() - 1)) {
+                            if (ACTIVITYForestHuntHelp && sceneCode.equals("FOREST_NORMAL_DRAW_SHARE")) {
+                                int forestHuntHelpTodayCount = Status.getforestHuntHelpToday("FOREST_NORMAL_DRAW_SHARE");
+                                if (forestHuntHelpTodayCount < shareIds.size()) {
+                                    // if (!Status.hasFlagToday("Forest::" + sceneCode)) {
+                                    Log.forest("森林寻宝🎰️执行[普通场景]助力好友[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "](薅羊毛，如果助力结果不返回成功请关闭配置项)");
+                                    DoForestHuntHelp(shareIds, activityId, "FOREST_NORMAL_20250829_SHARE", "FOREST_ACTIVITY_DRAW_SHARE");
+                                    // Status.flagToday("Forest::" + sceneCode,taskUid);
+                                }
+                            }
                             if (ACTIVITYForestHuntHelp && sceneCode.equals("ANTFOREST_ACTIVITY_DRAW")) {
                                 int forestHuntHelpTodayCount = Status.getforestHuntHelpToday("FOREST_ACTIVITY_DRAW_SHARE");
                                 if (forestHuntHelpTodayCount < shareIds.size()) {

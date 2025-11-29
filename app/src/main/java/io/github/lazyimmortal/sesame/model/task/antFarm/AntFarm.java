@@ -1104,6 +1104,13 @@ public class AntFarm extends ModelTask {
         boolean isDoTask = false;
         try {
             String title = task.getString("title");
+            String bizKey = task.getString("bizKey");
+            
+            //屏蔽任务
+            if(bizKey.equals("HEART_DONATE"))
+            {
+                return false;
+            }
             if (Objects.equals(title, "庄园小视频")) {
                 isDoTask = doVideoTask();
             }

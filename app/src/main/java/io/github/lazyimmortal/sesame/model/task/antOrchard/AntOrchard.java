@@ -515,7 +515,7 @@ public class AntOrchard extends ModelTask {
                     String taskId = jo.getString("taskId");
                     String taskPlantType = jo.getString("taskPlantType");
                     String title = jo.getJSONObject("taskDisplayConfig").getString("title");
-                    if (TaskStatus.FINISHED.name().equals(taskStatus)) {
+                    if (TaskStatus.FINISHED.name().equals(taskStatus)&&!taskPlantType.equals("TAOBAO")) {
                         receiveTaskReward(taskId, taskPlantType, title);
                     }
                 }
