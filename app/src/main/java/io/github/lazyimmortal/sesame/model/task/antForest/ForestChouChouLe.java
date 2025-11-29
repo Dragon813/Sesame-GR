@@ -115,7 +115,7 @@ public class ForestChouChouLe {
                                 if (forestHuntHelpTodayCount < shareIds.size()) {
                                     // if (!Status.hasFlagToday("Forest::" + sceneCode)) {
                                     Log.forest("森林寻宝🎰️执行[普通场景]助力好友[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "](薅羊毛，如果助力结果不返回成功请关闭配置项)");
-                                    DoForestHuntHelp(shareIds, activityId, "FOREST_NORMAL_20250829_SHARE", "FOREST_ACTIVITY_DRAW_SHARE");
+                                    DoForestHuntHelp(shareIds, activityId, "FOREST_NORMAL_20250829_SHARE", "FOREST_NORMAL_DRAW_SHARE");
                                     // Status.flagToday("Forest::" + sceneCode,taskUid);
                                 }
                             }
