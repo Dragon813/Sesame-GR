@@ -552,7 +552,6 @@ public class AntOrchard extends ModelTask {
             return false;
         }
     }
-    
     /**
      * 领取任务奖励
      */
