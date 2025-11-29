@@ -200,8 +200,8 @@ public class AntOrchard extends ModelTask {
                 // 主场景处理
                 if ("main".equals(scene)) {
                     if (jo.getString("currentPlantScene").equals(scene) || switchPlantScene(PlantScene.main)) {
-                        querySubplotsActivity("WISH");
-                        querySubplotsActivity("CAMP_TAKEOVER");
+                        //querySubplotsActivity("WISH");
+                        //querySubplotsActivity("CAMP_TAKEOVER");
                     }
                 }
                 
@@ -515,7 +515,9 @@ public class AntOrchard extends ModelTask {
                     String taskId = jo.getString("taskId");
                     String taskPlantType = jo.getString("taskPlantType");
                     String title = jo.getJSONObject("taskDisplayConfig").getString("title");
-                    receiveTaskReward(taskId, taskPlantType, title);
+                    if (TaskStatus.FINISHED.name().equals(taskStatus)) {
+                        receiveTaskReward(taskId, taskPlantType, title);
+                    }
                 }
         }
         catch (Throwable t) {

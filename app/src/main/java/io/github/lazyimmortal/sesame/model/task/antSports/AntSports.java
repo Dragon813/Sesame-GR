@@ -117,7 +117,7 @@ public class AntSports extends ModelTask {
         modelFields.addField(QUERY_BUBBLE_TASK = new BooleanModelField("QUERY_BUBBLE_TASK", "健康岛 | 领取能量球奖励", false));
         modelFields.addField(QUERY_ITEM_LIST = new BooleanModelField("QUERY_ITEM_LIST", "健康岛 | 健康能量兑好礼", false));
         modelFields.addField(WALK_GRID = new BooleanModelField("WALK_GRID", "健康岛 | 能量泵", false));
-        modelFields.addField(WALK_GRID_MAX = new IntegerModelField("WALK_GRID_MAX", "健康岛 | 单次执行能量泵最大次数(不限:0)", 60));
+        modelFields.addField(WALK_GRID_MAX = new IntegerModelField("WALK_GRID_MAX", "健康岛 | 单次执行能量泵最大次数(不限:0)", 5));
         modelFields.addField(WALK_GRID_LIMIT = new IntegerModelField("WALK_GRID_LIMIT", "健康岛 | 使用能量泵剩余能量值", 10000));
         modelFields.addField(MapListSwitch = new BooleanModelField("MapListSwitch", "健康岛 | 自动切岛", false));
         
@@ -2071,7 +2071,7 @@ public class AntSports extends ModelTask {
     
     public void neverlandrun() {
         try {
-            Log.other("悦动健康🚑️开始执行#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+            //Log.other("悦动健康🚑️开始执行#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
             // 处理签到
             if (QUERY_SIGN.getValue()) {
                 processSignIn();
@@ -2096,7 +2096,7 @@ public class AntSports extends ModelTask {
                 queryMapListSwitch();
             }
             
-            Log.other("悦动健康🚑️执行完成#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+            //Log.other("悦动健康🚑️执行完成#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
         }
         catch (Exception e) {
             Log.i(TAG, "run err:");
