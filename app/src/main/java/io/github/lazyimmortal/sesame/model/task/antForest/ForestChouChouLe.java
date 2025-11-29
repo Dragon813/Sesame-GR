@@ -112,6 +112,7 @@ public class ForestChouChouLe {
                         if (i == (taskList.length() - 1)) {
                             if (ACTIVITYForestHuntHelp && sceneCode.equals("FOREST_NORMAL_DRAW_SHARE")) {
                                 int forestHuntHelpTodayCount = Status.getforestHuntHelpToday("FOREST_NORMAL_DRAW_SHARE");
+                                Log.forest("已助力次数："+forestHuntHelpTodayCount);
                                 if (forestHuntHelpTodayCount < shareIds.size()) {
                                     // if (!Status.hasFlagToday("Forest::" + sceneCode)) {
                                     Log.forest("森林寻宝🎰️执行[普通场景]助力好友[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "](薅羊毛，如果助力结果不返回成功请关闭配置项)");
