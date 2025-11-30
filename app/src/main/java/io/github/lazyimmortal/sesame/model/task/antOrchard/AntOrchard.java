@@ -74,8 +74,8 @@ public class AntOrchard extends ModelTask {
         modelFields.addField(orchardListTask = new BooleanModelField("orchardListTask", "农场任务", false));
         modelFields.addField(orchardSpreadManure = new BooleanModelField("orchardSpreadManure", "农场施肥 | 开启", false));
         modelFields.addField(orchardSpreadManureSceneList = new SelectAndCountModelField("orchardSpreadManureSceneList", "农场施肥 | 场景列表", new LinkedHashMap<>(), AlipayPlantScene::getList, "请填写每日施肥次数"));
-        modelFields.addField(driveAnimalType = new ChoiceModelField("driveAnimalType", "驱赶小鸡 | 动作", 0, DriveAnimalType.getNickNames()));
-        modelFields.addField(driveAnimalList = new SelectModelField("driveAnimalList", "驱赶小鸡 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
+        //modelFields.addField(driveAnimalType = new ChoiceModelField("driveAnimalType", "驱赶小鸡 | 动作", DriveAnimalType.NONE, DriveAnimalType.nickNames));
+        //modelFields.addField(driveAnimalList = new SelectModelField("driveAnimalList", "驱赶小鸡 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
         modelFields.addField(batchHireAnimal = new BooleanModelField("batchHireAnimal", "捉鸡除草 | 开启", false));
         modelFields.addField(doNotHireList = new SelectModelField("doNotHireList", "捉鸡除草 | 不捉鸡列表", new LinkedHashSet<>(), AlipayUser::getList));
         modelFields.addField(doNotWeedingList = new SelectModelField("doNotWeedingList", "捉鸡除草 | 不除草列表", new LinkedHashSet<>(), AlipayUser::getList));
@@ -165,6 +165,7 @@ public class AntOrchard extends ModelTask {
             return false;
         }
     }
+    
     /**
      * 处理可用场景列表
      */
@@ -327,13 +328,13 @@ public class AntOrchard extends ModelTask {
         }
     }
     
-    
     private String getWua() {
         if (wuaList == null) {
             try {
                 String content = FileUtil.readFromFile(FileUtil.getWuaFile());
                 wuaList = content.split("\n");
-            } catch (Throwable ignored) {
+            }
+            catch (Throwable ignored) {
                 wuaList = new String[0];
             }
         }
@@ -500,25 +501,25 @@ public class AntOrchard extends ModelTask {
      */
     private void handleTaskList(JSONArray taskArray) {
         try {
-                for (int i = 0; i < taskArray.length(); i++) {
-                    JSONObject jo = taskArray.getJSONObject(i);
-                    String taskStatus = jo.getString("taskStatus");
-                    if (TaskStatus.RECEIVED.name().equals(taskStatus)) {
+            for (int i = 0; i < taskArray.length(); i++) {
+                JSONObject jo = taskArray.getJSONObject(i);
+                String taskStatus = jo.getString("taskStatus");
+                if (TaskStatus.RECEIVED.name().equals(taskStatus)) {
+                    continue;
+                }
+                if (TaskStatus.TODO.name().equals(taskStatus)) {
+                    if (!finishOrchardTask(jo)) {
                         continue;
                     }
-                    if (TaskStatus.TODO.name().equals(taskStatus)) {
-                        if (!finishOrchardTask(jo)) {
-                            continue;
-                        }
-                        TimeUtil.sleep(500);
-                    }
-                    String taskId = jo.getString("taskId");
-                    String taskPlantType = jo.getString("taskPlantType");
-                    String title = jo.getJSONObject("taskDisplayConfig").getString("title");
-                    if (TaskStatus.FINISHED.name().equals(taskStatus)&&!taskPlantType.equals("TAOBAO")) {
-                        receiveTaskReward(taskId, taskPlantType, title);
-                    }
+                    TimeUtil.sleep(500);
                 }
+                String taskId = jo.getString("taskId");
+                String taskPlantType = jo.getString("taskPlantType");
+                String title = jo.getJSONObject("taskDisplayConfig").getString("title");
+                if (TaskStatus.FINISHED.name().equals(taskStatus) && !taskPlantType.equals("TAOBAO")) {
+                    receiveTaskReward(taskId, taskPlantType, title);
+                }
+            }
         }
         catch (Throwable t) {
             Log.i(TAG, "handleTaskList err:");
@@ -552,6 +553,7 @@ public class AntOrchard extends ModelTask {
             return false;
         }
     }
+    
     /**
      * 领取任务奖励
      */
@@ -864,21 +866,10 @@ public class AntOrchard extends ModelTask {
         }
     }
     
-    public enum DriveAnimalType {
-        NONE(0, "不操作"), ALL(1, "驱赶所有");
-        
-        private final int code;
-        private final String nickname;
-        
-        DriveAnimalType(int code, String nickname) {
-            this.code = code;
-            this.nickname = nickname;
-        }
-        
-        public static String[] getNickNames() {
-            //return Arrays.stream(values()).map(t -> t.nickname).toArray(String[]::new);
-            return null;
-        }
+    public interface DriveAnimalType {
+        int NONE = 0;
+        int ALL = 1;
+        String[] nickNames = {"不操作", "驱赶所有"};
     }
     
     public enum TaskStatus {

@@ -946,7 +946,7 @@ public class AntFarm extends ModelTask {
                 String title = jo.getString("title");
                 
                 //屏蔽任务
-                if(title.equals("到店付款") || title.equals("线上支付"))
+                if(title.equals("到店付款") || title.equals("线上支付")||title.equals("逛闪购外卖1元起吃"))
                 {
                     continue;
                 }
@@ -2575,7 +2575,7 @@ public class AntFarm extends ModelTask {
         
         String[] nickNames = {"攻击", "常规"};
     }
-    
+
     public interface SendBackAnimalType {
         
         int NONE = 0;
