@@ -1310,9 +1310,11 @@ public class AntForestV2 extends ModelTask {
                 JSONObject jo = ja.getJSONObject(i);
                 String propGroup = jo.getString("propGroup");
                 Long endTime = jo.getLong("endTime");
+                String propId = jo.getString("propId");
+                String propType = jo.getString("propType");
                 usingProps.put(propGroup, endTime);
                 if (PropGroup.robExpandCard.name().equals(propGroup)) {
-                    collectRobExpandEnergy(jo.optString("extInfo"));
+                    collectRobExpandEnergy(jo.optString("extInfo"),propId,propType);
                 }
             }
             forestExtensions();
@@ -1323,7 +1325,7 @@ public class AntForestV2 extends ModelTask {
         }
     }
     
-    private void collectRobExpandEnergy(String extInfo) {
+    private void collectRobExpandEnergy(String extInfo,String propId,String propType) {
         if (extInfo.isEmpty()) {
             return;
         }
@@ -1331,8 +1333,8 @@ public class AntForestV2 extends ModelTask {
             JSONObject jo = new JSONObject(extInfo);
             double leftEnergy = Double.parseDouble(jo.optString("leftEnergy", "0"));
             if (leftEnergy > 500 || (Objects.equals(jo.optString("overLimitToday", "false"), "true") && leftEnergy > 0)) {
-                String propId = jo.getString("propId");
-                String propType = jo.getString("propType");
+                //String propId = jo.getString("propId");
+                //String propType = jo.getString("propType");
                 collectRobExpandEnergy(propId, propType);
             }
         }
@@ -1347,7 +1349,7 @@ public class AntForestV2 extends ModelTask {
             JSONObject jo = new JSONObject(AntForestRpcCall.collectRobExpandEnergy(propId, propType));
             if (MessageUtil.checkResultCode(TAG, jo)) {
                 int collectEnergy = jo.optInt("collectEnergy");
-                Log.forest("额外能量🎄收取[" + collectEnergy + "g]");
+                Log.forest("额外能量🎄收取[" + collectEnergy + "g]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                 totalCollected += collectEnergy;
                 Statistics.addData(Statistics.DataType.COLLECTED, collectEnergy);
             }
@@ -1478,7 +1480,7 @@ public class AntForestV2 extends ModelTask {
     /* 森林集市 */
     private static void greenLife() {
         sendEnergyByAction("GREEN_LIFE");
-        sendEnergyByAction("ANTFOREST");
+        //sendEnergyByAction("ANTFOREST");
         retrieveCurrentActivity();
     }
     
@@ -1494,11 +1496,7 @@ public class AntForestV2 extends ModelTask {
             if (!MessageUtil.checkSuccess(TAG, jo)) {
                 return;
             }
-            
-            // Log.other(roomList.toString());
-            // Log.other("收取被抢走好友的能量球序号："+String.valueOf(k));
-            // Log.other(bubbleId);
-            
+
             JSONObject resultObject = jo.getJSONObject("resultObject");
             JSONObject energyGenerated = resultObject.getJSONObject("energyGenerated");
             int zulinshangpinliulan = energyGenerated.getInt("zulinshangpinliulan");
@@ -1509,23 +1507,6 @@ public class AntForestV2 extends ModelTask {
             Log.i(TAG, "greenRent err:");
             Log.printStackTrace(TAG, t);
         }
-        // AntForestRpcCall.creditapollon("RENT");
-        // TimeUtil.sleep(100);
-        // AntForestRpcCall.promofrontcenter();
-        // TimeUtil.sleep(100);
-        // AntForestRpcCall.RentPromotionRpcService();
-        // TimeUtil.sleep(100);
-        
-        /// AntForestRpcCall.checkUserSecondSceneChance();
-        // TimeUtil.sleep(200);
-        // AntForestRpcCall.generateEnergy();
-        
-        // TimeUtil.sleep(16000);
-        // AntForestRpcCall.shading();
-        
-        // TimeUtil.sleep(1000);
-        // AntForestRpcCall.enableVoucherSummary();
-        
     }
     
     private static void retrieveCurrentActivity() {
