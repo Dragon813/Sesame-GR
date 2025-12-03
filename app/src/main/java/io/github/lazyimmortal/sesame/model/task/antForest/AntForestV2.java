@@ -697,10 +697,10 @@ public class AntForestV2 extends ModelTask {
             }
             String ForestInfo =
                     "森林榜单🌳[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "](" + UserIdMap.getCurrentUid() + ")收取" + obtainTotal + "g;被收" + robbedTotal + "g;能量球" + bubblesNumber + "个;活力值" + totalVitalityAmount + ";当前能量" + currentEnergy + "g;证书" + totalCertCount + ";😡" + dayenergySummationtop3 + weekenergySummationtop3 + "😁日榜第" + dayrank + "名:" + dayenergySummation + "g;周榜第" + weekrank + "名:" + weekenergySummation + "g;总榜第" + totalrank + "名:" + totalenergySummation + "g;";
-            Toast.show(ForestInfo);
-            Log.forest("");
-            Log.forest(ForestInfo);
-            Log.forest("");
+            //Toast.show(ForestInfo);
+            //Log.forest("");
+            Log.record(ForestInfo);
+            //Log.forest("");
             
         }
         catch (Throwable th) {
