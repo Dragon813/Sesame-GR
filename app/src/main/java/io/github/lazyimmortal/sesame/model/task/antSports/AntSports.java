@@ -400,7 +400,6 @@ public class AntSports extends ModelTask {
         try {
             JSONObject jo = new JSONObject(AntSportsRpcCall.receiveCoinAsset(assetId));
             if (MessageUtil.checkSuccess(TAG, jo)) {
-                //Log.other("运动中心🏧领取[" + title + "]奖励[" + coinAmount + "运动能量]"); return true;
                 Log.other("运动中心🧊领取[" + title + "]奖励[" + coinAmount + "运动能量]");
                 return true;
             }
@@ -1260,6 +1259,30 @@ public class AntSports extends ModelTask {
                     TimeUtil.sleep(200);
                 }
             }
+            
+            //蹲点训练好友
+            JSONObject autoTrain = new JSONObject(AntSportsRpcCall.queryClubHome());
+            if (!MessageUtil.checkResultCode(TAG, autoTrain)) {
+                return;
+            }
+            roomListTrain = autoTrain.getJSONArray("roomList");
+            for (int j = 0; j < roomListTrain.length(); j++) {
+                JSONObject roomTrain = roomListTrain.getJSONObject(j);
+                String roomId = roomTrain.getString("roomId");
+                if (roomTrain.getJSONArray("memberList").length() != 0) {
+                    JSONObject member = roomTrain.getJSONArray("memberList").getJSONObject(0);
+                    JSONObject trainInfo = member.getJSONObject("trainInfo");
+                    if(trainInfo.has("gmtEnd"))
+                    {
+                        Long gmtEnd = trainInfo.getLong("gmtEnd");
+                        long updateTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(10);
+                        addChildTask(new ChildModelTask(roomId, "", () -> {
+                            autoTrainMember(roomId, gmtEnd);
+                        }, updateTime));
+                    }
+                    TimeUtil.sleep(200);
+                }
+            }
         }
         catch (Throwable t) {
             Log.i(TAG, "queryClubHome err:");
@@ -1286,7 +1309,6 @@ public class AntSports extends ModelTask {
     // 抢好友大战-训练好友
     private void trainMember(JSONObject member) {
         try {
-            String roomId = member.getString("roomId");
             String memberId = member.getString("memberId");
             String originBossId = member.getString("originBossId");
             JSONObject trainInfo = member.getJSONObject("trainInfo");
@@ -1328,14 +1350,9 @@ public class AntSports extends ModelTask {
                         return;
                     }
                     Log.other("好友大战💪训练[" + userName + "]" + name + "[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
-                    trainInfo = jo.getJSONObject("trainInfo");
                 }
             }
-            Long gmtEnd = trainInfo.getLong("gmtEnd");
-            long updateTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(10);
-            addChildTask(new ChildModelTask(roomId, "", () -> {
-                autoTrainMember(roomId, gmtEnd);
-            }, updateTime));
+            
         }
         catch (Throwable t) {
             Log.i(TAG, "trainMember err:");
@@ -1590,7 +1607,7 @@ public class AntSports extends ModelTask {
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.neverlandtaskSend(arg));
             if (MessageUtil.checkSuccess(TAG, jsonResult)) {
                 String taskName = task.getString("title");
-                Log.other("悦动健康🚑️完成任务[" + taskName + "]completeTask");
+                Log.other("悦动健康🚑️完成任务[" + taskName + "]");
                 return true;
             }
         }
@@ -1877,7 +1894,7 @@ public class AntSports extends ModelTask {
                         if (item.getString("status").equals("ITEM_SALE")) {
                             String exchangeResult = AntSportsRpcCall.createOrder(benefitId, itemId);
                             if (MessageUtil.checkSuccess(TAG, new JSONObject(exchangeResult))) {
-                                Log.other("悦动健康🚑️兑换权益[" + itemName + "]#消耗[" + cost + "g健康能量]exchangeBenefits");
+                                Log.other("悦动健康🚑️兑换权益[" + itemName + "]#消耗[" + cost + "g健康能量]");
                                 currentEnergy -= cost;
                             }
                         }

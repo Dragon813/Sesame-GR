@@ -11,6 +11,7 @@ import io.github.lazyimmortal.sesame.util.RandomUtil;
 import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.UUID;
 
@@ -397,6 +398,26 @@ public class AntForestRpcCall {
     public static String generateEnergy() {
         String requestData = "[{\"requestSceneCode\":\"rentBrowse\"}]";
         return ApplicationHook.requestString("com.alipay.creditapollon.biz.rpc.api.rent.green.generateEnergy", requestData);
+    }
+    
+    
+    //切换到组队版
+    public static String flowHubEntrance() {
+        String requestData = "[{\"bizType\":\"ANTFOREST\",\"flowEntranceId\":\"FOREST_PLAY_GROUND\",\"source\":\"ANTFOREST\"}]";
+        return ApplicationHook.requestString("com.alipay.antpwgrowth.flowHubEntrance", requestData);
+    }
+    
+    
+    
+    //组队合种浇水
+    //{"energyCount":128,"sToken":"1764761409764_57219282","source":"chInfo_ch_appcenter__chsub_9patch","teamId":"0ar6zza141pa1x11ghiy01bkiwtb5500"}
+    public static String partnerteamWater(String partnerteamWater, int partnerteamWaterNum) {
+        //随机一个8位16进制数
+        SecureRandom sr = new SecureRandom();
+        String hex8 = String.format("%08x", sr.nextInt());
+        String sToken=System.currentTimeMillis()+"_"+hex8;
+        String requestData = "[{\"energyCount\":"+partnerteamWaterNum+",\"sToken\":\""+sToken+"\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"teamId\":\""+partnerteamWater+"\"}]";
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.teamWater", requestData);
     }
     
     //真爱合种查询

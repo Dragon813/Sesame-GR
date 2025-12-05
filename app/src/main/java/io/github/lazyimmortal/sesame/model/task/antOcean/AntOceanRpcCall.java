@@ -17,7 +17,7 @@ import java.util.Set;
 public class AntOceanRpcCall {
     private static final String VERSION = "20230901";
     
-    private static String getUniqueId() {
+    public static String getUniqueId() {
         return String.valueOf(System.currentTimeMillis()) + RandomUtil.nextLong();
     }
     
@@ -89,7 +89,7 @@ public class AntOceanRpcCall {
     //{"source":"chInfo_ch_appcollect__chsub_my-recentlyUsed","uniqueId":"17633854642859766978436206832"}
     public static String createSeaAreaExtraCollect() {
         //return ApplicationHook.requestString("alipay.antocean.ocean.h5.createSeaAreaExtraCollect", "[{\"source\":\"chInfo_ch_appcollect__chsub_my-recentlyUsed\",\"uniqueId\":\"" + getUniqueId() + "\"}]");
-        return ApplicationHook.requestString("alipay.antocean.ocean.h5.createSeaAreaExtraCollect", "[{\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"uniqueId\":\"" + getUniqueId() + "\"}]");
+        return ApplicationHook.requestString("alipay.antocean.ocean.h5.createSeaAreaExtraCollect", "[{\"source\":\"chInfo_ch_appcollect__chsub_my-recentlyUsed\",\"uniqueId\":\"" + getUniqueId() + "\"}]");
     }
     
     public static String querySeaAreaDetailList() {

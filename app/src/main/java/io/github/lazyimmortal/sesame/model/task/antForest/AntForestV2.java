@@ -4,6 +4,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -205,6 +206,9 @@ public class AntForestV2 extends ModelTask {
     
     private BooleanModelField loveteamWater;
     private IntegerModelField loveteamWaterNum;
+    
+    private BooleanModelField partnerteamWater;
+    private IntegerModelField partnerteamWaterNum;
     private BooleanModelField ForestHunt;
     private BooleanModelField ForestHuntDraw;
     private BooleanModelField ForestHuntHelp;
@@ -257,6 +261,8 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(greenRent = new BooleanModelField("greenRent", "绿色租赁", false));
         modelFields.addField(ecoLife = new BooleanModelField("ecoLife", "绿色行动 | 开启", false));
         modelFields.addField(ecoLifeOptions = new SelectModelField("ecoLifeOptions", "绿色行动 | 选项", new LinkedHashSet<>(), CustomOption::getEcoLifeOptions, "光盘行动需要先手动完成一次"));
+        modelFields.addField(partnerteamWater = new BooleanModelField("partnerteamWater", "组队合种浇水", false));
+        modelFields.addField(partnerteamWaterNum = new IntegerModelField("partnerteamWaterNum", "组队合种浇水" + "(g)", 200, 0, 5000));
         modelFields.addField(loveteamWater = new BooleanModelField("loveteamWater", "真爱合种浇水", false));
         modelFields.addField(loveteamWaterNum = new IntegerModelField("loveteamWaterNum", "真爱合种浇水" + "(g)", 20, 20, 10000));
         modelFields.addField(ForestHunt = new BooleanModelField("ForestHunt", "森林寻宝", false));
@@ -474,6 +480,13 @@ public class AntForestV2 extends ModelTask {
                 waterFriendEnergy();
                 if (pkEnergy.getValue()) {
                     collectPKEnergy();
+                }
+                
+                // 组队合种浇水
+                if (partnerteamWater.getValue()) {
+                    if (partnerteamWaterNum.getValue() > 0 && partnerteamWaterNum.getValue() <= 5000) {
+                        partnerteamWater(partnerteamWaterNum.getValue());
+                    }
                 }
                 
                 // 真爱合种浇水
@@ -946,6 +959,7 @@ public class AntForestV2 extends ModelTask {
                     }
                 }
             }
+
             return userHomeObject;
         }
         catch (Throwable t) {
@@ -2855,6 +2869,47 @@ public class AntForestV2 extends ModelTask {
         }
         return false;
     }
+    
+    private static void partnerteamWater(int partnerteamWaterNum) {
+        //if (!Status.hasFlagToday("Forest::partnerteamWater")) {
+            try {
+                JSONObject jo = new JSONObject(AntForestRpcCall.queryHomePage());
+                if (!MessageUtil.checkResultCode(TAG, jo)) {
+                    return;
+                }
+                int currentEnergy = jo.getJSONObject("userBaseInfo").getInt("currentEnergy");
+                String teamId = jo.optJSONObject("teamHomeResult").optJSONObject("teamBaseInfo").optString("teamId");
+                if (teamId!=null && currentEnergy>=partnerteamWaterNum) {
+                    partnerteamWater(teamId, partnerteamWaterNum);
+                    }
+            }
+            catch (Throwable th) {
+                Log.i(TAG, "partnerteam err:");
+                Log.printStackTrace(TAG, th);
+            }
+        //}
+    }
+    
+    private static void partnerteamWater(String partnerteamWater, int partnerteamWaterNum) {
+        try {
+            //切到组队版
+            //JSONObject flowHubEntrancejo = new JSONObject(AntForestRpcCall.flowHubEntrance());
+            //if (MessageUtil.checkSuccess(TAG, flowHubEntrancejo)) {
+            //    Log.record("切换到组队版界面");
+            //}
+            
+            JSONObject jo = new JSONObject(AntForestRpcCall.partnerteamWater(partnerteamWater, partnerteamWaterNum));
+            if (MessageUtil.checkSuccess(TAG, jo)) {
+                Log.forest("组队浇水🚿给合种浇水" + partnerteamWaterNum + "g#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                Status.flagToday("Forest::partnerteamWater");
+            }
+        }
+        catch (Throwable th) {
+            Log.i(TAG, "partnerteamWater err:");
+            Log.printStackTrace(TAG, th);
+        }
+    }
+    
     
     private static void loveteam(int loveteamWater) {
         if (!Status.hasFlagToday("Forest::loveteamWater")) {

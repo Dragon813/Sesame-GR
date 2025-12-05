@@ -10,9 +10,11 @@ import io.github.lazyimmortal.sesame.data.modelFieldExt.ChoiceModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectModelField;
 import io.github.lazyimmortal.sesame.data.task.ModelTask;
 import io.github.lazyimmortal.sesame.entity.AlipayUser;
+import io.github.lazyimmortal.sesame.hook.ApplicationHook;
 import io.github.lazyimmortal.sesame.model.base.TaskCommon;
 import io.github.lazyimmortal.sesame.model.task.antFarm.AntFarm.TaskStatus;
 import io.github.lazyimmortal.sesame.model.task.antForest.AntForestRpcCall;
+import io.github.lazyimmortal.sesame.model.task.antSports.AntSportsRpcCall;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
 import io.github.lazyimmortal.sesame.util.Statistics;
@@ -20,7 +22,9 @@ import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
+import java.lang.reflect.Method;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Constanline
@@ -96,9 +100,17 @@ public class AntOcean extends ModelTask {
             if (useUniversalPiece.getValue()) {
                 useUniversalPiece();
             }
+            
+            //开启新海域修复
+            openWAIT_FOR_UNLOCK();
+            
             if (replica.getValue()) {
                 queryReplicaHome();
             }
+            
+            //添加蹲点清理自己海洋
+            //autocleanOcean(UserIdMap.getCurrentUid());
+            
         }
         catch (Throwable t) {
             Log.i(TAG, "AntOcean.start.run err:");
@@ -208,6 +220,34 @@ public class AntOcean extends ModelTask {
         }
     }
     
+    /*private static void autocleanOcean(String UserId) {
+        try {
+            JSONObject joHomePage = new JSONObject(AntOceanRpcCall.queryHomePage());
+            if (!MessageUtil.checkResultCode(TAG, joHomePage)) {
+                return;
+            }
+            JSONObject userInfoVO = joHomePage.getJSONObject("userInfoVO");
+            Long canCleanLaterTime = userInfoVO.getLong("canCleanLaterTime");
+            long updateTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(10);
+            addChildTask(new ChildModelTask(UserId, "", () -> {
+                autoTrainMember(UserId, gmtEnd);
+            }, updateTime));
+            String taskId = "auto|" + UserId;
+            if (!hasChildTask(taskId)) {
+                addChildTask(new ChildModelTask(taskId, "TRAIN", () -> {
+                
+                }, gmtEnd));
+                int roomIdInt = Integer.parseInt(roomId.substring(2, 8));
+                Log.record("蹲点训练💪添加[" + roomIdInt + "号房]在[" + TimeUtil.getCommonDate(gmtEnd) + "]执行");
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "queryHomePage err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    */
+    
     private static void ipOpenSurprise() {
         try {
             JSONObject jo = new JSONObject(AntOceanRpcCall.ipOpenSurprise());
@@ -230,6 +270,8 @@ public class AntOcean extends ModelTask {
                 String name = fishDetailVO.getString("name");
                 Log.forest("神奇海洋🐳迎回[" + name + "]");
             }
+            //检测是否能开启限时挑战
+            createSeaAreaExtraCollect();
         }
         catch (Throwable t) {
             Log.i(TAG, "combineFish err:");
@@ -258,7 +300,6 @@ public class AntOcean extends ModelTask {
                         combineFish(fishId);
                     }
                 }
-                
             }
         }
         catch (Throwable t) {
@@ -384,6 +425,30 @@ public class AntOcean extends ModelTask {
         }
     }
     
+    private static void createSeaAreaExtraCollect() {
+        try {
+            JSONObject jo = new JSONObject(AntOceanRpcCall.querySeaAreaDetailList());
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            //判断神秘海域
+            boolean awardSeaAreaCanCreateExtraCollect=jo.optBoolean("awardSeaAreaCanCreateExtraCollect",false);
+            if(awardSeaAreaCanCreateExtraCollect){
+                JSONObject Extrajo =new JSONObject(AntOceanRpcCall.createSeaAreaExtraCollect());
+                if (MessageUtil.checkResultCode(TAG, Extrajo)) {
+                    if(Extrajo.has("seaAreaExtraCollectVO"))
+                    {
+                        Log.forest("神奇海洋🐳开启了神秘海域#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                    }
+                }
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "createSeaAreaExtraCollect err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
     private static void querySeaAreaDetailList() {
         try {
             JSONObject jo = new JSONObject(AntOceanRpcCall.querySeaAreaDetailList());
@@ -393,9 +458,14 @@ public class AntOcean extends ModelTask {
             //判断神秘海域
             boolean awardSeaAreaCanCreateExtraCollect=jo.optBoolean("awardSeaAreaCanCreateExtraCollect",false);
             if(awardSeaAreaCanCreateExtraCollect){
-                new JSONObject(AntOceanRpcCall.createSeaAreaExtraCollect());
+                JSONObject Extrajo =new JSONObject(AntOceanRpcCall.createSeaAreaExtraCollect());
+                if (MessageUtil.checkResultCode(TAG, Extrajo)) {
+                    if(Extrajo.has("seaAreaExtraCollectVO"))
+                    {
+                        Log.forest("神奇海洋🐳开启了神秘海域#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                    }
+                }
             }
-            
             int seaAreaNum = jo.getInt("seaAreaNum");
             int fixSeaAreaNum = jo.getInt("fixSeaAreaNum");
             int currentSeaAreaIndex = jo.getInt("currentSeaAreaIndex");
@@ -413,6 +483,62 @@ public class AntOcean extends ModelTask {
                         combineFish(fishId);
                     }
                 }
+                if(seaAreaVO.has("seaAreaExtraCollectVO")){
+                    JSONObject seaAreaExtraCollectVO = seaAreaVO.getJSONObject("seaAreaExtraCollectVO");
+                    String ExtraStatus=seaAreaExtraCollectVO.optString("status");
+                    if(!ExtraStatus.equals("FINISHED"))
+                    {
+                        JSONArray ExtrafishVOs = seaAreaExtraCollectVO.getJSONArray("fishVO");
+                        for (int j = 0; j < ExtrafishVOs.length(); j++) {
+                            JSONObject ExtrafishVO = ExtrafishVOs.getJSONObject(j);
+                            if (!ExtrafishVO.getBoolean("unlock") && "COMPLETED".equals(ExtrafishVO.getString("status"))) {
+                                String ExtrafishId = ExtrafishVO.getString("id");
+                                combineFish(ExtrafishId);
+                            }
+                        }
+                    }
+                }
+                seaAreaVO = seaAreaVOs.getJSONObject(seaAreaVOs.length()-1);
+                String LastseaAreaStatus=seaAreaVO.optString("status");
+                if(LastseaAreaStatus.equals("WAIT_FOR_UNLOCK"))
+                {
+                    AntOceanRpcCall.repairSeaArea();
+                }
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "querySeaAreaDetailList err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    
+    private static void openWAIT_FOR_UNLOCK() {
+        try {
+            JSONObject jo = new JSONObject(AntOceanRpcCall.querySeaAreaDetailList());
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            //判断神秘海域
+            boolean awardSeaAreaCanCreateExtraCollect = jo.optBoolean("awardSeaAreaCanCreateExtraCollect", false);
+            if (awardSeaAreaCanCreateExtraCollect) {
+                
+                String args = "[{\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"uniqueId\":\"" + AntOceanRpcCall.getUniqueId() + "\"}]";
+                String Extrastr = ApplicationHook.requestString(
+                        "alipay.antocean.ocean.h5.createSeaAreaExtraCollect", args
+                );
+                JSONObject Extrajo = new JSONObject(Extrastr == null ? "{}" : Extrastr);
+                if (MessageUtil.checkResultCode(TAG, Extrajo)) {
+                    if (Extrajo.has("seaAreaExtraCollectVO")) {
+                        Log.forest("神奇海洋🐳开启了神秘海域#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                    }
+                }
+            }
+            JSONArray seaAreaVOs = jo.getJSONArray("seaAreaVOs");
+            JSONObject seaAreaVO = seaAreaVOs.getJSONObject(seaAreaVOs.length() - 1);
+            String LastseaAreaStatus = seaAreaVO.optString("status");
+            if (LastseaAreaStatus.equals("WAIT_FOR_UNLOCK")) {
+                AntOceanRpcCall.repairSeaArea();
             }
         }
         catch (Throwable t) {
