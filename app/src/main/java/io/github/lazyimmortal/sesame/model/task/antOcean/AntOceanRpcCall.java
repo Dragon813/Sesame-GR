@@ -15,7 +15,8 @@ import java.util.Set;
  * @since 2023/08/01
  */
 public class AntOceanRpcCall {
-    private static final String VERSION = "20230901";
+    //private static final String VERSION = "20230901";
+    private static final String VERSION = "20240115";
     
     public static String getUniqueId() {
         return String.valueOf(System.currentTimeMillis()) + RandomUtil.nextLong();
@@ -45,6 +46,7 @@ public class AntOceanRpcCall {
         return ApplicationHook.requestString("com.alipay.antiep.receiveTaskAward", "[{\"ignoreLimit\":false," + "\"requestType\":\"RPC\",\"sceneCode\":\"" + sceneCode + "\",\"source\":\"ANT_FOREST\"," + "\"taskType\":\"" + taskType + "\",\"uniqueId\":\"" + getUniqueId() + "\"}]");
     }
     
+    //{"outBizNo":"DAOLIU_DGLS_DJW_GAME_0.3019771350367262","requestType":"RPC","sceneCode":"ANTOCEAN_TASK","source":"ANTFOCEAN","taskType":"DAOLIU_DGLS_DJW_GAME","uniqueId":"17650320609214893495659423217"}
     public static String finishTask(String sceneCode, String taskType) {
         String outBizNo = taskType + "_" + RandomUtil.nextDouble();
         return ApplicationHook.requestString("com.alipay.antiep.finishTask", "[{\"outBizNo\":\"" + outBizNo + "\"," + "\"requestType\":\"RPC\",\"sceneCode\":\"" + sceneCode + "\",\"source\":\"ANTFOCEAN\"," + "\"taskType\":\"" + taskType + "\",\"uniqueId\":\"" + getUniqueId() + "\"}]");

@@ -14,7 +14,6 @@ import io.github.lazyimmortal.sesame.hook.ApplicationHook;
 import io.github.lazyimmortal.sesame.model.base.TaskCommon;
 import io.github.lazyimmortal.sesame.model.task.antFarm.AntFarm.TaskStatus;
 import io.github.lazyimmortal.sesame.model.task.antForest.AntForestRpcCall;
-import io.github.lazyimmortal.sesame.model.task.antSports.AntSportsRpcCall;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
 import io.github.lazyimmortal.sesame.util.Statistics;
@@ -109,7 +108,7 @@ public class AntOcean extends ModelTask {
             }
             
             //添加蹲点清理自己海洋
-            //autocleanOcean(UserIdMap.getCurrentUid());
+            autocleanOcean(UserIdMap.getCurrentUid());
             
         }
         catch (Throwable t) {
@@ -220,7 +219,7 @@ public class AntOcean extends ModelTask {
         }
     }
     
-    /*private static void autocleanOcean(String UserId) {
+    private void autocleanOcean(String UserId) {
         try {
             JSONObject joHomePage = new JSONObject(AntOceanRpcCall.queryHomePage());
             if (!MessageUtil.checkResultCode(TAG, joHomePage)) {
@@ -229,16 +228,14 @@ public class AntOcean extends ModelTask {
             JSONObject userInfoVO = joHomePage.getJSONObject("userInfoVO");
             Long canCleanLaterTime = userInfoVO.getLong("canCleanLaterTime");
             long updateTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(10);
-            addChildTask(new ChildModelTask(UserId, "", () -> {
-                autoTrainMember(UserId, gmtEnd);
+            addChildTask(new ChildModelTask(UserId, "Ocean", () -> {
+                queryHomePage();
             }, updateTime));
-            String taskId = "auto|" + UserId;
+            String taskId = "Ocean|" + UserId;
             if (!hasChildTask(taskId)) {
-                addChildTask(new ChildModelTask(taskId, "TRAIN", () -> {
-                
-                }, gmtEnd));
-                int roomIdInt = Integer.parseInt(roomId.substring(2, 8));
-                Log.record("蹲点训练💪添加[" + roomIdInt + "号房]在[" + TimeUtil.getCommonDate(gmtEnd) + "]执行");
+                addChildTask(new ChildModelTask(taskId, "Ocean", () -> {
+                }, canCleanLaterTime));
+                Log.record("神奇海洋🐳蹲添加蹲点在[" + TimeUtil.getCommonDate(canCleanLaterTime) + "]执行清理海洋#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
             }
         }
         catch (Throwable t) {
@@ -246,7 +243,6 @@ public class AntOcean extends ModelTask {
             Log.printStackTrace(TAG, t);
         }
     }
-    */
     
     private static void ipOpenSurprise() {
         try {
@@ -432,12 +428,11 @@ public class AntOcean extends ModelTask {
                 return;
             }
             //判断神秘海域
-            boolean awardSeaAreaCanCreateExtraCollect=jo.optBoolean("awardSeaAreaCanCreateExtraCollect",false);
-            if(awardSeaAreaCanCreateExtraCollect){
-                JSONObject Extrajo =new JSONObject(AntOceanRpcCall.createSeaAreaExtraCollect());
+            boolean awardSeaAreaCanCreateExtraCollect = jo.optBoolean("awardSeaAreaCanCreateExtraCollect", false);
+            if (awardSeaAreaCanCreateExtraCollect) {
+                JSONObject Extrajo = new JSONObject(AntOceanRpcCall.createSeaAreaExtraCollect());
                 if (MessageUtil.checkResultCode(TAG, Extrajo)) {
-                    if(Extrajo.has("seaAreaExtraCollectVO"))
-                    {
+                    if (Extrajo.has("seaAreaExtraCollectVO")) {
                         Log.forest("神奇海洋🐳开启了神秘海域#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                     }
                 }
@@ -456,12 +451,11 @@ public class AntOcean extends ModelTask {
                 return;
             }
             //判断神秘海域
-            boolean awardSeaAreaCanCreateExtraCollect=jo.optBoolean("awardSeaAreaCanCreateExtraCollect",false);
-            if(awardSeaAreaCanCreateExtraCollect){
-                JSONObject Extrajo =new JSONObject(AntOceanRpcCall.createSeaAreaExtraCollect());
+            boolean awardSeaAreaCanCreateExtraCollect = jo.optBoolean("awardSeaAreaCanCreateExtraCollect", false);
+            if (awardSeaAreaCanCreateExtraCollect) {
+                JSONObject Extrajo = new JSONObject(AntOceanRpcCall.createSeaAreaExtraCollect());
                 if (MessageUtil.checkResultCode(TAG, Extrajo)) {
-                    if(Extrajo.has("seaAreaExtraCollectVO"))
-                    {
+                    if (Extrajo.has("seaAreaExtraCollectVO")) {
                         Log.forest("神奇海洋🐳开启了神秘海域#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                     }
                 }
@@ -483,11 +477,10 @@ public class AntOcean extends ModelTask {
                         combineFish(fishId);
                     }
                 }
-                if(seaAreaVO.has("seaAreaExtraCollectVO")){
+                if (seaAreaVO.has("seaAreaExtraCollectVO")) {
                     JSONObject seaAreaExtraCollectVO = seaAreaVO.getJSONObject("seaAreaExtraCollectVO");
-                    String ExtraStatus=seaAreaExtraCollectVO.optString("status");
-                    if(!ExtraStatus.equals("FINISHED"))
-                    {
+                    String ExtraStatus = seaAreaExtraCollectVO.optString("status");
+                    if (!ExtraStatus.equals("FINISHED")) {
                         JSONArray ExtrafishVOs = seaAreaExtraCollectVO.getJSONArray("fishVO");
                         for (int j = 0; j < ExtrafishVOs.length(); j++) {
                             JSONObject ExtrafishVO = ExtrafishVOs.getJSONObject(j);
@@ -498,10 +491,9 @@ public class AntOcean extends ModelTask {
                         }
                     }
                 }
-                seaAreaVO = seaAreaVOs.getJSONObject(seaAreaVOs.length()-1);
-                String LastseaAreaStatus=seaAreaVO.optString("status");
-                if(LastseaAreaStatus.equals("WAIT_FOR_UNLOCK"))
-                {
+                seaAreaVO = seaAreaVOs.getJSONObject(seaAreaVOs.length() - 1);
+                String LastseaAreaStatus = seaAreaVO.optString("status");
+                if (LastseaAreaStatus.equals("WAIT_FOR_UNLOCK")) {
                     AntOceanRpcCall.repairSeaArea();
                 }
             }
@@ -511,7 +503,6 @@ public class AntOcean extends ModelTask {
             Log.printStackTrace(TAG, t);
         }
     }
-    
     
     private static void openWAIT_FOR_UNLOCK() {
         try {
@@ -524,9 +515,7 @@ public class AntOcean extends ModelTask {
             if (awardSeaAreaCanCreateExtraCollect) {
                 
                 String args = "[{\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"uniqueId\":\"" + AntOceanRpcCall.getUniqueId() + "\"}]";
-                String Extrastr = ApplicationHook.requestString(
-                        "alipay.antocean.ocean.h5.createSeaAreaExtraCollect", args
-                );
+                String Extrastr = ApplicationHook.requestString("alipay.antocean.ocean.h5.createSeaAreaExtraCollect", args);
                 JSONObject Extrajo = new JSONObject(Extrastr == null ? "{}" : Extrastr);
                 if (MessageUtil.checkResultCode(TAG, Extrajo)) {
                     if (Extrajo.has("seaAreaExtraCollectVO")) {
