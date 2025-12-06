@@ -86,7 +86,9 @@ public class AntOcean extends ModelTask {
             if (!queryOceanStatus()) {
                 return;
             }
+            
             queryHomePage();
+            
             if (queryTaskList.getValue()) {
                 queryTaskList();
             }
