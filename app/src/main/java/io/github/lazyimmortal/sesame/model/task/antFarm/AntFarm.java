@@ -2001,11 +2001,14 @@ public class AntFarm extends ModelTask {
                     if(jo.optString("taskId").equals("IP_EXCHANGE_TASK")||jo.optString("taskId").startsWith("IP_FKDWChuodong_")){
                             for(int j=0;j<(rightsTimesLimit-rightsTimes);j++){
                             AntFarmRpcCall.doFarmTask(jo.optString("bizKey"), "ANTFARM_IP_DRAW_TASK");}
+                            TimeUtil.sleep(2000);
                     }
                     if(jo.optString("taskId").equals("IP_SHANGYEHUA_TASK")){
                         for(int j=0;j<(rightsTimesLimit-rightsTimes);j++){
                             AntFarmRpcCall.finishTask(jo.optString("taskId"), "ANTFARM_IP_DRAW_TASK");}
+                            TimeUtil.sleep(2000);
                     }
+                    TimeUtil.sleep(1000);
                 }
                 TimeUtil.sleep(2000);
                 String taskId = jo.getString("taskId");

@@ -230,13 +230,10 @@ public class AntOcean extends ModelTask {
             JSONObject userInfoVO = joHomePage.getJSONObject("userInfoVO");
             Long canCleanLaterTime = userInfoVO.getLong("canCleanLaterTime");
             long updateTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(10);
-            addChildTask(new ChildModelTask(UserId, "Ocean", () -> {
-                queryHomePage();
-            }, updateTime));
+            addChildTask(new ChildModelTask(UserId, "Ocean", this::queryHomePage, updateTime));
             String taskId = "Ocean|" + UserId;
             if (!hasChildTask(taskId)) {
-                addChildTask(new ChildModelTask(taskId, "Ocean", () -> {
-                }, canCleanLaterTime));
+                addChildTask(new ChildModelTask(taskId, "Ocean", this::queryHomePage, canCleanLaterTime));
                 Log.record("神奇海洋🐳蹲添加蹲点在[" + TimeUtil.getCommonDate(canCleanLaterTime) + "]执行清理海洋#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
             }
         }
