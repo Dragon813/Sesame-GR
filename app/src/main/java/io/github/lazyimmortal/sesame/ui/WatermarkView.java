@@ -24,8 +24,8 @@ public class WatermarkView extends View {
     private float watermarkRotation;
     private int watermarkTextSize;
     
-    private static final int HORIZONTAL_SPACING = 200; // 水印水平间距
-    private static final int VERTICAL_SPACING = 200;   // 水印垂直间距
+    private static final int HORIZONTAL_SPACING = 400; // 水印水平间距
+    private static final int VERTICAL_SPACING = 400;   // 水印垂直间距
     
     public WatermarkView(Context context) {
         super(context);
