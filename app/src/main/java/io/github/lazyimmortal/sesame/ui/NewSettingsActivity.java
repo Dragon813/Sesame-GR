@@ -8,11 +8,13 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 
 import androidx.core.content.ContextCompat;
 
@@ -48,6 +50,7 @@ import io.github.lazyimmortal.sesame.ui.dto.ModelGroupDto;
 import io.github.lazyimmortal.sesame.util.AESUtil;
 import io.github.lazyimmortal.sesame.util.FileUtil;
 import io.github.lazyimmortal.sesame.util.JsonUtil;
+import io.github.lazyimmortal.sesame.util.WatermarkUtil;
 import io.github.lazyimmortal.sesame.util.LanguageUtil;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.StringUtil;
@@ -69,31 +72,31 @@ import io.github.lazyimmortal.sesame.util.idMap.VitalityBenefitIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.WalkPathIdMap;
 
 public class NewSettingsActivity extends BaseActivity {
-
+    
     private static final Integer EXPORT_REQUEST_CODE = 1;
-
+    
     private static final Integer IMPORT_REQUEST_CODE = 2;
     private WebView webView;
     private Context context;
     private String userId = null;
     private String userName = null;
     private Boolean debug = false;
-
+    private WatermarkView watermarkView;
     private final List<ModelDto> tabList = new ArrayList<>();
-
+    
     private final List<ModelGroupDto> groupList = new ArrayList<>();
-
+    
     @Override
     public String getBaseSubtitle() {
         return getString(R.string.settings);
     }
-
+    
     @SuppressLint({"MissingInflatedId", "SetJavaScriptEnabled"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        userId = null;
-        userName = null;
+        setContentView(R.layout.activity_new_settings);
+        addWatermark();
         //debug = true;
         Intent intent = getIntent();
         if (intent != null) {
@@ -124,10 +127,15 @@ public class NewSettingsActivity extends BaseActivity {
             setBaseSubtitle(getString(R.string.settings) + ": " + userName);
         }
         setBaseSubtitleTextColor(ContextCompat.getColor(this, R.color.textColorPrimary));
-
+        
         context = this;
-
+        
         webView = findViewById(R.id.webView);
+        
+        // 确保水印显示在WebView之上
+        if (webView != null) {
+            webView.bringToFront();
+        }
         WebSettings settings = webView.getSettings();
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setJavaScriptEnabled(true);
@@ -153,9 +161,9 @@ public class NewSettingsActivity extends BaseActivity {
                 assert scheme != null;
                 if (
                         scheme.equalsIgnoreCase("http")
-                                || scheme.equalsIgnoreCase("https")
-                                || scheme.equalsIgnoreCase("ws")
-                                || scheme.equalsIgnoreCase("wss")
+                        || scheme.equalsIgnoreCase("https")
+                        || scheme.equalsIgnoreCase("ws")
+                        || scheme.equalsIgnoreCase("wss")
                 ) {
                     view.loadUrl(requestUrl.toString());
                     return true;
@@ -164,7 +172,7 @@ public class NewSettingsActivity extends BaseActivity {
                 ToastUtil.show(context, "Forbidden Scheme:\"" + scheme + "\"");
                 return false;
             }
-
+            
         });
         if (debug) {
             WebView.setWebContentsDebuggingEnabled(true);
@@ -175,21 +183,21 @@ public class NewSettingsActivity extends BaseActivity {
             webView.loadDataWithBaseURL("file:///android_asset/web/", htmlData, "text/html", "UTF-8", null);
         } else {
             webView.loadUrl("file:///android_asset/web/index.html");
-//        webView.loadUrl("http://192.168.31.32:5500/app/src/main/assets/web/index.html");
+            //        webView.loadUrl("http://192.168.31.32:5500/app/src/main/assets/web/index.html");
         }
         webView.requestFocus();
-
+        
         Map<String, ModelConfig> modelConfigMap = ModelTask.getModelConfigMap();
         for (Map.Entry<String, ModelConfig> configEntry : modelConfigMap.entrySet()) {
             ModelConfig modelConfig = configEntry.getValue();
             tabList.add(new ModelDto(configEntry.getKey(), modelConfig.getName(), modelConfig.getIcon(), null));
         }
-
+        
         for (ModelGroup modelGroup : ModelGroup.values()) {
             groupList.add(new ModelGroupDto(modelGroup.getCode(), modelGroup.getName(), modelGroup.getIcon()));
         }
     }
-
+    
     @Override
     public void onBackPressed() {
         if (webView.canGoBack()) {
@@ -199,7 +207,7 @@ public class NewSettingsActivity extends BaseActivity {
             save();
         }
     }
-
+    
     public class WebAppInterface {
         @JavascriptInterface
         public void onBackPressed() {
@@ -211,15 +219,15 @@ public class NewSettingsActivity extends BaseActivity {
                 }
             });
         }
-
+        
         @JavascriptInterface
         public void onExit() {
             runOnUiThread(NewSettingsActivity.this::finish);
         }
     }
-
+    
     private class WebViewCallback {
-
+        
         @JavascriptInterface
         public String getTabs() {
             return JsonUtil.toJsonString(tabList);
@@ -229,22 +237,22 @@ public class NewSettingsActivity extends BaseActivity {
         public String getAllConfig() {
             return JsonUtil.toJsonString(ModelTask.getModelConfigMap());
         }*/
-
+        
         @JavascriptInterface
         public String getBuildInfo() {
             return BuildConfig.APPLICATION_ID + ":" + BuildConfig.VERSION_NAME;
         }
-
+        
         @JavascriptInterface
         public String getUserId() {
             return userId;
         }
-
+        
         @JavascriptInterface
         public String getGroup() {
             return JsonUtil.toJsonString(groupList);
         }
-
+        
         @JavascriptInterface
         public String getModelByGroup(String groupCode) {
             Collection<ModelConfig> modelConfigCollection = ModelTask.getGroupModelConfig(ModelGroup.getByCode(groupCode)).values();
@@ -258,7 +266,7 @@ public class NewSettingsActivity extends BaseActivity {
             }
             return JsonUtil.toJsonString(modelDtoList);
         }
-
+        
         @JavascriptInterface
         public String setModelByGroup(String groupCode, String modelsValue) {
             List<ModelDto> modelDtoList = JsonUtil.parseObject(modelsValue, new TypeReference<List<ModelDto>>() {
@@ -282,7 +290,7 @@ public class NewSettingsActivity extends BaseActivity {
             }
             return "SUCCESS";
         }
-
+        
         @JavascriptInterface
         public String getModel(String modelCode) {
             ModelConfig modelConfig = ModelTask.getModelConfigMap().get(modelCode);
@@ -296,7 +304,7 @@ public class NewSettingsActivity extends BaseActivity {
             }
             return null;
         }
-
+        
         @JavascriptInterface
         public String setModel(String modelCode, String fieldsValue) {
             ModelConfig modelConfig = ModelTask.getModelConfigMap().get(modelCode);
@@ -321,7 +329,7 @@ public class NewSettingsActivity extends BaseActivity {
             }
             return "FAILED";
         }
-
+        
         @JavascriptInterface
         public String getField(String modelCode, String fieldCode) {
             ModelConfig modelConfig = ModelTask.getModelConfigMap().get(modelCode);
@@ -333,7 +341,7 @@ public class NewSettingsActivity extends BaseActivity {
             }
             return null;
         }
-
+        
         @JavascriptInterface
         public String setField(String modelCode, String fieldCode, String fieldValue) {
             ModelConfig modelConfig = ModelTask.getModelConfigMap().get(modelCode);
@@ -350,14 +358,14 @@ public class NewSettingsActivity extends BaseActivity {
             }
             return "FAILED";
         }
-
+        
         @JavascriptInterface
         public void Log(String log) {
             Log.record("设置："+ log);
         }
-
+        
     }
-
+    
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         menu.add(0, 1, 1, "导出配置");
@@ -367,7 +375,29 @@ public class NewSettingsActivity extends BaseActivity {
         menu.add(0, 5, 5, "切换至旧UI");
         return super.onCreateOptionsMenu(menu);
     }
-
+    
+    /**
+     * 添加全局水印
+     */
+    private void addWatermark() {
+        try {
+            ViewGroup rootView = findViewById(android.R.id.content);
+            if (rootView != null && watermarkView == null) {
+                watermarkView = new WatermarkView(this);
+                FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                );
+                rootView.addView(watermarkView, params);
+                
+                // 确保水印显示在所有内容之下
+                watermarkView.setZ(-1);
+            }
+        } catch (Exception e) {
+            // 静默处理，不影响主要功能
+        }
+    }
+    
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
@@ -425,7 +455,7 @@ public class NewSettingsActivity extends BaseActivity {
         }
         return super.onOptionsItemSelected(item);
     }
-
+    
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -488,7 +518,7 @@ public class NewSettingsActivity extends BaseActivity {
             }
         }
     }
-
+    
     private void save() {
         if (ConfigV2.isModify(userId) && ConfigV2.save(userId, false)) {
             ToastUtil.show(this, "保存成功！");
@@ -506,5 +536,5 @@ public class NewSettingsActivity extends BaseActivity {
             UserIdMap.save(userId);
         }
     }
-
+    
 }
