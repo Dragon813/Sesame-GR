@@ -21,7 +21,10 @@ public class AntForestRpcCall {
     
     public static void init() {
         AlipayVersion alipayVersion = ApplicationHook.getAlipayVersion();
-        if (alipayVersion.compareTo(new AlipayVersion("10.5.88.8000")) > 0) {
+        if (alipayVersion.compareTo(new AlipayVersion("10.6.10.8000")) > 0) {
+            VERSION = "20250818";
+        }
+        else if (alipayVersion.compareTo(new AlipayVersion("10.5.88.8000")) > 0) {
             VERSION = "20240403";
         }
         else if (alipayVersion.compareTo(new AlipayVersion("10.3.96.8100")) > 0) {
@@ -64,6 +67,8 @@ public class AntForestRpcCall {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.queryTopEnergyChallengeRanking", "[{\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]");
     }
     
+    
+    //{"activityParam":{},"canRobFlags":"T,F,F,F,F","configVersionMap":{"wateringBubbleConfig":"0"},"currentEnergy":0,"currentVitalityAmount":0,"fromAct":"rankNew","skipWhackMole":false,"source":"chInfo_ch_appcenter__chsub_9patch","userId":"2088842735970535","version":"20250818"}
     public static String queryFriendHomePage(String userId) {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.queryFriendHomePage",
                 "[{\"canRobFlags" + "\":\"F,F,F,F,F\",\"configVersionMap\":{\"redPacketConfig\":0,\"wateringBubbleConfig\":\"10\"}," + "\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"userId\":\"" + userId + "\"," + "\"version\":\"" + VERSION + "\"}]", 3, 1000);
@@ -84,6 +89,7 @@ public class AntForestRpcCall {
         return ApplicationHook.requestString(getCollectEnergyRpcEntity(bizType, userId, bubbleId));
     }
     
+    //一键收取
     public static RpcEntity getCollectBatchEnergyRpcEntity(String userId, List<Long> bubbleIdList) {
         return getCollectBatchEnergyRpcEntity(userId, StringUtil.collectionJoinString(",", bubbleIdList));
     }
