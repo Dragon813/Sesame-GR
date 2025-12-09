@@ -754,8 +754,8 @@ public class AntForestV2 extends ModelTask {
             }
             else {
                 if (!pkObject.getString("rankMemberStatus").equals("JOIN")) {
-                    Log.forest("未加入PK排行榜,跳过,尝试关闭");
-                    pkEnergy.setValue(false);
+                    Log.forest("未加入PK排行榜");
+                    return;
                 }
                 //collectUserEnergy(pkObject, "pk");
                 //继续处理靠后的PK好友

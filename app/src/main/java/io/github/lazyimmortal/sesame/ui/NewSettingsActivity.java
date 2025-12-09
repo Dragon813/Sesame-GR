@@ -8,13 +8,11 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.FrameLayout;
 
 import androidx.core.content.ContextCompat;
 
@@ -50,7 +48,6 @@ import io.github.lazyimmortal.sesame.ui.dto.ModelGroupDto;
 import io.github.lazyimmortal.sesame.util.AESUtil;
 import io.github.lazyimmortal.sesame.util.FileUtil;
 import io.github.lazyimmortal.sesame.util.JsonUtil;
-import io.github.lazyimmortal.sesame.util.WatermarkUtil;
 import io.github.lazyimmortal.sesame.util.LanguageUtil;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.StringUtil;
@@ -81,7 +78,7 @@ public class NewSettingsActivity extends BaseActivity {
     private String userId = null;
     private String userName = null;
     private Boolean debug = false;
-    private WatermarkView watermarkView;
+    
     private final List<ModelDto> tabList = new ArrayList<>();
     
     private final List<ModelGroupDto> groupList = new ArrayList<>();
@@ -95,8 +92,8 @@ public class NewSettingsActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_new_settings);
-        addWatermark();
+        userId = null;
+        userName = null;
         //debug = true;
         Intent intent = getIntent();
         if (intent != null) {
@@ -131,11 +128,6 @@ public class NewSettingsActivity extends BaseActivity {
         context = this;
         
         webView = findViewById(R.id.webView);
-        
-        // 确保水印显示在WebView之上
-        if (webView != null) {
-            webView.bringToFront();
-        }
         WebSettings settings = webView.getSettings();
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setJavaScriptEnabled(true);
@@ -374,28 +366,6 @@ public class NewSettingsActivity extends BaseActivity {
         menu.add(0, 4, 4, "单向好友");
         menu.add(0, 5, 5, "切换至旧UI");
         return super.onCreateOptionsMenu(menu);
-    }
-    
-    /**
-     * 添加全局水印
-     */
-    private void addWatermark() {
-        try {
-            ViewGroup rootView = findViewById(android.R.id.content);
-            if (rootView != null && watermarkView == null) {
-                watermarkView = new WatermarkView(this);
-                FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                );
-                rootView.addView(watermarkView, params);
-                
-                // 确保水印显示在所有内容之下
-                watermarkView.setZ(-1);
-            }
-        } catch (Exception e) {
-            // 静默处理，不影响主要功能
-        }
     }
     
     @Override

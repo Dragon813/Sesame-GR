@@ -1256,7 +1256,7 @@ public class AntSports extends ModelTask {
                 if (roomTrain.getJSONArray("memberList").length() != 0) {
                     JSONObject member = roomTrain.getJSONArray("memberList").getJSONObject(0);
                     trainMember(member);
-                    TimeUtil.sleep(200);
+                    TimeUtil.sleep(1000);
                 }
             }
             

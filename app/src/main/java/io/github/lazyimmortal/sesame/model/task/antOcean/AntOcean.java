@@ -17,6 +17,7 @@ import io.github.lazyimmortal.sesame.model.task.antForest.AntForestRpcCall;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
 import io.github.lazyimmortal.sesame.util.Statistics;
+import io.github.lazyimmortal.sesame.util.Status;
 import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
@@ -593,11 +594,51 @@ public class AntOcean extends ModelTask {
             if (!MessageUtil.checkResultCode(TAG, jo)) {
                 return;
             }
+            if (Status.hasFlagToday("Ocean::HELP_CLEAN_ALL_FRIEND_LIMIT")) {return;}
             JSONArray fillFlagVOList = jo.getJSONArray("fillFlagVOList");
             for (int i = 0; i < fillFlagVOList.length(); i++) {
                 JSONObject fillFlag = fillFlagVOList.getJSONObject(i);
                 if (cleanOceanType.getValue() != CleanOceanType.NONE) {
                     cleanFriendOcean(fillFlag);
+                }
+            }
+            int pos = 20;
+            List<String> idList = new ArrayList<>();
+            JSONArray allRankingList = jo.getJSONArray("allRankingList");
+            while (pos < allRankingList.length()) {
+                JSONObject friend = allRankingList.getJSONObject(pos);
+                String userId=friend.optString("userId","");
+                if(userId.equals(UserIdMap.getCurrentUid())||userId.isEmpty())
+                {continue;}
+                idList.add(userId);
+                pos++;
+                if (pos % 20 == 0) {
+                    jo=new JSONObject(AntOceanRpcCall.fillUserFlag(new JSONArray(idList).toString()));
+                    if (!MessageUtil.checkResultCode(TAG, jo)) {
+                        return;
+                    }
+                    fillFlagVOList = jo.getJSONArray("fillFlagVOList");
+                    for (int i = 0; i < fillFlagVOList.length(); i++) {
+                        JSONObject fillFlag = fillFlagVOList.getJSONObject(i);
+                        if (cleanOceanType.getValue() != CleanOceanType.NONE) {
+                            cleanFriendOcean(fillFlag);
+                            if (Status.hasFlagToday("Ocean::HELP_CLEAN_ALL_FRIEND_LIMIT")) {return;}
+                        }
+                    }
+                    idList.clear();
+                }
+            }
+            if (!idList.isEmpty()) {
+                jo=new JSONObject(AntOceanRpcCall.fillUserFlag(new JSONArray(idList).toString()));
+                if (!MessageUtil.checkResultCode(TAG, jo)) {
+                    return;
+                }
+                fillFlagVOList = jo.getJSONArray("fillFlagVOList");
+                for (int i = 0; i < fillFlagVOList.length(); i++) {
+                    JSONObject fillFlag = fillFlagVOList.getJSONObject(i);
+                    if (cleanOceanType.getValue() != CleanOceanType.NONE) {
+                        cleanFriendOcean(fillFlag);
+                    }
                 }
             }
         }
@@ -606,6 +647,7 @@ public class AntOcean extends ModelTask {
             Log.printStackTrace(TAG, t);
         }
     }
+    
     
     private void cleanFriendOcean(JSONObject fillFlag) {
         if (!fillFlag.optBoolean("canClean")) {
@@ -636,9 +678,16 @@ public class AntOcean extends ModelTask {
             if (!MessageUtil.checkResultCode(TAG, jo)) {
                 return false;
             }
+            if (Status.hasFlagToday("Ocean::HELP_CLEAN_ALL_FRIEND_LIMIT")) {return false;}
             jo = new JSONObject(AntOceanRpcCall.cleanFriendOcean(userId));
             if (MessageUtil.checkResultCode(TAG, jo)) {
                 Log.forest("神奇海洋🐳帮助[" + UserIdMap.getMaskName(userId) + "]清理海域");
+                if(!jo.has("cleanRewardVOS")){
+                    if(jo.getString("resultDesc").contains("上限")){
+                        Status.flagToday("Ocean::HELP_CLEAN_ALL_FRIEND_LIMIT");
+                    }
+                    return false;
+                }
                 JSONArray cleanRewardVOS = jo.getJSONArray("cleanRewardVOS");
                 checkReward(cleanRewardVOS);
                 return true;
@@ -723,6 +772,8 @@ public class AntOcean extends ModelTask {
                     return true;
                 }
             }
+            //不完成限时任务号容易黑
+            //else if (taskTitle.startsWith("随机任务：") || taskTitle.startsWith("绿色任务：")|| taskTitle.startsWith("限时任务：")) {
             else if (taskTitle.startsWith("随机任务：") || taskTitle.startsWith("绿色任务：")) {
                 String sceneCode = task.getString("sceneCode");
                 String taskType = task.getString("taskType");

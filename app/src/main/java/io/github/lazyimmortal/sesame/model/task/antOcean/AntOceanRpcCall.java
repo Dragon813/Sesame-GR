@@ -16,7 +16,7 @@ import java.util.Set;
  */
 public class AntOceanRpcCall {
     //private static final String VERSION = "20230901";
-    private static final String VERSION = "20240115";
+    private static final String VERSION = "20241203";
     
     public static String getUniqueId() {
         return String.valueOf(System.currentTimeMillis()) + RandomUtil.nextLong();
@@ -129,6 +129,11 @@ public class AntOceanRpcCall {
     public static String queryUserRanking() {
         return ApplicationHook.requestString("alipay.antocean.ocean.h5.queryUserRanking", "[{\"source\":\"ANT_FOREST" + "\",\"uniqueId\":\"" + getUniqueId() + "\"}]");
     }
+    
+    public static String fillUserFlag(String userIdList) {
+        return ApplicationHook.requestString("alipay.antocean.ocean.h5.fillUserFlag", "[{\"source\":\"ANT_FOREST\",\"uniqueId\":\""+getUniqueId()+"\",\"userIdList\":"+userIdList+"}]");
+    }
+    
     
     // 答题
     public static String getQuestion() {

@@ -1960,7 +1960,9 @@ public class AntFarm extends ModelTask {
                 String title=jo.getString("title");
                 String desc=jo.getString("desc");
                 //屏蔽玩游戏和捐赠任务
-                if(title.contains("玩游戏得新机会")||desc.contains("单笔捐赠")||desc.contains("玩30秒")){
+                //if(title.contains("玩游戏得新机会")||desc.contains("单笔捐赠")||desc.contains("玩30秒")){
+                if(title.contains("玩游戏得新机会")||desc.contains("单笔捐赠")){
+                    Log.record("已屏蔽任务，跳过：" + title);
                     continue;
                 }
                 
@@ -1977,7 +1979,7 @@ public class AntFarm extends ModelTask {
                             AntFarmRpcCall.doFarmTask(jo.optString("bizKey"), taskSceneCode);}
                         TimeUtil.sleep(1000);
                     }
-                    if(jo.optString("taskId").contains("SHANGYEHUA")){
+                    if(jo.optString("taskId").contains("SHANGYEHUA")||jo.optString("taskId").contains("30s")){
                         for(int j=0;j<(rightsTimesLimit-rightsTimes);j++){
                             AntFarmRpcCall.finishTask(jo.optString("taskId"), taskSceneCode);}
                         TimeUtil.sleep(2000);
@@ -2805,9 +2807,9 @@ public class AntFarm extends ModelTask {
     }
     
     public enum ToolType {
-        STEALTOOL, ACCELERATETOOL, SHARETOOL, FENCETOOL, NEWEGGTOOL, DOLLTOOL, BIG_EATER_TOOL, ORNAMENT_ORDINARY_TOOL, ADVANCE_ORNAMENT_TOOL;
+        STEALTOOL, ACCELERATETOOL, SHARETOOL, FENCETOOL, NEWEGGTOOL, DOLLTOOL, BIG_EATER_TOOL, ORNAMENT_ORDINARY_TOOL, ADVANCE_ORNAMENT_TOOL,ORDINARY_ORNAMENT_TOOL,RARE_ORNAMENT_TOOL;
         
-        public static final CharSequence[] nickNames = {"蹭饭卡", "加速卡", "救济卡", "篱笆卡", "新蛋卡", "公仔补签卡", "BIG_EATER_TOOL", "普通装扮补签", "高级装扮补签"};
+        public static final CharSequence[] nickNames = {"蹭饭卡", "加速卡", "救济卡", "篱笆卡", "新蛋卡", "公仔补签卡", "BIG_EATER_TOOL", "普通装扮补签", "高级装扮补签","ORDINARY_ORNAMENT_TOOL","RARE_ORNAMENT_TOOL"};
         
         public CharSequence nickName() {
             return nickNames[ordinal()];
