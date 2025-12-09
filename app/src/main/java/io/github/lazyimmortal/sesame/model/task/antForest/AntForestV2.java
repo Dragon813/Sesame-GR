@@ -757,7 +757,7 @@ public class AntForestV2 extends ModelTask {
                     Log.forest("未加入PK排行榜");
                     return;
                 }
-                //collectUserEnergy(pkObject, "pk");
+                collectFriendsEnergy(pkObject, "pk");
                 //继续处理靠后的PK好友
                 JSONArray totalData = pkObject.optJSONArray("totalData");
                 if (totalData == null || totalData.length() == 0) {
