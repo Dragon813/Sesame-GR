@@ -324,8 +324,8 @@ public class AntFarm extends ModelTask {
             
             // 抽抽乐
             if (drawMachine.getValue()) {
-                drawMachine();
-                drawMachineActivity();
+                drawMachineGroups();
+                
             }
             
             // 雇佣小鸡
@@ -1913,7 +1913,120 @@ public class AntFarm extends ModelTask {
         }
     }
     
-    /* 抽抽乐 */
+    private void drawMachineGroups() {
+        try {
+            JSONObject jo = new JSONObject(AntFarmRpcCall.queryLoveCabin(UserIdMap.getCurrentUid()));
+            if (MessageUtil.checkMemo(TAG, jo)) {
+                drawMachine("ANTFARM_DAILY_DRAW_TASK","dailyDrawMachine","ipDrawMachine");
+                if(jo.optBoolean("drawActivityOpen",false)){
+                    drawMachine("ANTFARM_IP_DRAW_TASK","ipDrawMachine","dailyDrawMachine");
+                }
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "queryLoveCabin err:");
+            Log.printStackTrace(t);
+        }
+    }
+    
+    private void drawMachine(String taskSceneCode,String scene,String otherScenes) {
+        doFarmDrawTask(taskSceneCode);
+        try {
+            JSONObject jo = new JSONObject(AntFarmRpcCall.queryDrawMachineActivity(otherScenes,scene));
+            int drawTimes = jo.optInt("drawTimes", 0);
+            for (int i = 0; i < drawTimes; i++) {
+                if (!drawMachine(scene)) {
+                    return;
+                }
+                TimeUtil.sleep(5000);
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "drawMachine err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    private void doFarmDrawTask(String taskSceneCode) {
+        try {
+            JSONObject jo = new JSONObject(AntFarmRpcCall.listFarmDrawTask(taskSceneCode));
+            if (!MessageUtil.checkMemo(TAG, jo)) {
+                return;
+            }
+            JSONArray farmTaskList = jo.getJSONArray("farmTaskList");
+            for (int i = 0; i < farmTaskList.length(); i++) {
+                jo = farmTaskList.getJSONObject(i);
+                String taskStatus = jo.getString("taskStatus");
+                String title=jo.getString("title");
+                String desc=jo.getString("desc");
+                //屏蔽玩游戏和捐赠任务
+                if(title.contains("玩游戏得新机会")||desc.contains("单笔捐赠")||desc.contains("玩30秒")){
+                    continue;
+                }
+                
+                if (TaskStatus.RECEIVED.name().equals(taskStatus)) {
+                    continue;
+                }
+                
+                if (TaskStatus.TODO.name().equals(taskStatus)) {
+                    int rightsTimesLimit=jo.optInt("rightsTimesLimit");
+                    int rightsTimes=jo.optInt("rightsTimes");
+                    
+                    if(jo.optString("taskId").contains("EXCHANGE")||jo.optString("taskId").contains("FKDWChuodong")){
+                        for(int j=0;j<(rightsTimesLimit-rightsTimes);j++){
+                            AntFarmRpcCall.doFarmTask(jo.optString("bizKey"), taskSceneCode);}
+                        TimeUtil.sleep(1000);
+                    }
+                    if(jo.optString("taskId").contains("SHANGYEHUA")){
+                        for(int j=0;j<(rightsTimesLimit-rightsTimes);j++){
+                            AntFarmRpcCall.finishTask(jo.optString("taskId"), taskSceneCode);}
+                        TimeUtil.sleep(2000);
+                    }
+                    TimeUtil.sleep(1000);
+                }
+                TimeUtil.sleep(2000);
+                String taskId = jo.getString("taskId");
+                String awardType = jo.getString("awardType");
+                receiveFarmDrawTaskAward(taskId, title,awardType,taskSceneCode);
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "doFarmDrawActivityTimeTask err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    private void receiveFarmDrawTaskAward(String taskId, String title,String awardType,String taskSceneCode) {
+        try {
+            JSONObject jo = new JSONObject(AntFarmRpcCall.receiveFarmDrawTimesTaskAward(taskId,awardType,taskSceneCode));
+            if (MessageUtil.checkMemo(TAG, jo)) {
+                Log.farm("装扮抽奖🎟️领取[" + title + "]奖励");
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "receiveFarmDrawTimesTaskAward err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    private Boolean drawMachine(String scene) {
+        try {
+            JSONObject jo = new JSONObject(AntFarmRpcCall.drawMachine(scene));
+            if (MessageUtil.checkMemo(TAG, jo)) {
+                if(!jo.has("title")){
+                    jo=jo.optJSONObject("drawMachinePrize");
+                }
+                String title = jo.optString("title");
+                Log.farm("装扮抽奖🎟️抽中[" + title + "]");
+                return true;
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "drawMachine err:");
+            Log.printStackTrace(TAG, t);
+        }
+        return false;
+    }
+    
+    /* 抽抽乐
     private void drawMachine() {
         doDrawTimesTask();
         try {
@@ -2080,7 +2193,7 @@ public class AntFarm extends ModelTask {
         }
         return false;
     }
-    
+    */
     /* 雇佣好友小鸡 */
     private void hireAnimal() {
         try {

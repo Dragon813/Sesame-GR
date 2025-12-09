@@ -368,7 +368,21 @@ public class AntFarmRpcCall {
         return ApplicationHook.requestString("com.alipay.antfarm.visitAnimalSendPrize", "[{\"requestType\":\"NORMAL" + "\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"token\":\"" + token + "\",\"version\":\"" + VERSION + "\"}]");
     }
     
-    /* 抽抽乐 */
+    /*抽抽乐*/
+    public static String listFarmDrawTask(String taskSceneCode) {
+        return ApplicationHook.requestString("com.alipay.antfarm.listFarmTask", "[{\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"signSceneCode\":\"\",\"source\":\"H5\",\"taskSceneCode\":\""+taskSceneCode+"\",\"topTask\":\"\"}]");
+    }
+    
+    public static String receiveFarmDrawTimesTaskAward(String taskId, String awardType, String taskSceneCode) {
+        return ApplicationHook.requestString("com.alipay.antfarm.receiveFarmTaskAward", "[{\"awardType\":\"" + awardType + "\",\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"taskId\":\"" + taskId + "\",\"taskSceneCode\":\"" + taskSceneCode + "\"}]");
+    }
+    public static String queryDrawMachineActivity(String otherScenes,String scene) {
+        return ApplicationHook.requestString("com.alipay.antfarm.queryDrawMachineActivity", "[{\"otherScenes\":[\""+otherScenes+"\"],\"requestType\":\"RPC\",\"scene\":\""+scene+"\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\"}]");
+    }
+    public static String drawMachine(String scene) {
+        return ApplicationHook.requestString("com.alipay.antfarm.drawMachine", "[{\"requestType\":\"RPC\",\"scene\":\""+scene+"\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\"}]");
+    }
+    /* 抽抽乐
     public static String enterDrawMachine() {
         return ApplicationHook.requestString("com.alipay.antfarm.enterDrawMachine", "[{\"requestType\":\"RPC\"," + "\"sceneCode\":\"ANTFARM\",\"source\":\"icon\"}]");
     }
@@ -381,6 +395,7 @@ public class AntFarmRpcCall {
         return ApplicationHook.requestString("com.alipay.antfarm.DrawPrize", "[{\"requestType\":\"RPC\"," + "\"sceneCode\":\"ANTFARM\",\"source\":\"H5\"}]");
     }
     
+    //
     public static String drawMachine() {
         return ApplicationHook.requestString("com.alipay.antfarm.drawMachine", "[{\"requestType\":\"RPC\",\"scene\":\"ipDrawMachine\",\"sceneCode\":\"ANTFARM\",\"source\":\"antfarm_villa\"}]");
     }
@@ -398,7 +413,7 @@ public class AntFarmRpcCall {
     public static String receiveFarmDrawTimesTaskAward(String taskId, String awardType, String taskSceneCode) {
         return ApplicationHook.requestString("com.alipay.antfarm.receiveFarmTaskAward", "[{\"awardType\":\"" + awardType + "\",\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"taskId\":\"" + taskId + "\",\"taskSceneCode\":\"" + taskSceneCode + "\"}]");
     }
-    
+    */
     public static String hireAnimal(String farmId, String animalId) {
         return ApplicationHook.requestString("com.alipay.antfarm.hireAnimal", "[{\"friendFarmId\":\"" + farmId + "\"," + "\"hireActionType\":\"HIRE_IN_FRIEND_FARM\",\"hireAnimalId\":\"" + animalId + "\",\"requestType" + "\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"sendCardChat\":false," + "\"source" +
                                                                               "\":\"H5\",\"version\":\"" + VERSION + "\"}]");
