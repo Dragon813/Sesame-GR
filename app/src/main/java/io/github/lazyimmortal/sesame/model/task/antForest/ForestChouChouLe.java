@@ -255,10 +255,10 @@ public class ForestChouChouLe {
                     continue;
                 }
                 String shareId;
-                if ((shareUserId.length() > 20 && shareUserId.length() < 27) && taskType.equals("FOREST_NORMAL_DRAW_SHARE")) {
+                if ((shareUserId.length() > 20 && shareUserId.length() < 28) && taskType.equals("FOREST_NORMAL_DRAW_SHARE")) {
                     shareId = shareUserId + "4O7FEYDgn0xx0OehP5jt9" + "YINZOkxgPDkvWvkwkQXSDbZ" + "77VUJcjlcZsjGio6MsAtmwxkxkx";
                 }
-                else if ((shareUserId.length() > 20 && shareUserId.length() < 27) && taskType.equals("FOREST_ACTIVITY_DRAW_SHARE")) {
+                else if ((shareUserId.length() > 20 && shareUserId.length() < 28) && taskType.equals("FOREST_ACTIVITY_DRAW_SHARE")) {
                     shareId = shareUserId + "4O7FEYDgn0xx0OehP5jt9" + "bxgpIW643h4FnWRjs9uZzng" + "77VUJcjlcZsjGio6MsAtmwxkxkx";
                 }
                 else {

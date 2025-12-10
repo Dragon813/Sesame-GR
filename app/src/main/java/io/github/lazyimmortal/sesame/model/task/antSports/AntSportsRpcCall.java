@@ -440,4 +440,22 @@ public class AntSportsRpcCall {
         String arg = "[{\"branchId\":\""+branchId+"\",\"mapId\":\""+mapId+"\",\"source\":\"jkdsportcard\"}]";
         return ApplicationHook.requestString("com.alipay.neverland.biz.rpc.mapChooseFree", arg);
     }
+    
+    //{"branchId":"MASTER","mapId":"MM125","multiNum":10,"source":"jkdsportcard"}
+    public static String build(String branchId,String mapId,int multiNum) {
+        String arg = "[{\"branchId\":\""+branchId+"\",\"mapId\":\""+mapId+"\",\"multiNum\":"+multiNum+",\"source\":\"jkdsportcard\"}]";
+        return ApplicationHook.requestString("com.alipay.neverland.biz.rpc.build", arg);
+    }
+    
+    //{"branchId":"MASTER","mapId":"MM125","multiNum":10,"source":"jkdsportcard"}
+    public static String queryMapDetail(String mapId) {
+        String arg = "[{\"mapId\":\""+mapId+"\",\"source\":\"jkdsportcard\"}]";
+        return ApplicationHook.requestString("com.alipay.neverland.biz.rpc.queryMapDetail", arg);
+    }
+    
+    //{"branchId":"MASTER","channel":"jkdsportcard","mapId":"MM125","rewardId":"GAME_BUILD_MM125_3_3_1","source":"jkdsportcard"}
+    public static String mapChooseReward(String branchId,String mapId,String rewardId) {
+        String arg = "[{\"branchId\":\""+branchId+"\",\"channel\":\"jkdsportcard\",\"mapId\":\""+mapId+"\",\"rewardId\":\""+rewardId+"\",\"source\":\"jkdsportcard\"}]";
+        return ApplicationHook.requestString("com.alipay.neverland.biz.rpc.mapChooseReward", arg);
+    }
 }

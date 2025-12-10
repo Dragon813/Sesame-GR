@@ -1272,8 +1272,7 @@ public class AntSports extends ModelTask {
                 if (roomTrain.getJSONArray("memberList").length() != 0) {
                     JSONObject member = roomTrain.getJSONArray("memberList").getJSONObject(0);
                     JSONObject trainInfo = member.getJSONObject("trainInfo");
-                    if(trainInfo.has("gmtEnd"))
-                    {
+                    if (trainInfo.has("gmtEnd")) {
                         Long gmtEnd = trainInfo.getLong("gmtEnd");
                         long updateTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(10);
                         addChildTask(new ChildModelTask(roomId, "", () -> {
@@ -1653,6 +1652,35 @@ public class AntSports extends ModelTask {
         return false;
     }
     
+    public static int Buid(String branchId, String mapId, String mapName, int multiNum) {
+        try {
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.build(branchId, mapId, multiNum));
+            if (MessageUtil.checkSuccess(TAG, jsonResult)) {
+                JSONObject data = jsonResult.getJSONObject("data");
+                //JSONObject beforeStageInfo = data.getJSONObject("beforeStageInfo");
+                JSONObject endStageInfo = data.getJSONObject("endStageInfo");
+                int buildingEnergyFinal = endStageInfo.optInt("buildingEnergyFinal");
+                //int beforebuildingEnergyProcess=beforeStageInfo.optInt("buildingEnergyProcess");
+                String buildingId = endStageInfo.optString("buildingId");
+                int endbuildingEnergyProcess = endStageInfo.optInt("buildingEnergyProcess");
+                Log.other("悦动健康🚑️能量泵[" + mapName + "]建造[" + buildingId + "]进度(" + endbuildingEnergyProcess + "/" + buildingEnergyFinal + ")#消耗" + multiNum * 5 + "g能量");
+                
+                JSONArray rewards = data.getJSONArray("rewards");
+                //if (rewards.getJSONArray("memberList").length() != 0) {continue;}
+                ArrayList<String> rewardList = parseRewards(rewards);
+                if (!rewardList.isEmpty()) {
+                    Log.other("悦动健康🚑️能量泵[" + mapName + "]#获得" + rewardList);
+                }
+                return buildingEnergyFinal - endbuildingEnergyProcess;
+            }
+        }
+        catch (Exception e) {
+            Log.i(TAG, "Buid err:");
+            Log.printStackTrace(TAG, e);
+        }
+        return 0;
+    }
+    
     /**
      * 领取浏览任务奖励
      *
@@ -1775,7 +1803,7 @@ public class AntSports extends ModelTask {
                 receiveOfflineReward();
             }
             
-            // 处理能量泵任务
+            // 处理普通岛能量泵任务
             if (!data.optBoolean("newGame") && WALK_GRID.getValue()) {
                 String branchId = data.getString("branchId");
                 String mapId = data.getString("mapId");
@@ -1788,8 +1816,97 @@ public class AntSports extends ModelTask {
                             continue;
                         }
                         walkGridcount++;
-                        if (walkGridcount >=WALK_GRID_MAX.getValue()) {
+                        if (walkGridcount >= WALK_GRID_MAX.getValue() || queryUserEnergy() < 5) {
                             break;
+                        }
+                    }
+                }
+            }
+            // 处理活动岛能量泵任务
+            if (data.optBoolean("newGame") && WALK_GRID.getValue()) {
+                String branchId = data.getString("branchId");
+                String mapId = data.getString("mapId");
+                String mapName = data.getString("mapName");
+                int Buidcount = 0;
+                if (canBuild(mapId) && queryUserEnergy() >= 5 && queryUserEnergy() >= WALK_GRID_LIMIT.getValue()) {
+                    int remainBuildingEnergyProcess = Buid(branchId, mapId, mapName, 1);
+                    Buidcount++;
+                    if (Buidcount >= WALK_GRID_MAX.getValue() && WALK_GRID_MAX.getValue() != 0) {
+                        return;
+                    }
+                    while (remainBuildingEnergyProcess > 0 && canBuild(mapId)) {
+                        TimeUtil.sleep(2000);
+                        if (remainBuildingEnergyProcess >= 50 && ((WALK_GRID_MAX.getValue() - Buidcount) >= 10 || WALK_GRID_MAX.getValue() == 0) && queryUserEnergy() >= 50) {
+                            remainBuildingEnergyProcess = Buid(branchId, mapId, mapName, 10);
+                            Buidcount = Buidcount + 10;
+                        }
+                        else if (remainBuildingEnergyProcess >= 25 && ((WALK_GRID_MAX.getValue() - Buidcount) >= 5 || WALK_GRID_MAX.getValue() == 0) && queryUserEnergy() >= 25) {
+                            remainBuildingEnergyProcess = Buid(branchId, mapId, mapName, 5);
+                            Buidcount = Buidcount + 5;
+                        }
+                        else {
+                            remainBuildingEnergyProcess = Buid(branchId, mapId, mapName, 1);
+                            Buidcount++;
+                        }
+                        if (WALK_GRID_MAX.getValue() == 0) {
+                            continue;
+                        }
+                        if (Buidcount >= WALK_GRID_MAX.getValue() || queryUserEnergy() < 5) {
+                            break;
+                        }
+                    }
+                }
+            }
+            // 处理活动岛能量泵任务
+            /*if (data.optBoolean("newGame") && WALK_GRID.getValue()) {
+                String branchId = data.getString("branchId");
+                String mapId = data.getString("mapId");
+                String mapName = data.getString("mapName");
+                int Buidcount = 0;
+                if (canBuild(mapId) && queryUserEnergy() >= 5 && queryUserEnergy() >= WALK_GRID_LIMIT.getValue()) {
+                    int remainBuildingEnergyProcess = Buid(branchId, mapId, mapName, 1);
+                    Buidcount++;
+                    if (Buidcount >= WALK_GRID_MAX.getValue() && WALK_GRID_MAX.getValue() != 0) {
+                        return;
+                    }
+                    while (remainBuildingEnergyProcess > 0 && canBuild(mapId)) {
+                            remainBuildingEnergyProcess = Buid(branchId, mapId, mapName, 1);
+                            Buidcount++;
+                        if (WALK_GRID_MAX.getValue() == 0&& queryUserEnergy() >=5) {
+                            continue;
+                        }
+                        if (Buidcount >= WALK_GRID_MAX.getValue() || queryUserEnergy() < 5) {
+                            break;
+                        }
+                    }
+                }
+            }*/
+            //领取活动岛奖励
+            if (data.optBoolean("newGame")) {
+                String branchId = data.getString("branchId");
+                String mapId = data.getString("mapId");
+                String mapName = data.getString("mapName");
+                jsonResult = new JSONObject(AntSportsRpcCall.queryMapDetail(mapId));
+                if (MessageUtil.checkSuccess(TAG, jsonResult)) {
+                    JSONObject dataMapDetail = jsonResult.getJSONObject("data");
+                    JSONObject baseMapInfo = dataMapDetail.getJSONObject("baseMapInfo");
+                    if (baseMapInfo.getInt("currentPercent") == 100&& baseMapInfo.optString("status").equals("FINISH_NOT_REWARD")) {
+                        JSONArray rewards = baseMapInfo.getJSONArray("rewards");
+                        for (int i = 0; i < rewards.length(); i++) {
+                            JSONObject reward=rewards.getJSONObject(i);
+                            if(reward.optString("prizeStatus").equals("待领取")){
+                                String itemId=reward.optString("itemId");
+                                JSONObject mapChooseRewardjo = new JSONObject(AntSportsRpcCall.mapChooseReward(branchId,mapId,itemId));
+                                if (MessageUtil.checkSuccess(TAG, mapChooseRewardjo)) {
+                                    data=mapChooseRewardjo.getJSONObject("data");
+                                    JSONObject specialActivityReceiveResult=data.getJSONObject("specialActivityReceiveResult");
+                                    JSONArray prizes = specialActivityReceiveResult.getJSONArray("prizes");
+                                    JSONObject prize=prizes.getJSONObject(0);
+                                    String subTitle=prize.optString("subTitle");
+                                    String title=prize.optString("title");
+                                    Log.other("悦动健康🚑️领取奖励[" + subTitle + "]#获得[" + title + "]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                                }
+                            }
                         }
                     }
                 }
@@ -1927,6 +2044,22 @@ public class AntSports extends ModelTask {
         }
         catch (Exception e) {
             Log.i(TAG, "canWalkGrid err:");
+            Log.printStackTrace(TAG, e);
+        }
+        return false;
+    }
+    
+    public static boolean canBuild(String mapId) {
+        try {
+            JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryMapDetail(mapId));
+            if (MessageUtil.checkSuccess(TAG, jsonResult)) {
+                JSONObject data = jsonResult.getJSONObject("data");
+                JSONObject baseMapInfo = data.getJSONObject("baseMapInfo");
+                return baseMapInfo.getBoolean("newIsLandFlg") && baseMapInfo.getInt("currentPercent") < 100;
+            }
+        }
+        catch (Exception e) {
+            Log.i(TAG, "canBuild err:");
             Log.printStackTrace(TAG, e);
         }
         return false;
@@ -2155,10 +2288,11 @@ public class AntSports extends ModelTask {
                         String mapId = map.getString("mapId");
                         String status = map.getString("status");
                         String branchId = map.getString("branchId");
-                        boolean newIsLandFlg = map.optBoolean("newIsLandFlg");
+                        //boolean newIsLandFlg = map.optBoolean("newIsLandFlg");
                         
                         if (!mapName.equals(thismapName)) {
-                            if (!status.contains("FINISH") && !newIsLandFlg) {
+                            //if (!status.contains("FINISH") && !newIsLandFlg) {
+                            if (!status.contains("FINISH")) {
                                 JSONObject jo = new JSONObject(AntSportsRpcCall.mapChooseFree(branchId, mapId));
                                 if (MessageUtil.checkSuccess("mapChooseFree", jo)) {
                                     Log.other("悦动健康🚑️切换到[" + mapName + "](" + mapId + ")#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");

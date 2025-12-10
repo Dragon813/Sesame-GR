@@ -1918,8 +1918,13 @@ public class AntFarm extends ModelTask {
             JSONObject jo = new JSONObject(AntFarmRpcCall.queryLoveCabin(UserIdMap.getCurrentUid()));
             if (MessageUtil.checkMemo(TAG, jo)) {
                 drawMachine("ANTFARM_DAILY_DRAW_TASK","dailyDrawMachine","ipDrawMachine");
-                if(jo.optBoolean("drawActivityOpen",false)){
-                    drawMachine("ANTFARM_IP_DRAW_TASK","ipDrawMachine","dailyDrawMachine");
+                
+                JSONObject queryDrawMachineActivityjo = new JSONObject(AntFarmRpcCall.queryDrawMachineActivity("ipDrawMachine","dailyDrawMachine"));
+                if (MessageUtil.checkMemo(TAG, jo)) {
+                    if(queryDrawMachineActivityjo.getJSONArray("otherDrawMachineActivityIds").length()>0)
+                    {
+                        drawMachine("ANTFARM_IP_DRAW_TASK","ipDrawMachine","dailyDrawMachine");
+                    }
                 }
             }
         }
