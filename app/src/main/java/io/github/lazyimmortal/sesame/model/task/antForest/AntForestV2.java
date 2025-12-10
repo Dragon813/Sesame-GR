@@ -214,6 +214,8 @@ public class AntForestV2 extends ModelTask {
     private BooleanModelField ForestHuntHelp;
     private SelectModelField ForestHuntHelpList;
     
+    
+    private BooleanModelField NORMALForestHuntHelp;
     private BooleanModelField ACTIVITYForestHuntHelp;
     
     @Override
@@ -268,7 +270,8 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(ForestHunt = new BooleanModelField("ForestHunt", "森林寻宝", false));
         modelFields.addField(ForestHuntDraw = new BooleanModelField("ForestHuntDraw", "森林寻宝抽奖", false));
         modelFields.addField(ForestHuntHelp = new BooleanModelField("ForestHuntHelp", "森林寻宝助力", false));
-        modelFields.addField(ACTIVITYForestHuntHelp = new BooleanModelField("ACTIVITYForestHuntHelp", "森林强制助力" + "(助力任务不在列表中时使用，如果日志显示失效请关闭)", false));
+        modelFields.addField(NORMALForestHuntHelp = new BooleanModelField("NORMALForestHuntHelp", "普通场景强制助力" + "(助力任务不在列表中时使用，如果日志显示失效请关闭)", false));
+        modelFields.addField(ACTIVITYForestHuntHelp = new BooleanModelField("ACTIVITYForestHuntHelp", "活动场景强制助力" + "(助力任务不在列表中时使用，如果日志显示失效请关闭)", false));
         modelFields.addField(ForestHuntHelpList = new SelectModelField("ForestHuntHelpList", "点击配置寻宝助力列表" + "(填写shareId中开头的22-24位字符在\"4O7FEYDgn\"前的)", new LinkedHashSet<>(), AlipayForestHunt::getList));
         modelFields.addField(dress = new BooleanModelField("dress", "装扮保护 | 开启", false));
         modelFields.addField(dressDetailList = new TextModelField("dressDetailList", "装扮保护 | " + "装扮信息", ""));
@@ -499,7 +502,7 @@ public class AntForestV2 extends ModelTask {
                 // 森林寻宝
                 if (ForestHunt.getValue()) {
                     ForestChouChouLe forestChouChouLe = new ForestChouChouLe();
-                    forestChouChouLe.chouChouLe(ForestHuntDraw.getValue(), ForestHuntHelp.getValue(), ForestHuntHelpList.getValue(), ACTIVITYForestHuntHelp.getValue());
+                    forestChouChouLe.chouChouLe(ForestHuntDraw.getValue(), ForestHuntHelp.getValue(), ForestHuntHelpList.getValue(),NORMALForestHuntHelp.getValue(), ACTIVITYForestHuntHelp.getValue());
                 }
                 
                 if (userPatrol.getValue()) {
@@ -723,29 +726,6 @@ public class AntForestV2 extends ModelTask {
         
     }
     
-    //PK能量榜
-    //private void queryTopEnergyChallengeRanking() {
-        /*try {
-            JSONObject jo = new JSONObject(AntForestRpcCall.queryTopEnergyChallengeRanking());
-            if (!MessageUtil.checkResultCode(TAG, jo)) {
-                return;
-            }
-            if (!jo.has("friendRanking")) {
-                return;
-            }
-            JSONArray friendRankings = jo.getJSONArray("friendRanking");
-            for (int i = 0; i < friendRankings.length(); i++) {
-                JSONObject friendRanking = friendRankings.getJSONObject(i);
-                boolean canCollectEnergy=friendRanking.optBoolean("canCollectEnergy", false);
-                int energySummation = friendRanking.optInt("energySummation", 0);
-                String userId=friendRanking.optString("userId", null);
-                //添加操作
-            }
-        } catch (Throwable th) {
-            Log.i(TAG, "queryTopEnergyChallengeRanking err:");
-            Log.printStackTrace(TAG, th);
-        */
-    
     private void collectPKEnergy() {
         try {
             JSONObject pkObject = new JSONObject(AntForestRpcCall.queryTopEnergyChallengeRanking());
@@ -754,14 +734,14 @@ public class AntForestV2 extends ModelTask {
             }
             else {
                 if (!pkObject.getString("rankMemberStatus").equals("JOIN")) {
-                    Log.forest("未加入PK排行榜");
+                    Log.record("未加入PK排行榜");
                     return;
                 }
-                collectFriendsEnergy(pkObject, "pk");
+                collectFriendsEnergy(pkObject, "PK");
                 //继续处理靠后的PK好友
                 JSONArray totalData = pkObject.optJSONArray("totalData");
                 if (totalData == null || totalData.length() == 0) {
-                    Log.forest("pk好友排行榜为空，跳过");
+                    Log.record("PK好友排行榜为空，跳过");
                     return;
                 }
                 List<String> pkIdList = new ArrayList<>();
@@ -780,7 +760,7 @@ public class AntForestV2 extends ModelTask {
                 if (!pkIdList.isEmpty()) {
                     collectFriendsEnergy(pkIdList, "PK");
                 }
-                Log.forest("收取PK能量完成！");
+                Log.record("收取PK能量完成！");
             }
         }
         catch (Exception e) {
@@ -859,14 +839,14 @@ public class AntForestV2 extends ModelTask {
         return null;
     }
     
-    private JSONObject collectFriendEnergy(String userId, String getTyoe) {
+    private JSONObject collectFriendEnergy(String userId, String getType) {
         if (hasErrorWait) {
             return null;
         }
         try {
             JSONObject userHomeObject = queryFriendHome(userId);
             if (userHomeObject != null) {
-                return collectUserEnergy(userId, userHomeObject, getTyoe);
+                return collectUserEnergy(userId, userHomeObject, getType);
             }
         }
         catch (Throwable t) {

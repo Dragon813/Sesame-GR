@@ -20,7 +20,7 @@ public class ForestChouChouLe {
     
     private static final String TAG = ForestChouChouLe.class.getSimpleName();
     
-    void chouChouLe(Boolean ForestHuntDraw, Boolean ForestHuntHelp, Set<String> shareIds, Boolean ACTIVITYForestHuntHelp) {
+    void chouChouLe(Boolean ForestHuntDraw, Boolean ForestHuntHelp, Set<String> shareIds, Boolean NORMALForestHuntHelp,Boolean ACTIVITYForestHuntHelp) {
         try {
             ForestHuntIdMap.load();
             // String source = "task_entry";
@@ -40,7 +40,7 @@ public class ForestChouChouLe {
                 String drawScenename = drawActivity.getString("name");
                 String sceneCode = drawActivity.getString("sceneCode");
                 
-                chouChouLescene(ForestHuntDraw, activityId, drawScenename, sceneCode, ForestHuntHelp, shareIds, ACTIVITYForestHuntHelp);
+                chouChouLescene(ForestHuntDraw, activityId, drawScenename, sceneCode, ForestHuntHelp, shareIds, NORMALForestHuntHelp,ACTIVITYForestHuntHelp);
             }
         }
         catch (Exception e) {
@@ -48,7 +48,7 @@ public class ForestChouChouLe {
         }
     }
     
-    void chouChouLescene(Boolean ForestHuntDraw, String activityId, String drawScenename, String sceneCode, Boolean ForestHuntHelp, Set<String> shareIds, Boolean ACTIVITYForestHuntHelp) {
+    void chouChouLescene(Boolean ForestHuntDraw, String activityId, String drawScenename, String sceneCode, Boolean ForestHuntHelp, Set<String> shareIds, Boolean NORMALForestHuntHelp,Boolean ACTIVITYForestHuntHelp) {
         String taskUid = UserIdMap.getCurrentUid();
         try {
             boolean doublecheck;
@@ -112,7 +112,7 @@ public class ForestChouChouLe {
                         }
                         // 在最后一个任务时强制开启助力
                         if (i == (taskList.length() - 1)) {
-                            if (ACTIVITYForestHuntHelp && sceneCode.equals("ANTFOREST_NORMAL_DRAW")) {
+                            if (NORMALForestHuntHelp && sceneCode.equals("ANTFOREST_NORMAL_DRAW")) {
                                 int forestHuntHelpTodayCount = Status.getforestHuntHelpToday("FOREST_NORMAL_DRAW_SHARE");
                                 if (forestHuntHelpTodayCount < shareIds.size()) {
                                     // if (!Status.hasFlagToday("Forest::" + sceneCode)) {
