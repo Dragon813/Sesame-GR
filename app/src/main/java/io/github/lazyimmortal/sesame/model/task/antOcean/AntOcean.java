@@ -638,6 +638,7 @@ public class AntOcean extends ModelTask {
                     JSONObject fillFlag = fillFlagVOList.getJSONObject(i);
                     if (cleanOceanType.getValue() != CleanOceanType.NONE) {
                         cleanFriendOcean(fillFlag);
+                        if (Status.hasFlagToday("Ocean::HELP_CLEAN_ALL_FRIEND_LIMIT")) {return;}
                     }
                 }
             }
@@ -680,14 +681,15 @@ public class AntOcean extends ModelTask {
             }
             if (Status.hasFlagToday("Ocean::HELP_CLEAN_ALL_FRIEND_LIMIT")) {return false;}
             jo = new JSONObject(AntOceanRpcCall.cleanFriendOcean(userId));
+            if(jo.has("resultDesc")){
+                if(jo.getString("resultDesc").contains("上限")){
+                    Log.forest("神奇海洋🐳"+jo.getString("resultDesc").contains("上限")+"#[" + UserIdMap.getMaskName(userId) + "]");
+                    Status.flagToday("Ocean::HELP_CLEAN_ALL_FRIEND_LIMIT");
+                }
+                return false;
+            }
             if (MessageUtil.checkResultCode(TAG, jo)) {
                 Log.forest("神奇海洋🐳帮助[" + UserIdMap.getMaskName(userId) + "]清理海域");
-                if(!jo.has("cleanRewardVOS")){
-                    if(jo.getString("resultDesc").contains("上限")){
-                        Status.flagToday("Ocean::HELP_CLEAN_ALL_FRIEND_LIMIT");
-                    }
-                    return false;
-                }
                 JSONArray cleanRewardVOS = jo.getJSONArray("cleanRewardVOS");
                 checkReward(cleanRewardVOS);
                 return true;

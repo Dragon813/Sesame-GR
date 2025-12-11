@@ -888,6 +888,40 @@ public class AntForestV2 extends ModelTask {
                             if (joProp.getLong("endTime") > serverTime) {
                                 Log.record("[" + userName + "]被能量罩保护着哟");
                                 isCollectEnergy = false;
+                                
+                                
+                                JSONArray jaBubbles = userHomeObject.getJSONArray("bubbles");
+                                for (int ii = 0; ii < jaBubbles.length(); ii++) {
+                                    JSONObject canbubble = jaBubbles.getJSONObject(ii);
+                                    long bubbleId = canbubble.getLong("id");
+                                    switch (CollectStatus.valueOf(canbubble.getString("collectStatus"))) {
+                                        case AVAILABLE:
+                                            break;
+                                        case WAITING:
+                                            long produceTime = canbubble.getLong("produceTime");
+                                            //如果保护罩不能覆盖能量成熟时间
+                                            if(produceTime<joProp.getLong("endTime") ){
+                                                break;
+                                            }
+                                            if (checkIntervalInt + checkIntervalInt / 2 > produceTime - serverTime) {
+                                                if (hasChildTask(AntForestV2.getBubbleTimerTid(userId, bubbleId))) {
+                                                    break;
+                                                }
+                                                addChildTask(new BubbleTimerTask(userId, bubbleId, produceTime, userName));
+                                                Log.record("[" + userName + "]能量保护罩时间["+TimeUtil.getCommonDate(joProp.getLong("endTime"))+"]#未覆盖能量球成熟时间["+TimeUtil.getCommonDate(produceTime)+"]");
+                                                Log.record("添加蹲点收取🪂[" + userName + "]在[" + TimeUtil.getCommonDate(produceTime) + "]执行");
+                                            }
+                                            else {
+                                                Log.i("用户[" + userName + "]能量成熟时间: " + TimeUtil.getCommonDate(produceTime));
+                                            }
+                                            break;
+                                    }
+                                }
+                                
+                                
+                                
+                                
+                                
                                 break;
                             }
                         }

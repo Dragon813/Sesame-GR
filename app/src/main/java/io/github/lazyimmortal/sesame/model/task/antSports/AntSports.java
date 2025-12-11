@@ -77,6 +77,8 @@ public class AntSports extends ModelTask {
     
     private BooleanModelField MapListSwitch;
     
+    private BooleanModelField awardspecialActivityReceive;
+    
     //private SelectModelField neverLandOptions;
     private SelectModelField neverLandBenefitList;
     private ChoiceModelField energyStrategy;
@@ -120,6 +122,7 @@ public class AntSports extends ModelTask {
         modelFields.addField(WALK_GRID_MAX = new IntegerModelField("WALK_GRID_MAX", "健康岛 | 单次执行能量泵最大次数(不限:0)", 5));
         modelFields.addField(WALK_GRID_LIMIT = new IntegerModelField("WALK_GRID_LIMIT", "健康岛 | 使用能量泵剩余能量值(低于该值停止使用)", 10000));
         modelFields.addField(MapListSwitch = new BooleanModelField("MapListSwitch", "健康岛 | 自动切岛", false));
+        modelFields.addField(awardspecialActivityReceive = new BooleanModelField("awardspecialActivityReceive", "健康岛 | 领取活动岛奖励", false));
         
         //modelFields.addField(neverLandOptions = new SelectModelField("neverLandOptions", "健康岛 | 选项", new LinkedHashSet<>(), neverLandOptionsList::getList));
         //需要修改AlipayUser::getList
@@ -1857,54 +1860,32 @@ public class AntSports extends ModelTask {
                     }
                 }
             }
-            // 处理活动岛能量泵任务
-            /*if (data.optBoolean("newGame") && WALK_GRID.getValue()) {
-                String branchId = data.getString("branchId");
-                String mapId = data.getString("mapId");
-                String mapName = data.getString("mapName");
-                int Buidcount = 0;
-                if (canBuild(mapId) && queryUserEnergy() >= 5 && queryUserEnergy() >= WALK_GRID_LIMIT.getValue()) {
-                    int remainBuildingEnergyProcess = Buid(branchId, mapId, mapName, 1);
-                    Buidcount++;
-                    if (Buidcount >= WALK_GRID_MAX.getValue() && WALK_GRID_MAX.getValue() != 0) {
-                        return;
-                    }
-                    while (remainBuildingEnergyProcess > 0 && canBuild(mapId)) {
-                            remainBuildingEnergyProcess = Buid(branchId, mapId, mapName, 1);
-                            Buidcount++;
-                        if (WALK_GRID_MAX.getValue() == 0&& queryUserEnergy() >=5) {
-                            continue;
-                        }
-                        if (Buidcount >= WALK_GRID_MAX.getValue() || queryUserEnergy() < 5) {
-                            break;
-                        }
-                    }
-                }
-            }*/
-            //领取活动岛奖励
-            if (data.optBoolean("newGame")) {
-                String branchId = data.getString("branchId");
-                String mapId = data.getString("mapId");
-                String mapName = data.getString("mapName");
-                jsonResult = new JSONObject(AntSportsRpcCall.queryMapDetail(mapId));
-                if (MessageUtil.checkSuccess(TAG, jsonResult)) {
-                    JSONObject dataMapDetail = jsonResult.getJSONObject("data");
-                    JSONObject baseMapInfo = dataMapDetail.getJSONObject("baseMapInfo");
-                    if (baseMapInfo.getInt("currentPercent") == 100&& baseMapInfo.optString("status").equals("FINISH_NOT_REWARD")) {
-                        JSONArray rewards = baseMapInfo.getJSONArray("rewards");
-                        for (int i = 0; i < rewards.length(); i++) {
-                            JSONObject reward=rewards.getJSONObject(i);
-                            if(reward.optString("prizeStatus").equals("待领取")){
-                                String itemId=reward.optString("itemId");
-                                JSONObject mapChooseRewardjo = new JSONObject(AntSportsRpcCall.mapChooseReward(branchId,mapId,itemId));
-                                if (MessageUtil.checkSuccess(TAG, mapChooseRewardjo)) {
-                                    data=mapChooseRewardjo.getJSONObject("data");
-                                    JSONObject specialActivityReceiveResult=data.getJSONObject("specialActivityReceiveResult");
-                                    JSONArray prizes = specialActivityReceiveResult.getJSONArray("prizes");
-                                    JSONObject prize=prizes.getJSONObject(0);
-                                    String subTitle=prize.optString("subTitle");
-                                    String title=prize.optString("title");
-                                    Log.other("悦动健康🚑️领取奖励[" + subTitle + "]#获得[" + title + "]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+            if (awardspecialActivityReceive.getValue()) {
+                //领取活动岛奖励
+                if (data.optBoolean("newGame")) {
+                    String branchId = data.getString("branchId");
+                    String mapId = data.getString("mapId");
+                    String mapName = data.getString("mapName");
+                    jsonResult = new JSONObject(AntSportsRpcCall.queryMapDetail(mapId));
+                    if (MessageUtil.checkSuccess(TAG, jsonResult)) {
+                        JSONObject dataMapDetail = jsonResult.getJSONObject("data");
+                        JSONObject baseMapInfo = dataMapDetail.getJSONObject("baseMapInfo");
+                        if (baseMapInfo.getInt("currentPercent") == 100 && baseMapInfo.optString("status").equals("FINISH_NOT_REWARD")) {
+                            JSONArray rewards = baseMapInfo.getJSONArray("rewards");
+                            for (int i = 0; i < rewards.length(); i++) {
+                                JSONObject reward = rewards.getJSONObject(i);
+                                if (reward.optString("prizeStatus").equals("待领取")) {
+                                    String itemId = reward.optString("itemId");
+                                    JSONObject mapChooseRewardjo = new JSONObject(AntSportsRpcCall.mapChooseReward(branchId, mapId, itemId));
+                                    if (MessageUtil.checkSuccess(TAG, mapChooseRewardjo)) {
+                                        data = mapChooseRewardjo.getJSONObject("data");
+                                        JSONObject specialActivityReceiveResult = data.getJSONObject("specialActivityReceiveResult");
+                                        JSONArray prizes = specialActivityReceiveResult.getJSONArray("prizes");
+                                        JSONObject prize = prizes.getJSONObject(0);
+                                        String subTitle = prize.optString("subTitle");
+                                        String title = prize.optString("title");
+                                        Log.other("悦动健康🚑️领取奖励[" + subTitle + "]#获得[" + title + "]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                                    }
                                 }
                             }
                         }

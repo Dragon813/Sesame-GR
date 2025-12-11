@@ -11,7 +11,7 @@ import java.util.Locale;
 
 public class FileUtil {
     private static final String TAG = FileUtil.class.getSimpleName();
-
+    //路径
     public static final String CONFIG_DIRECTORY_NAME = "sesame";
     public static final File MAIN_DIRECTORY_FILE = getMainDirectoryFile();
     public static final File CONFIG_DIRECTORY_FILE = getConfigDirectoryFile();

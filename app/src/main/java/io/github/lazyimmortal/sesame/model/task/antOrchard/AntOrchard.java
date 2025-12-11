@@ -42,6 +42,7 @@ public class AntOrchard extends ModelTask {
     private IntegerModelField executeInterval;
     private BooleanModelField orchardListTask;
     private BooleanModelField orchardSpreadManure;
+    private BooleanModelField useBatchSpread;
     private SelectAndCountModelField orchardSpreadManureSceneList;
     private ChoiceModelField driveAnimalType;
     private SelectModelField driveAnimalList;
@@ -73,6 +74,7 @@ public class AntOrchard extends ModelTask {
         modelFields.addField(executeInterval = new IntegerModelField("executeInterval", "执行间隔(毫秒)", 500, 500, null));
         modelFields.addField(orchardListTask = new BooleanModelField("orchardListTask", "农场任务", false));
         modelFields.addField(orchardSpreadManure = new BooleanModelField("orchardSpreadManure", "农场施肥 | 开启", false));
+        modelFields.addField(useBatchSpread = new BooleanModelField("useBatchSpread", "一键施肥5次", false));
         modelFields.addField(orchardSpreadManureSceneList = new SelectAndCountModelField("orchardSpreadManureSceneList", "农场施肥 | 场景列表", new LinkedHashMap<>(), AlipayPlantScene::getList, "请填写每日施肥次数"));
         //modelFields.addField(driveAnimalType = new ChoiceModelField("driveAnimalType", "驱赶小鸡 | 动作", DriveAnimalType.NONE, DriveAnimalType.nickNames));
         //modelFields.addField(driveAnimalList = new SelectModelField("driveAnimalList", "驱赶小鸡 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
@@ -297,7 +299,7 @@ public class AntOrchard extends ModelTask {
     private boolean doSpreadManure(PlantScene scene) {
         try {
             String sceneName = scene.name();
-            String result = AntOrchardRpcCall.orchardSpreadManure(getWua());
+            String result = AntOrchardRpcCall.orchardSpreadManure(useBatchSpread.getValue(),getWua());
             JSONObject jo = new JSONObject(result);
             
             if (!MessageUtil.checkResultCode(TAG, jo)) {

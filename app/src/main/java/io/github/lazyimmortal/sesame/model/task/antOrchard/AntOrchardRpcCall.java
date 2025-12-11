@@ -63,8 +63,8 @@ public class AntOrchardRpcCall {
         return ApplicationHook.requestString("com.alipay.antorchard.orchardSyncIndex", "[{\"requestType\":\"NORMAL\",\"sceneCode\":\"ORCHARD\",\"source\":\"ch_appcenter__chsub_9patch\",\"syncIndexTypes\":\"QUERY_MAIN_ACCOUNT_INFO\",\"version\":\"" + VERSION + "\"}]");
     }
     
-    public static String orchardSpreadManure(String wua) {
-        return ApplicationHook.requestString("com.alipay.antfarm.orchardSpreadManure", "[{\"plantScene\":\"main\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ORCHARD\",\"source\":\"ch_appcenter__chsub_9patch\",\"useBatchSpread\":true,\"version\":\"" + VERSION + "\",\"wua\":\"" + wua + "\"}]");
+    public static String orchardSpreadManure(Boolean useBatchSpread,String wua) {
+        return ApplicationHook.requestString("com.alipay.antfarm.orchardSpreadManure", "[{\"plantScene\":\"main\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ORCHARD\",\"source\":\"ch_appcenter__chsub_9patch\",\"useBatchSpread\":"+useBatchSpread+",\"version\":\"" + VERSION + "\",\"wua\":\"" + wua + "\"}]");
     }
     
     public static String receiveTaskAward(String sceneCode, String taskType) {
