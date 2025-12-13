@@ -271,6 +271,10 @@ public class ForestChouChouLe {
                     continue;
                 }
                 TimeUtil.sleep(1500);
+                //能成功返回，但解析不了UID
+                if (userId.length() != 16) {
+                    continue;
+                }
                 String resconfirmShareRecall = confirmShareRecall(activityId, p2pSceneCode, shareId, userId);
                 TimeUtil.sleep(1500);
                 
@@ -297,8 +301,7 @@ public class ForestChouChouLe {
             }
             if (jo.has("inviterInfoVo")) {
                 jo = jo.getJSONObject("inviterInfoVo");
-                String userID = jo.getString("userId");
-                return userID;
+                return jo.getString("userId");
             }
         }
         catch (Throwable t) {

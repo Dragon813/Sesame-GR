@@ -1,5 +1,7 @@
 package io.github.lazyimmortal.sesame.model.task.antForest;
 
+import static io.github.lazyimmortal.sesame.util.RandomUtil.getRandomString;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -146,6 +148,7 @@ public class AntForestV2 extends ModelTask {
     private IntegerModelField tryCount;
     private IntegerModelField retryInterval;
     private SelectModelField dontCollectList;
+    private IntegerModelField collectRobExpandEnergy;
     private BooleanModelField collectWateringBubble;
     private BooleanModelField batchRobEnergy;
     private BooleanModelField balanceNetworkDelay;
@@ -214,7 +217,7 @@ public class AntForestV2 extends ModelTask {
     private BooleanModelField ForestHuntHelp;
     private SelectModelField ForestHuntHelpList;
     
-    
+    private SelectModelField continuousUseCardOptions;
     private BooleanModelField NORMALForestHuntHelp;
     private BooleanModelField ACTIVITYForestHuntHelp;
     
@@ -225,6 +228,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(batchRobEnergy = new BooleanModelField("batchRobEnergy", "一键收取", false));
         modelFields.addField(pkEnergy = new BooleanModelField("pkEnergy", "Pk榜收取 | 开关", false));
         modelFields.addField(collectWateringBubble = new BooleanModelField("collectWateringBubble", "收取金球", false));
+        modelFields.addField(collectRobExpandEnergy = new IntegerModelField("collectRobExpandEnergy", "额外能量领取(大于该值收取)", 100, 0, 1000000));
         modelFields.addField(expiredEnergy = new BooleanModelField("expiredEnergy", "收取过期能量", false));
         modelFields.addField(queryInterval = new StringModelField("queryInterval", "查询间隔(毫秒或毫秒范围)", "500-1000"));
         modelFields.addField(collectInterval = new StringModelField("collectInterval", "收取间隔" + "(毫秒或毫秒范围)", "1000" + "-1500"));
@@ -234,6 +238,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(tryCount = new IntegerModelField("tryCount", "尝试收取(次数)", 1, 0, 10));
         modelFields.addField(retryInterval = new IntegerModelField("retryInterval", "重试间隔(毫秒)", 1000, 0, 10000));
         modelFields.addField(dontCollectList = new SelectModelField("dontCollectList", "不收取能量列表", new LinkedHashSet<>(), AlipayUser::getList));
+        modelFields.addField(continuousUseCardOptions = new SelectModelField("continuousUseCardOptions", "【连续】兑换使用道具卡片 | 选项", new LinkedHashSet<>(), CustomOption::getContinuousUseCardOptions, "光盘行动需要先手动完成一次"));
         modelFields.addField(doubleClickType = new ChoiceModelField("doubleClickType", "双击卡 | " + "自动使用", UsePropType.CLOSE, UsePropType.nickNames));
         modelFields.addField(doubleCountLimit = new IntegerModelField("doubleCountLimit", "双击卡 | " + "使用次数", 6));
         modelFields.addField(doubleCardTime = new ListModelField.ListJoinCommaToStringModelField("doubleCardTime", "双击卡 | 使用时间(范围)", ListUtil.newArrayList("0700" + "-0730")));
@@ -322,7 +327,8 @@ public class AntForestV2 extends ModelTask {
             taskCount.set(0);
             selfId = UserIdMap.getCurrentUid();
             hasErrorWait = false;
-            
+            //连续兑换使用道具卡片
+            continuousUseCardOptions();
             JSONObject selfHomeObject = collectSelfEnergy();
             try {
                 JSONObject friendsObject = new JSONObject(AntForestRpcCall.queryEnergyRanking());
@@ -502,7 +508,7 @@ public class AntForestV2 extends ModelTask {
                 // 森林寻宝
                 if (ForestHunt.getValue()) {
                     ForestChouChouLe forestChouChouLe = new ForestChouChouLe();
-                    forestChouChouLe.chouChouLe(ForestHuntDraw.getValue(), ForestHuntHelp.getValue(), ForestHuntHelpList.getValue(),NORMALForestHuntHelp.getValue(), ACTIVITYForestHuntHelp.getValue());
+                    forestChouChouLe.chouChouLe(ForestHuntDraw.getValue(), ForestHuntHelp.getValue(), ForestHuntHelpList.getValue(), NORMALForestHuntHelp.getValue(), ACTIVITYForestHuntHelp.getValue());
                 }
                 
                 if (userPatrol.getValue()) {
@@ -889,7 +895,6 @@ public class AntForestV2 extends ModelTask {
                                 Log.record("[" + userName + "]被能量罩保护着哟");
                                 isCollectEnergy = false;
                                 
-                                
                                 JSONArray jaBubbles = userHomeObject.getJSONArray("bubbles");
                                 for (int ii = 0; ii < jaBubbles.length(); ii++) {
                                     JSONObject canbubble = jaBubbles.getJSONObject(ii);
@@ -900,7 +905,7 @@ public class AntForestV2 extends ModelTask {
                                         case WAITING:
                                             long produceTime = canbubble.getLong("produceTime");
                                             //如果保护罩不能覆盖能量成熟时间
-                                            if(produceTime<joProp.getLong("endTime") ){
+                                            if (produceTime < joProp.getLong("endTime")) {
                                                 break;
                                             }
                                             if (checkIntervalInt + checkIntervalInt / 2 > produceTime - serverTime) {
@@ -908,7 +913,7 @@ public class AntForestV2 extends ModelTask {
                                                     break;
                                                 }
                                                 addChildTask(new BubbleTimerTask(userId, bubbleId, produceTime, userName));
-                                                Log.record("[" + userName + "]能量保护罩时间["+TimeUtil.getCommonDate(joProp.getLong("endTime"))+"]#未覆盖能量球成熟时间["+TimeUtil.getCommonDate(produceTime)+"]");
+                                                Log.record("[" + userName + "]能量保护罩时间[" + TimeUtil.getCommonDate(joProp.getLong("endTime")) + "]#未覆盖能量球成熟时间[" + TimeUtil.getCommonDate(produceTime) + "]");
                                                 Log.record("添加蹲点收取🪂[" + userName + "]在[" + TimeUtil.getCommonDate(produceTime) + "]执行");
                                             }
                                             else {
@@ -917,10 +922,6 @@ public class AntForestV2 extends ModelTask {
                                             break;
                                     }
                                 }
-                                
-                                
-                                
-                                
                                 
                                 break;
                             }
@@ -1381,7 +1382,7 @@ public class AntForestV2 extends ModelTask {
         try {
             JSONObject jo = new JSONObject(extInfo);
             double leftEnergy = Double.parseDouble(jo.optString("leftEnergy", "0"));
-            if (leftEnergy > 100 || (Objects.equals(jo.optString("overLimitToday", "false"), "true") && leftEnergy > 0)) {
+            if (leftEnergy > collectRobExpandEnergy.getValue() || (Objects.equals(jo.optString("overLimitToday", "false"), "true") && leftEnergy > 0)) {
                 collectRobExpandEnergy(propId, propType);
             }
         }
@@ -2107,6 +2108,218 @@ public class AntForestV2 extends ModelTask {
         }
     }
     
+    private void continuousUseCardOptions() {
+        //双击卡
+        continuousUseAndExchangeCard("doubleClick", "SK20240805004754");
+        //收能量倍卡
+        continuousUseAndExchangeCard("robExpandCard", "");
+        //保护罩
+        continuousUseAndExchangeCard("shield", "CR20230516000370");
+        //隐身卡
+        continuousUseAndExchangeCard("stealthCard", "SK20230521000206");
+    }
+    
+    private void continuousUseAndExchangeCard(String propGroupType, String exchangeProp) {
+        try {
+            if (continuousUseCardOptions.getValue().contains(propGroupType)) {
+                long continuousUseCardSecond = continuousUseCardCheak(propGroupType);
+                if (continuousUseCardSecond >= 0) {
+                    TimeUtil.sleep(500);
+                    JSONObject rightCard = chooseContinuousLIMITTIMECard(propGroupType);
+                    if (rightCard == null) {
+                        if (exchangeProp != null) {
+                            exchangeBenefit(exchangeProp);
+                            TimeUtil.sleep(500);
+                        }
+                        rightCard = chooseContinuousLIMITTIMECard(propGroupType);
+                        if (rightCard == null) {
+                            return;
+                        }
+                    }
+                    int holdsNum = rightCard.optInt("holdsNum");
+                    if (holdsNum == 0) {
+                        return;
+                    }
+                    int loopCount = 0; // 循环次数计数
+                    final int MAX_LOOP = 10; // 最大循环次数，避免死循环
+                    do {
+                        rightCard = chooseContinuousLIMITTIMECard(propGroupType);
+                        if (rightCard == null) {
+                            return;
+                        }
+                        holdsNum = rightCard.optInt("holdsNum");
+                        if (holdsNum == 0) {
+                            return;
+                        }
+                        if (!rightCard.has("propIdList")) {
+                            return;
+                        }
+                        JSONArray propIdList = rightCard.optJSONArray("propIdList");
+                        if (propIdList.length() == 0) {
+                            return;
+                        }
+                        String propId = propIdList.optString(0);
+                        String propType = rightCard.optString("propType");
+                        String propName = rightCard.getJSONObject("propConfigVO").getString("propName");
+                        JSONObject joResult;
+                        switch (propGroupType) {
+                            case "doubleClick":
+                            case "shield":
+                                if (continuousUseCardSecond > 0) {
+                                    joResult = new JSONObject(AntForestRpcCall.consumeProp(propGroupType, propId, propType, true));
+                                }
+                                else {
+                                    joResult = new JSONObject(AntForestRpcCall.consumeProp(propGroupType, propId, propType, false));
+                                }
+                                holdsNum--;
+                                TimeUtil.sleep(500);
+                                if (MessageUtil.checkResultCode(TAG, joResult)) {
+                                    Log.forest("使用道具🎭[" + propName + "]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                                }
+                                break;
+                            case "robExpandCard":
+                            case "stealthCard":
+                                joResult = new JSONObject(AntForestRpcCall.consumeProp(propGroupType, propId, propType));
+                                holdsNum--;
+                                TimeUtil.sleep(1000);
+                                if (MessageUtil.checkResultCode(TAG, joResult)) {
+                                    Log.forest("使用道具🎭[" + propName + "]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                                }
+                                break;
+                        }
+                        continuousUseCardSecond = continuousUseCardCheak(propGroupType);
+                        if (continuousUseCardSecond < 0) {
+                            return;
+                        }
+                        TimeUtil.sleep(500);
+                    }
+                    while (holdsNum > 0&&++loopCount < MAX_LOOP);
+                }
+            }
+        }
+        catch (Throwable th) {
+            Log.i(TAG, "continuousUseAndExchangeCard err:");
+            Log.printStackTrace(TAG, th);
+        }
+    }
+    
+    //判断是否可以使用道具卡片
+    //返回值-1为不可用，0为可用，大于0为剩余分钟数
+    private long continuousUseCardCheak(String propGroupType) {
+        try {
+            JSONObject joMiscHomes = new JSONObject(AntForestRpcCall.queryMiscInfo());
+            System.out.println(joMiscHomes);
+            if (!MessageUtil.checkResultCode(TAG, joMiscHomes)) {
+                return -1;
+            }
+            if (!joMiscHomes.has("combineHandlerVOMap")) {
+                return -1;
+            }
+            long now = System.currentTimeMillis();
+            if (!joMiscHomes.has("combineHandlerVOMap")) {
+                return -1;
+            }
+            JSONObject combineHandlerVOMap = joMiscHomes.optJSONObject("combineHandlerVOMap");
+            if (!combineHandlerVOMap.has("usingProp")) {
+                return -1;
+            }
+            JSONObject usingProp = combineHandlerVOMap.optJSONObject("usingProp");
+            if (!usingProp.has("userPropVOS")) {
+                return -1;
+            }
+            JSONArray userPropVOS = usingProp.getJSONArray("userPropVOS");
+            for (int i = 0; i < userPropVOS.length(); i++) {
+                JSONObject userPropVO = userPropVOS.getJSONObject(i);
+                String propGroup = userPropVO.optString("propGroup");
+                if (propGroup.equals(propGroupType)) {
+                    long endTime = userPropVO.optLong("endTime");
+                    long duringTime = endTime - now;
+                    if (duringTime < 0) {
+                        return -1;
+                    }
+                    switch (propGroupType) {
+                        case "doubleClick":
+                            //计算出分钟数
+                            Log.forest("duringTime / (1000*60)双击卡剩余分钟:" + (int) duringTime / (1000 * 60));
+                            if (duringTime / (1000 * 60) < 60 * 24 * 31) {
+                                return duringTime;
+                            }
+                            else {
+                                return -1;
+                            }
+                        case "robExpandCard":
+                            Log.forest("存在倍卡到期时间:" + TimeUtil.getCommonDate(endTime));
+                            return 0;
+                        case "shield":
+                            Log.forest("duringTime / (1000.0*60)保护罩剩余分钟:" + (int) duringTime / (1000 * 60));
+                            if (duringTime / (1000 * 60) < 60 * 24) {
+                                return duringTime;
+                            }
+                            else {
+                                return -1;
+                            }
+                        case "stealthCard":
+                            Log.forest("存在隐身卡到期时间:" + TimeUtil.getCommonDate(endTime));
+                            return 0;
+                    }
+                }
+            }
+            return 0;
+        }
+        catch (Throwable th) {
+            Log.i(TAG, "useDoubleCard err:");
+            Log.printStackTrace(TAG, th);
+        }
+        return -1;
+    }
+    
+    //选出可以使用的限时道具卡片
+    private JSONObject chooseContinuousLIMITTIMECard(String propGroupType) {
+        try {
+            JSONArray forestPropVOList = getForestPropVOList();
+            JSONObject rightCard = null;
+            for (int i = 0; i < forestPropVOList.length(); i++) {
+                JSONObject forestBagProp = forestPropVOList.getJSONObject(i);
+                String propGroup = forestBagProp.optString("propGroup");
+                if (forestBagProp.has("recentExpireTime") && propGroup.equals(propGroupType)) {
+                    switch (propGroup) {
+                        case "stealthCard":
+                        case "shield":
+                        case "doubleClick":
+                            if (rightCard != null) {
+                                long recentExpireTimerightCard = rightCard.optLong("recentExpireTime");
+                                long recentExpireTimeforestBagProp = forestBagProp.optLong("recentExpireTime");
+                                if (recentExpireTimerightCard > recentExpireTimeforestBagProp) {
+                                    rightCard = forestBagProp;
+                                }
+                            }
+                            else {
+                                rightCard = forestBagProp;
+                            }
+                            break;
+                        case "robExpandCard":
+                            if (rightCard != null) {
+                                String factorrightCard = rightCard.getJSONObject("propConfigVO").getJSONObject("detail").optString("factor");
+                                String factorforestBagProp = forestBagProp.getJSONObject("propConfigVO").getJSONObject("detail").optString("factor");
+                                if (Float.parseFloat(factorrightCard) < Float.parseFloat(factorforestBagProp)) {
+                                    rightCard = forestBagProp;
+                                }
+                            }
+                            else {
+                                rightCard = forestBagProp;
+                            }
+                    }
+                }
+            }
+            return rightCard;
+        }
+        catch (Throwable th) {
+            Log.i(TAG, "useDoubleCard err:");
+            Log.printStackTrace(TAG, th);
+        }
+        return null;
+    }
+    
     private void usePropBeforeCollectEnergy(String userId) {
         if (Objects.equals(selfId, userId)) {
             return;
@@ -2738,8 +2951,9 @@ public class AntForestV2 extends ModelTask {
             // 使用道具
             String propId = prop.getJSONArray("propIdList").getString(0);
             String propType = prop.getString("propType");
+            String propGroup = prop.getString("propGroup");
             String propName = prop.getJSONObject("propConfigVO").getString("propName");
-            return consumeProp(propId, propType, propName);
+            return consumeProp(propGroup, propId, propType, propName);
         }
         catch (Throwable th) {
             Log.i(TAG, "consumeProp err:");
@@ -2748,9 +2962,9 @@ public class AntForestV2 extends ModelTask {
         return false;
     }
     
-    private static Boolean consumeProp(String propId, String propType, String propName) {
+    private static Boolean consumeProp(String propGroup, String propId, String propType, String propName) {
         try {
-            JSONObject jo = new JSONObject(AntForestRpcCall.consumeProp(propId, propType));
+            JSONObject jo = new JSONObject(AntForestRpcCall.consumeProp(propGroup, propId, propType));
             if (MessageUtil.checkResultCode(TAG, jo)) {
                 Log.forest("使用道具🎭[" + propName + "]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                 return true;

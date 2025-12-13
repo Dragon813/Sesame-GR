@@ -1,5 +1,7 @@
 package io.github.lazyimmortal.sesame.model.task.antForest;
 
+import static io.github.lazyimmortal.sesame.util.RandomUtil.getRandomString;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -198,9 +200,25 @@ public class AntForestRpcCall {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.collectProp", "[{\"giveConfigId\":\"" + giveConfigId + "\",\"giveId\":\"" + giveId + "\",\"source" + "\":\"chInfo_ch_appcenter__chsub_9patch\"}]");
     }
     
-    public static String consumeProp(String propId, String propType) {
-        return ApplicationHook.requestString("alipay.antforest.forest.h5.consumeProp", "[{\"propId\":\"" + propId + "\",\"propType\":\"" + propType + "\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\"," + "\"timezoneId\":\"Asia/Shanghai\",\"version\":\"" + VERSION + "\"}]");
+    
+    //{"propGroup":"doubleClick","propId":"0fa28fd0eqb61b1615bib0gy1i8b2130","propType":"LIMIT_TIME_ENERGY_DOUBLE_CLICK","sToken":"1765587286732_b5409fdd","secondConfirm":false,"source":"chInfo_ch_appcenter__chsub_9patch","timezoneId":"Asia/Shanghai","version":"20250813"}]}
+    public static String consumeProp(String propGroup,String propId, String propType,Boolean secondConfirm) {
+        String sToken=System.currentTimeMillis()+"_"+getRandomString(8);
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.consumeProp", "[{\"propGroup\":\""+propGroup+"\",\"propId\":\""+propId+"\",\"propType\":\""+propType+"\",\"sToken\":\""+sToken+"\",\"secondConfirm\":"+secondConfirm+",\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"timezoneId\":\"Asia/Shanghai\",\"version\":\"" + VERSION + "\"}]");
+        
+        //return ApplicationHook.requestString("alipay.antforest.forest.h5.consumeProp", "[{\"propId\":\"" + propId + "\",\"propType\":\"" + propType + "\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\"," + "\"timezoneId\":\"Asia/Shanghai\",\"version\":\"" + VERSION + "\"}]");
     }
+    
+    public static String consumeProp(String propGroup,String propId, String propType) {
+        String sToken=System.currentTimeMillis()+"_"+getRandomString(8);
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.consumeProp", "[{\"propGroup\":\""+propGroup+"\",\"propId\":\""+propId+"\",\"propType\":\""+propType+"\",\"sToken\":\""+sToken+"\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"timezoneId\":\"Asia/Shanghai\",\"version\":\"" + VERSION + "\"}]");
+        
+        //return ApplicationHook.requestString("alipay.antforest.forest.h5.consumeProp", "[{\"propId\":\"" + propId + "\",\"propType\":\"" + propType + "\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\"," + "\"timezoneId\":\"Asia/Shanghai\",\"version\":\"" + VERSION + "\"}]");
+    }
+    //{"queryBizType":"usingProp","source":"SELF_HOME","version":"20240201"}]}
+    public static String queryMiscInfo() {
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.queryMiscInfo", "[{\"queryBizType\":\"usingProp\",\"source\":\"SELF_HOME\",\"version\":\"20240201\"}]");
+       }
     
     public static String itemList(String labelType) {
         return ApplicationHook.requestString("com.alipay.antiep.itemList", "[{\"extendInfo\":\"{}\",\"labelType\":\"" + labelType + "\",\"pageSize\":20,\"requestType\":\"rpc\"," + "\"sceneCode\":\"ANTFOREST_VITALITY\",\"source\":\"afEntry\",\"startIndex\":0}]");

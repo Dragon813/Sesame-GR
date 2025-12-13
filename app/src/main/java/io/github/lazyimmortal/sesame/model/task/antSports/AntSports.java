@@ -1655,21 +1655,17 @@ public class AntSports extends ModelTask {
         return false;
     }
     
-    public static int Buid(String branchId, String mapId, String mapName, int multiNum) {
+    public static int build(String branchId, String mapId, String mapName, int multiNum) {
         try {
             JSONObject jsonResult = new JSONObject(AntSportsRpcCall.build(branchId, mapId, multiNum));
             if (MessageUtil.checkSuccess(TAG, jsonResult)) {
                 JSONObject data = jsonResult.getJSONObject("data");
-                //JSONObject beforeStageInfo = data.getJSONObject("beforeStageInfo");
                 JSONObject endStageInfo = data.getJSONObject("endStageInfo");
                 int buildingEnergyFinal = endStageInfo.optInt("buildingEnergyFinal");
-                //int beforebuildingEnergyProcess=beforeStageInfo.optInt("buildingEnergyProcess");
                 String buildingId = endStageInfo.optString("buildingId");
                 int endbuildingEnergyProcess = endStageInfo.optInt("buildingEnergyProcess");
                 Log.other("悦动健康🚑️能量泵[" + mapName + "]建造[" + buildingId + "]进度(" + endbuildingEnergyProcess + "/" + buildingEnergyFinal + ")#消耗" + multiNum * 5 + "g能量");
-                
                 JSONArray rewards = data.getJSONArray("rewards");
-                //if (rewards.getJSONArray("memberList").length() != 0) {continue;}
                 ArrayList<String> rewardList = parseRewards(rewards);
                 if (!rewardList.isEmpty()) {
                     Log.other("悦动健康🚑️能量泵[" + mapName + "]#获得" + rewardList);
@@ -1678,7 +1674,7 @@ public class AntSports extends ModelTask {
             }
         }
         catch (Exception e) {
-            Log.i(TAG, "Buid err:");
+            Log.i(TAG, "build err:");
             Log.printStackTrace(TAG, e);
         }
         return 0;
@@ -1830,31 +1826,31 @@ public class AntSports extends ModelTask {
                 String branchId = data.getString("branchId");
                 String mapId = data.getString("mapId");
                 String mapName = data.getString("mapName");
-                int Buidcount = 0;
+                int buildcount = 0;
                 if (canBuild(mapId) && queryUserEnergy() >= 5 && queryUserEnergy() >= WALK_GRID_LIMIT.getValue()) {
-                    int remainBuildingEnergyProcess = Buid(branchId, mapId, mapName, 1);
-                    Buidcount++;
-                    if (Buidcount >= WALK_GRID_MAX.getValue() && WALK_GRID_MAX.getValue() != 0) {
+                    int remainBuildingEnergyProcess = build(branchId, mapId, mapName, 1);
+                    buildcount++;
+                    if (buildcount >= WALK_GRID_MAX.getValue() && WALK_GRID_MAX.getValue() != 0) {
                         return;
                     }
                     while (remainBuildingEnergyProcess > 0 && canBuild(mapId)) {
                         TimeUtil.sleep(2000);
-                        if (remainBuildingEnergyProcess >= 50 && ((WALK_GRID_MAX.getValue() - Buidcount) >= 10 || WALK_GRID_MAX.getValue() == 0) && queryUserEnergy() >= 50) {
-                            remainBuildingEnergyProcess = Buid(branchId, mapId, mapName, 10);
-                            Buidcount = Buidcount + 10;
+                        if (remainBuildingEnergyProcess >= 50 && ((WALK_GRID_MAX.getValue() - buildcount) >= 10 || WALK_GRID_MAX.getValue() == 0) && queryUserEnergy() >= 50) {
+                            remainBuildingEnergyProcess = build(branchId, mapId, mapName, 10);
+                            buildcount = buildcount + 10;
                         }
-                        else if (remainBuildingEnergyProcess >= 25 && ((WALK_GRID_MAX.getValue() - Buidcount) >= 5 || WALK_GRID_MAX.getValue() == 0) && queryUserEnergy() >= 25) {
-                            remainBuildingEnergyProcess = Buid(branchId, mapId, mapName, 5);
-                            Buidcount = Buidcount + 5;
+                        else if (remainBuildingEnergyProcess >= 25 && ((WALK_GRID_MAX.getValue() - buildcount) >= 5 || WALK_GRID_MAX.getValue() == 0) && queryUserEnergy() >= 25) {
+                            remainBuildingEnergyProcess = build(branchId, mapId, mapName, 5);
+                            buildcount = buildcount + 5;
                         }
                         else {
-                            remainBuildingEnergyProcess = Buid(branchId, mapId, mapName, 1);
-                            Buidcount++;
+                            remainBuildingEnergyProcess = build(branchId, mapId, mapName, 1);
+                            buildcount++;
                         }
                         if (WALK_GRID_MAX.getValue() == 0) {
                             continue;
                         }
-                        if (Buidcount >= WALK_GRID_MAX.getValue() || queryUserEnergy() < 5) {
+                        if (buildcount >= WALK_GRID_MAX.getValue() || queryUserEnergy() < 5) {
                             break;
                         }
                     }
