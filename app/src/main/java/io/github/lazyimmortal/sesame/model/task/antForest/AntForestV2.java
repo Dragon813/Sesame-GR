@@ -2239,8 +2239,6 @@ public class AntForestV2 extends ModelTask {
                     }
                     switch (propGroupType) {
                         case "doubleClick":
-                            //计算出分钟数
-                            Log.forest("duringTime / (1000*60)双击卡剩余分钟:" + (int) duringTime / (1000 * 60));
                             if (duringTime / (1000 * 60) < 60 * 24 * 31) {
                                 return duringTime;
                             }
@@ -2248,10 +2246,8 @@ public class AntForestV2 extends ModelTask {
                                 return -1;
                             }
                         case "robExpandCard":
-                            Log.forest("存在倍卡到期时间:" + TimeUtil.getCommonDate(endTime));
                             return 0;
                         case "shield":
-                            Log.forest("duringTime / (1000.0*60)保护罩剩余分钟:" + (int) duringTime / (1000 * 60));
                             if (duringTime / (1000 * 60) < 60 * 24) {
                                 return duringTime;
                             }
@@ -2259,7 +2255,6 @@ public class AntForestV2 extends ModelTask {
                                 return -1;
                             }
                         case "stealthCard":
-                            Log.forest("存在隐身卡到期时间:" + TimeUtil.getCommonDate(endTime));
                             return 0;
                     }
                 }
