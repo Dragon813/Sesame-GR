@@ -683,7 +683,7 @@ public class AntOcean extends ModelTask {
             jo = new JSONObject(AntOceanRpcCall.cleanFriendOcean(userId));
             if(jo.has("resultDesc")){
                 if(jo.getString("resultDesc").contains("上限")){
-                    Log.forest("神奇海洋🐳"+jo.getString("resultDesc").contains("上限")+"#[" + UserIdMap.getMaskName(userId) + "]");
+                    Log.record("神奇海洋🐳"+jo.getString("resultDesc"));
                     Status.flagToday("Ocean::HELP_CLEAN_ALL_FRIEND_LIMIT");
                 }
                 return false;

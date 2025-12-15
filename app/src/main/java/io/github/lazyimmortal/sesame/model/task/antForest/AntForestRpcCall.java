@@ -314,15 +314,35 @@ public class AntForestRpcCall {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.collectFriendGiftBox", "[{\"source" + "\":\"chInfo_ch_appcenter__chsub_9patch\",\"targetId\":\"" + targetId + "\",\"targetUserId\":\"" + targetUserId + "\"}]");
     }
     
-    /* 6秒拼手速 打地鼠 */
-    public static String startWhackMole() {
-        return ApplicationHook.requestString("alipay.antforest.forest.h5.startWhackMole", "[{\"source" + "\":\"chInfo_ch_appcenter__chsub_9patch\"}]");
+    
+    /**
+     * 6秒拼手速 打地鼠
+     */
+    public static String startWhackMole(String source) {
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.startWhackMole", "[{\"source\":\"" + source + "\"}]");
     }
     
-    public static String settlementWhackMole(String token, List<String> moleIdList) {
-        return ApplicationHook.requestString("alipay.antforest.forest.h5.settlementWhackMole",
-                "[{\"moleIdList\":[" + String.join(",", moleIdList) + "],\"settlementScene\":\"NORMAL\"," + "\"source" + "\":\"chInfo_ch_appcenter__chsub_9patch\",\"token\":\"" + token + "\",\"version\":\"" + VERSION + "\"}]");
+    /**
+     * 打单个地鼠
+     */
+    public static String whackMole(long moleId, String token, String source) {
+        return ApplicationHook.requestString(
+                "alipay.antforest.forest.h5.whackMole",
+                "[{\"moleId\":" + moleId + ",\"source\":\"" + source + "\",\"token\":\"" + token + "\",\"version\":\"" + VERSION + "\"}]");
     }
+    
+    public static String settlementWhackMole(String token, List<String> moleIdList, String source) {
+        return ApplicationHook.requestString(
+                "alipay.antforest.forest.h5.settlementWhackMole",
+                "[{\"moleIdList\":["
+                + String.join(",", moleIdList)
+                + "],\"settlementScene\":\"NORMAL\",\"source\":\"" + source + "\",\"token\":\""
+                + token
+                + "\",\"version\":\""
+                + VERSION
+                + "\"}]");
+    }
+    
     
     public static String closeWhackMole() {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.updateUserConfig", "[{\"configMap" + "\":{\"whackMole\":\"N\"},\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]");

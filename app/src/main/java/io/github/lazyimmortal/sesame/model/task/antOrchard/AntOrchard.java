@@ -538,6 +538,12 @@ public class AntOrchard extends ModelTask {
      */
     private boolean finishOrchardTask(JSONObject task) {
         try {
+            if(!task.has("taskDisplayConfig")){
+                return false;
+            }
+            if(!task.getJSONObject("taskDisplayConfig").has("title")){
+                return false;
+            }
             String title = task.getJSONObject("taskDisplayConfig").getString("title");
             String actionType = task.getString("actionType");
             

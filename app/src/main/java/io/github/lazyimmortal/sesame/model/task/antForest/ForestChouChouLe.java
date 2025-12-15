@@ -60,7 +60,9 @@ public class ForestChouChouLe {
             presetBad.add("FOREST_NORMAL_DRAW_XJSKP_ZH");
             presetBad.add("FOREST_NORMAL_DRAW_LJZC_ZH");
             presetBad.add("FOREST_ACTIVITY_DRAW_BWXRK_ZH");
-            
+            presetBad.add("FOREST_NORMAL_DRAW_YXMYS_ZH");
+            presetBad.add("FOREST_ACTIVITY_DRAW_XSSLXCC");
+
             // 你可以在这里继续添加更多要屏蔽的任务
             
             // =====================================================

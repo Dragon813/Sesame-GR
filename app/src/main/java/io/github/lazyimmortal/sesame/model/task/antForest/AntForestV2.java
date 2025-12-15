@@ -72,6 +72,7 @@ import io.github.lazyimmortal.sesame.util.TimeUtil;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.VitalityBenefitIdMap;
 import lombok.Getter;
+import lombok.val;
 
 /**
  * 蚂蚁森林V2
@@ -252,7 +253,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(helpFriendCollectList = new SelectModelField("helpFriendCollectList", "复活能量 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
         modelFields.addField(vitalityExchangeBenefit = new BooleanModelField("vitalityExchangeBenefit", "活力值 | 兑换权益", false));
         modelFields.addField(vitalityExchangeBenefitList = new SelectAndCountModelField("vitalityExchangeBenefitList", "活力值 | 权益列表", new LinkedHashMap<>(), VitalityBenefit::getList, "请填写兑换次数(每日)"));
-        modelFields.addField(closeWhackMole = new BooleanModelField("closeWhackMole", "自动关闭6秒拼手速", true));
+        modelFields.addField(closeWhackMole = new BooleanModelField("closeWhackMole", "关闭6秒拼手速", true));
         modelFields.addField(collectProp = new BooleanModelField("collectProp", "收集道具", false));
         modelFields.addField(whoYouWantToGiveTo = new SelectModelField("whoYouWantToGiveTo", "赠送道具好友列表", new LinkedHashSet<>(), AlipayUser::getList, "会赠送所有可送道具都给已选择的好友"));
         modelFields.addField(energyRain = new BooleanModelField("energyRain", "收集能量雨", false));
@@ -822,7 +823,7 @@ public class AntForestV2 extends ModelTask {
                     JSONObject propertiesObject = selfHomeObject.optJSONObject("properties");
                     if (propertiesObject != null) {
                         if (Objects.equals("Y", propertiesObject.optString("whackMole"))) {
-                            if (closeWhackMole()) {
+                            if (WhackMole.closeWhackMole()) {
                                 Log.record("6秒拼手速关闭成功");
                             }
                             else {
@@ -1478,7 +1479,30 @@ public class AntForestV2 extends ModelTask {
         return false;
     }
     
-    /* 6秒拼手速 打地鼠 */
+    /**
+     * 检查并处理6秒拼手速逻辑（每天主动执行一次）
+     */
+    private void whackMole() {
+        try {
+            if (!closeWhackMole.getValue()) {
+                // 检查今天是否已执行过打地鼠
+                if (Status.hasFlagToday("forest::whackMole::executed")) {
+                    Log.record("⏭️ 今天已完成过6秒拼手速，跳过执行");
+                } else {
+                    // 主动执行打地鼠（今日首次）
+                    Log.record("🎮 开始执行6秒拼手速（今日首次）");
+                    WhackMole.startWhackMole();
+                    Status.flagToday("forest::whackMole::executed");
+                    Log.record("✅ 6秒拼手速已完成，今天不再执行");
+                }
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "whackMole err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    /* 6秒拼手速 打地鼠
     private void whackMole() {
         try {
             long start = System.currentTimeMillis();
@@ -1524,7 +1548,7 @@ public class AntForestV2 extends ModelTask {
         }
         return false;
     }
-    
+    */
     /* 森林集市 */
     private static void greenLife() {
         sendEnergyByAction("GREEN_LIFE");
@@ -2117,6 +2141,8 @@ public class AntForestV2 extends ModelTask {
         continuousUseAndExchangeCard("shield", "CR20230516000370");
         //隐身卡
         continuousUseAndExchangeCard("stealthCard", "SK20230521000206");
+        //炸弹卡
+        //continuousUseAndExchangeCard("energyBombCard", "SK20250219006517");
     }
     
     private void continuousUseAndExchangeCard(String propGroupType, String exchangeProp) {
@@ -2186,6 +2212,14 @@ public class AntForestV2 extends ModelTask {
                                     Log.forest("使用道具🎭[" + propName + "]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                                 }
                                 break;
+                            /*case "energyBombCard":
+                                joResult = new JSONObject(AntForestRpcCall.consumeProp(propGroupType, propId, propType,false));
+                                holdsNum--;
+                                TimeUtil.sleep(1000);
+                                if (MessageUtil.checkResultCode(TAG, joResult)) {
+                                    Log.forest("使用道具🎭[" + propName + "]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                                }
+                                break;*/
                         }
                         continuousUseCardSecond = continuousUseCardCheak(propGroupType);
                         if (continuousUseCardSecond < 0) {
@@ -2204,7 +2238,7 @@ public class AntForestV2 extends ModelTask {
     }
     
     //判断是否可以使用道具卡片
-    //返回值-1为不可用，0为可用，大于0为剩余分钟数
+    //返回值-1为不可用，0为可用，大于0为剩余时间
     private long continuousUseCardCheak(String propGroupType) {
         try {
             JSONObject joMiscHomes = new JSONObject(AntForestRpcCall.queryMiscInfo());
@@ -2216,9 +2250,6 @@ public class AntForestV2 extends ModelTask {
                 return -1;
             }
             long now = System.currentTimeMillis();
-            if (!joMiscHomes.has("combineHandlerVOMap")) {
-                return -1;
-            }
             JSONObject combineHandlerVOMap = joMiscHomes.optJSONObject("combineHandlerVOMap");
             if (!combineHandlerVOMap.has("usingProp")) {
                 return -1;
@@ -2246,7 +2277,8 @@ public class AntForestV2 extends ModelTask {
                                 return -1;
                             }
                         case "robExpandCard":
-                            return 0;
+                        case "stealthCard":
+                            return -1;
                         case "shield":
                             if (duringTime / (1000 * 60) < 60 * 24) {
                                 return duringTime;
@@ -2254,8 +2286,15 @@ public class AntForestV2 extends ModelTask {
                             else {
                                 return -1;
                             }
-                        case "stealthCard":
-                            return 0;
+                        /*case "energyBombCard":
+                            if (duringTime / (1000 * 60) < 3*60 * 24) {
+                                Log.forest("duringTime");
+                                return duringTime;
+                            }
+                            else {
+                                return -1;
+                            }*/
+                            
                     }
                 }
             }
@@ -2281,6 +2320,7 @@ public class AntForestV2 extends ModelTask {
                         case "stealthCard":
                         case "shield":
                         case "doubleClick":
+                        //case "energyBombCard":
                             if (rightCard != null) {
                                 long recentExpireTimerightCard = rightCard.optLong("recentExpireTime");
                                 long recentExpireTimeforestBagProp = forestBagProp.optLong("recentExpireTime");

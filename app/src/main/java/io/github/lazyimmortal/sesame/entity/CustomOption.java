@@ -24,6 +24,7 @@ public class CustomOption extends IdAndName {
         list.add(new CustomOption("robExpandCard", "按现存最高倍使用收能量倍卡"));
         list.add(new CustomOption("shield", "兑换和使用限时保护罩卡"));
         list.add(new CustomOption("stealthCard", "兑换和使用隐身卡"));
+        //list.add(new CustomOption("energyBombCard", "兑换和使用炸弹卡"));
         return list;
     }
 
@@ -40,6 +41,7 @@ public class CustomOption extends IdAndName {
         list.add(new CustomOption("familyFeed", "帮喂成员"));
         list.add(new CustomOption("familyEatTogether", "美食请客"));
         list.add(new CustomOption("familyAwardList", "领取奖励"));
+        //list.add(new CustomOption("familyIntimacy", "道早安"));
         return list;
     }
 

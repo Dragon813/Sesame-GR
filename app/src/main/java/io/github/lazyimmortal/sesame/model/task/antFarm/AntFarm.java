@@ -1979,7 +1979,7 @@ public class AntFarm extends ModelTask {
                     int rightsTimesLimit=jo.optInt("rightsTimesLimit");
                     int rightsTimes=jo.optInt("rightsTimes");
                     
-                    if(jo.optString("taskId").contains("EXCHANGE")||jo.optString("taskId").contains("FKDWChuodong")){
+                    if(jo.optString("taskId").contains("EXCHANGE")||jo.optString("taskId").contains("FKDWChuodong")||jo.optString("taskId").contains("GYG2")){
                         for(int j=0;j<(rightsTimesLimit-rightsTimes);j++){
                             AntFarmRpcCall.doFarmTask(jo.optString("bizKey"), taskSceneCode);}
                         TimeUtil.sleep(1000);
@@ -2006,7 +2006,7 @@ public class AntFarm extends ModelTask {
         try {
             JSONObject jo = new JSONObject(AntFarmRpcCall.receiveFarmDrawTimesTaskAward(taskId,awardType,taskSceneCode));
             if (MessageUtil.checkMemo(TAG, jo)) {
-                Log.farm("装扮抽奖🎟️领取[" + title + "]奖励");
+                Log.farm("装扮抽奖🎖️领取[" + title + "]奖励");
             }
         }
         catch (Throwable t) {
@@ -2022,7 +2022,7 @@ public class AntFarm extends ModelTask {
                     jo=jo.optJSONObject("drawMachinePrize");
                 }
                 String title = jo.optString("title");
-                Log.farm("装扮抽奖🎟️抽中[" + title + "]");
+                Log.farm("装扮抽奖🎁抽中[" + title + "]");
                 return true;
             }
         }
@@ -2032,175 +2032,7 @@ public class AntFarm extends ModelTask {
         }
         return false;
     }
-    
-    /* 抽抽乐
-    private void drawMachine() {
-        doDrawTimesTask();
-        try {
-            JSONObject jo = new JSONObject(AntFarmRpcCall.enterDrawMachine());
-            int leftDrawTimes = jo.getJSONObject("userInfo").optInt("leftDrawTimes", 0);
-            for (int i = 0; i < leftDrawTimes; i++) {
-                if (!drawPrize()) {
-                    return;
-                }
-                TimeUtil.sleep(5000);
-            }
-        }
-        catch (Throwable t) {
-            Log.i(TAG, "drawMachine err:");
-            Log.printStackTrace(TAG, t);
-        }
-    }
-    private void drawMachineActivity() {
-        doFarmDrawActivityTimeTask();
-        try {
-            JSONObject jo = new JSONObject(AntFarmRpcCall.queryDrawMachineActivity());
-            int leftDrawTimes = jo.optInt("drawTimes", 0);
-            for (int i = 0; i < leftDrawTimes; i++) {
-                if (!drawActivityMachine()) {
-                    return;
-                }
-                TimeUtil.sleep(5000);
-            }
-        }
-        catch (Throwable t) {
-            Log.i(TAG, "drawMachine err:");
-            Log.printStackTrace(TAG, t);
-        }
-    }
-    
-    private void doDrawTimesTask() {
-        try {
-            JSONObject jo = new JSONObject(AntFarmRpcCall.listFarmDrawTimesTask());
-            if (!MessageUtil.checkMemo(TAG, jo)) {
-                return;
-            }
-            JSONArray farmTaskList = jo.getJSONArray("farmTaskList");
-            for (int i = 0; i < farmTaskList.length(); i++) {
-                jo = farmTaskList.getJSONObject(i);
-                String taskStatus = jo.getString("taskStatus");
-                if (TaskStatus.RECEIVED.name().equals(taskStatus)) {
-                    continue;
-                }
-                if (TaskStatus.TODO.name().equals(taskStatus)) {
-                    if (!LibraryUtil.doFarmDrawTimesTask(jo)) {
-                        continue;
-                    }
-                    TimeUtil.sleep(3000);
-                }
-                TimeUtil.sleep(2000);
-                String taskId = jo.getString("taskId");
-                String title = jo.getString("title");
-                receiveFarmDrawTimesTaskAward(taskId, title);
-            }
-        }
-        catch (Throwable t) {
-            Log.i(TAG, "doFarmDrawTimesTask err:");
-            Log.printStackTrace(TAG, t);
-        }
-    }
-    
-    private void doFarmDrawActivityTimeTask() {
-        try {
-            JSONObject jo = new JSONObject(AntFarmRpcCall.listFarmDrawActivityTimeTask());
-            if (!MessageUtil.checkMemo(TAG, jo)) {
-                return;
-            }
-            JSONArray farmTaskList = jo.getJSONArray("farmTaskList");
-            for (int i = 0; i < farmTaskList.length(); i++) {
-                jo = farmTaskList.getJSONObject(i);
-                String taskStatus = jo.getString("taskStatus");
-                if (TaskStatus.RECEIVED.name().equals(taskStatus)) {
-                    continue;
-                }
-                
-                if (TaskStatus.TODO.name().equals(taskStatus)) {
-                    int rightsTimesLimit=jo.optInt("rightsTimesLimit");
-                    int rightsTimes=jo.optInt("rightsTimes");
-                    
-                    if(jo.optString("taskId").equals("IP_EXCHANGE_TASK")||jo.optString("taskId").startsWith("IP_FKDWChuodong_")){
-                            for(int j=0;j<(rightsTimesLimit-rightsTimes);j++){
-                            AntFarmRpcCall.doFarmTask(jo.optString("bizKey"), "ANTFARM_IP_DRAW_TASK");}
-                            TimeUtil.sleep(2000);
-                    }
-                    if(jo.optString("taskId").equals("IP_SHANGYEHUA_TASK")){
-                        for(int j=0;j<(rightsTimesLimit-rightsTimes);j++){
-                            AntFarmRpcCall.finishTask(jo.optString("taskId"), "ANTFARM_IP_DRAW_TASK");}
-                            TimeUtil.sleep(2000);
-                    }
-                    TimeUtil.sleep(1000);
-                }
-                TimeUtil.sleep(2000);
-                String taskId = jo.getString("taskId");
-                String title = jo.getString("title");
-                receiveFarmDrawActivityTimesTaskAward(taskId, title);
-            }
-        }
-        catch (Throwable t) {
-            Log.i(TAG, "doFarmDrawActivityTimeTask err:");
-            Log.printStackTrace(TAG, t);
-        }
-    }
-    
-    private void receiveFarmDrawTimesTaskAward(String taskId, String title) {
-        try {
-            JSONObject jo = new JSONObject(AntFarmRpcCall.receiveFarmDrawTimesTaskAward(taskId,"DRAW_TIMES","ANTFARM_DRAW_TIMES_TASK"));
-            if (MessageUtil.checkMemo(TAG, jo)) {
-                Log.farm("装扮抽奖🎟️领取[" + title + "]奖励");
-            }
-        }
-        catch (Throwable t) {
-            Log.i(TAG, "receiveFarmDrawTimesTaskAward err:");
-            Log.printStackTrace(TAG, t);
-        }
-    }
-    
-    private void receiveFarmDrawActivityTimesTaskAward(String taskId, String title) {
-        try {
-            JSONObject jo = new JSONObject(AntFarmRpcCall.receiveFarmDrawTimesTaskAward(taskId,"IP_DRAW_MACHINE_DRAW_TIMES","ANTFARM_IP_DRAW_TASK"));
-            if (MessageUtil.checkMemo(TAG, jo)) {
-                Log.farm("装扮抽奖🎟️领取[" + title + "]奖励");
-            }
-        }
-        catch (Throwable t) {
-            Log.i(TAG, "receiveFarmDrawTimesTaskAward err:");
-            Log.printStackTrace(TAG, t);
-        }
-    }
-    
-    private Boolean drawPrize() {
-        try {
-            JSONObject jo = new JSONObject(AntFarmRpcCall.drawPrize());
-            if (MessageUtil.checkMemo(TAG, jo)) {
-                String title = jo.optString("title");
-                Log.farm("装扮抽奖🎟️抽中[" + title + "]");
-                return true;
-            }
-        }
-        catch (Throwable t) {
-            Log.i(TAG, "drawPrize err:");
-            Log.printStackTrace(TAG, t);
-        }
-        return false;
-    }
-    
-    private Boolean drawActivityMachine() {
-        try {
-            JSONObject jo = new JSONObject(AntFarmRpcCall.drawMachine());
-            if (MessageUtil.checkMemo(TAG, jo)) {
-                JSONObject drawMachinePrize=jo.getJSONObject("drawMachinePrize");
-                String title = drawMachinePrize.optString("title");
-                Log.farm("装扮抽奖🎟️抽中[" + title + "]");
-                return true;
-            }
-        }
-        catch (Throwable t) {
-            Log.i(TAG, "drawPrize err:");
-            Log.printStackTrace(TAG, t);
-        }
-        return false;
-    }
-    */
+
     /* 雇佣好友小鸡 */
     private void hireAnimal() {
         try {
@@ -2571,6 +2403,11 @@ public class AntFarm extends ModelTask {
             if (familyAwardNum > 0 && familyOptions.getValue().contains("familyAwardList")) {
                 familyAwardList();
             }
+            //if (familyOptions.getValue().contains("familyIntimacy")) {
+                //familyAwardList();
+            //}
+            
+            //
         }
         catch (Throwable t) {
             Log.i(TAG, "family err:");

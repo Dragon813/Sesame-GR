@@ -504,6 +504,7 @@ public class AntSports extends ModelTask {
             MIN_STEP_FOR_TREASURE = walkcountmin;
         }
         try {
+            if(pathData==null||!pathData.has("path")){return false;}
             JSONObject path = pathData.getJSONObject("path");
             JSONObject userPathStep = pathData.getJSONObject("userPathStep");
             int minGoStepCount = path.getInt("minGoStepCount");
@@ -710,6 +711,7 @@ public class AntSports extends ModelTask {
             JSONArray cityList = theme.getJSONArray("cityList");
             for (int i = 0; i < cityList.length(); i++) {
                 String cityId = cityList.getJSONObject(i).getString("cityId");
+                if(cityId.equals("000000")||cityId.equals("232700")||cityId.equals("620900")||cityId.equals("653100")||cityId.equals("710100")){continue;}
                 JSONObject city = queryCityPath(cityId);
                 if (city == null) {
                     continue;
@@ -1815,7 +1817,7 @@ public class AntSports extends ModelTask {
                             continue;
                         }
                         walkGridcount++;
-                        if (walkGridcount >= WALK_GRID_MAX.getValue() || queryUserEnergy() < 5) {
+                        if (walkGridcount >= WALK_GRID_MAX.getValue() || queryUserEnergy() < 5||queryUserEnergy()<=WALK_GRID_LIMIT.getValue()) {
                             break;
                         }
                     }
@@ -1850,7 +1852,7 @@ public class AntSports extends ModelTask {
                         if (WALK_GRID_MAX.getValue() == 0) {
                             continue;
                         }
-                        if (buildcount >= WALK_GRID_MAX.getValue() || queryUserEnergy() < 5) {
+                        if (buildcount >= WALK_GRID_MAX.getValue() || queryUserEnergy() < 5||queryUserEnergy()<=WALK_GRID_LIMIT.getValue()) {
                             break;
                         }
                     }
