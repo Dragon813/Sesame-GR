@@ -345,45 +345,41 @@ public class AntForestRpcCall {
     }
     
     /*青春特权道具任务状态查询🔍*/
-    public static String queryTaskListV2(String firstTaskType) throws JSONException {
-        JSONObject jo = new JSONObject();
-        JSONObject extend = new JSONObject();
-        extend.put("firstTaskType", firstTaskType); // DNHZ_SL_college,DXS_BHZ，DXS_JSQ
-        jo.put("extend", extend);
-        jo.put("fromAct", "home_task_list");
-        if (firstTaskType.equals("DNHZ_SL_college")) {
-            jo.put("source", firstTaskType);
+    public static String queryTaskListV2(String firstTaskType) {
+        String source;
+        if ("DNHZ_SL_college".equals(firstTaskType)) {
+            source = firstTaskType;
+        } else if ("DXS_BHZ".equals(firstTaskType) || "DXS_JSQ".equals(firstTaskType)) {
+            source = "202212TJBRW";
+        } else {
+            // 处理未匹配的情况，可根据实际需求设置默认值或抛出异常
+            source = "";
         }
-        if (firstTaskType.equals("DXS_BHZ") || firstTaskType.equals("DXS_JSQ")) {
-            jo.put("source", "202212TJBRW");
-        }
-        jo.put("version", VERSION);
-        return ApplicationHook.requestString("alipay.antforest.forest.h5.queryTaskList", new JSONArray().put(jo).toString());
+        String args = "[{\"extend\":{\"firstTaskType\":\"" + firstTaskType + "\"}," +
+                      "\"fromAct\":\"home_task_list\"," +
+                      "\"source\":\"" + source + "\"," +
+                      "\"version\":\"" + VERSION + "\"}]";
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.queryTaskList", args);
     }
+    
     /**
      * 领取青春特权道具
      */
-    public static String receiveTaskAwardV2(String taskType) throws JSONException {
-        JSONObject jo = new JSONObject();
-        jo.put("ignoreLimit", false);
-        jo.put("requestType", "H5");
-        jo.put("sceneCode", "ANTFOREST_VITALITY_TASK");
-        jo.put("source", "ANTFOREST");
-        jo.put("taskType", taskType); // DAXUESHENG_SJK,NENGLIANGZHAO_20230807,JIASUQI_20230808
-        return ApplicationHook.requestString("com.alipay.antiep.receiveTaskAward", new JSONArray().put(jo).toString());
+    public static String receiveTaskAwardV2(String taskType)  {
+        String args = "[{\"ignoreLimit\":false,\"requestType\":\"H5\",\"sceneCode\":\"ANTFOREST_VITALITY_TASK\",\"taskType\":\""+taskType+"\",\"source\":\"ANTFOREST\"}]";
+        // DAXUESHENG_SJK,NENGLIANGZHAO_20230807,JIASUQI_20230808
+        //[{\"ignoreLimit\":false," + "\"requestType\":\"H5\",\"sceneCode\":\"" + sceneCode + "\",\"source\":\"ANTFOREST\",\"taskType\":\"" + taskType + "\"}]");
+        return ApplicationHook.requestString("com.alipay.antiep.receiveTaskAward", args);
     }
-    public static String studentQqueryCheckInModel() throws JSONException {
-        JSONObject jo = new JSONObject();
-        jo.put("chInfo", "ch_appcollect__chsub_my-recentlyUsed");
-        jo.put("skipTaskModule", false);
-        return ApplicationHook.requestString("alipay.membertangram.biz.rpc.student.queryCheckInModel", new JSONArray().put(jo).toString());
+    public static String studentQqueryCheckInModel() {
+        String args = "[{\"chInfo\":\"ch_appcollect__chsub_my-recentlyUsed\",\"skipTaskModule\":false}]";
+        return ApplicationHook.requestString("alipay.membertangram.biz.rpc.student.queryCheckInModel", args);
     }
     
     /*青春特权领红包*/
-    public static String studentCheckin() throws JSONException {
-        JSONObject jo = new JSONObject();
-        jo.put("source", "chInfo_ch_appcenter__chsub_9patch");
-        return ApplicationHook.requestString("alipay.membertangram.biz.rpc.student.checkIn", new JSONArray().put(jo).toString());
+    public static String studentCheckin() {
+        String args = "[{\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]";
+        return ApplicationHook.requestString("alipay.membertangram.biz.rpc.student.checkIn", args);
     }
     
     

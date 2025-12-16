@@ -80,7 +80,7 @@ public class WhackMole {
                     GameSession session = future.get(TASK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                     if (session != null) {
                         sessions.add(session);
-                        Log.i(TAG, String.format("第"+session.roundNumber+"局完成，打地鼠能量"+session.whackedEnergy+"g"));
+                        Log.record(String.format("第"+session.roundNumber+"局完成，打地鼠能量"+session.whackedEnergy+"g"));
                     }
                 }
                 catch (TimeoutException e) {

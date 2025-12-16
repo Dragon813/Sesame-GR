@@ -187,6 +187,7 @@ public class AntForestV2 extends ModelTask {
     private ChoiceModelField consumeAnimalPropType;
     private SelectModelField whoYouWantToGiveTo;
     private BooleanModelField ecoLife;
+    private BooleanModelField youthPrivilege;
     private SelectModelField ecoLifeOptions;
     private BooleanModelField dress;
     private TextModelField dressDetailList;
@@ -253,7 +254,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(helpFriendCollectList = new SelectModelField("helpFriendCollectList", "复活能量 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
         modelFields.addField(vitalityExchangeBenefit = new BooleanModelField("vitalityExchangeBenefit", "活力值 | 兑换权益", false));
         modelFields.addField(vitalityExchangeBenefitList = new SelectAndCountModelField("vitalityExchangeBenefitList", "活力值 | 权益列表", new LinkedHashMap<>(), VitalityBenefit::getList, "请填写兑换次数(每日)"));
-        modelFields.addField(closeWhackMole = new BooleanModelField("closeWhackMole", "关闭6秒拼手速", true));
+        modelFields.addField(closeWhackMole = new BooleanModelField("closeWhackMole", "关闭6秒拼手速(打地鼠)", true));
         modelFields.addField(collectProp = new BooleanModelField("collectProp", "收集道具", false));
         modelFields.addField(whoYouWantToGiveTo = new SelectModelField("whoYouWantToGiveTo", "赠送道具好友列表", new LinkedHashSet<>(), AlipayUser::getList, "会赠送所有可送道具都给已选择的好友"));
         modelFields.addField(energyRain = new BooleanModelField("energyRain", "收集能量雨", false));
@@ -267,6 +268,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(medicalHealth = new BooleanModelField("medicalHealth", "医疗健康", false));
         modelFields.addField(greenLife = new BooleanModelField("greenLife", "森林集市", false));
         modelFields.addField(greenRent = new BooleanModelField("greenRent", "绿色租赁", false));
+        modelFields.addField(youthPrivilege = new BooleanModelField("youthPrivilege", "青春特权 | 森林道具", false));
         modelFields.addField(ecoLife = new BooleanModelField("ecoLife", "绿色行动 | 开启", false));
         modelFields.addField(ecoLifeOptions = new SelectModelField("ecoLifeOptions", "绿色行动 | 选项", new LinkedHashSet<>(), CustomOption::getEcoLifeOptions, "光盘行动需要先手动完成一次"));
         //modelFields.addField(partnerteamWater = new BooleanModelField("partnerteamWater", "组队合种浇水", false));
@@ -328,8 +330,13 @@ public class AntForestV2 extends ModelTask {
             taskCount.set(0);
             selfId = UserIdMap.getCurrentUid();
             hasErrorWait = false;
+            if(youthPrivilege.getValue()){
+                Privilege.youthPrivilege();
+                //Privilege.studentSignInRedEnvelope();
+            }
             //连续兑换使用道具卡片
             continuousUseCardOptions();
+            
             JSONObject selfHomeObject = collectSelfEnergy();
             try {
                 JSONObject friendsObject = new JSONObject(AntForestRpcCall.queryEnergyRanking());
@@ -574,6 +581,7 @@ public class AntForestV2 extends ModelTask {
                 if(!closeWhackMole.getValue()){
                     whackMole();
                 }
+                
                 
                 
                 ForestEnergyInfo();
@@ -1505,54 +1513,7 @@ public class AntForestV2 extends ModelTask {
             Log.printStackTrace(TAG, t);
         }
     }
-
-    /* 6秒拼手速 打地鼠
-    private void whackMole() {
-        try {
-            long start = System.currentTimeMillis();
-            JSONObject jo = new JSONObject(AntForestRpcCall.startWhackMole());
-            if (!MessageUtil.checkResultCode(TAG, jo)) {
-                return;
-            }
-            JSONArray moleInfo = jo.optJSONArray("moleInfo");
-            if (moleInfo != null) {
-                List<String> whackMoleIdList = new ArrayList<>();
-                for (int i = 0; i < moleInfo.length(); i++) {
-                    JSONObject mole = moleInfo.getJSONObject(i);
-                    long moleId = mole.getLong("id");
-                    whackMoleIdList.add(String.valueOf(moleId));
-                }
-                if (!whackMoleIdList.isEmpty()) {
-                    String token = jo.getString("token");
-                    long end = System.currentTimeMillis();
-                    TimeUtil.sleep(6000 - end + start);
-                    jo = new JSONObject(AntForestRpcCall.settlementWhackMole(token, whackMoleIdList));
-                    if (MessageUtil.checkResultCode(TAG, jo)) {
-                        int totalEnergy = jo.getInt("totalEnergy");
-                        Log.forest("森林能量⚡[获得:6秒拼手速能量" + totalEnergy + "g]");
-                        totalCollected += totalEnergy;
-                        Statistics.addData(Statistics.DataType.COLLECTED, totalEnergy);
-                    }
-                }
-            }
-        }
-        catch (Throwable t) {
-            Log.i(TAG, "whackMole err:");
-            Log.printStackTrace(TAG, t);
-        }
-    }
     
-    private Boolean closeWhackMole() {
-        try {
-            JSONObject jo = new JSONObject(AntForestRpcCall.closeWhackMole());
-            return MessageUtil.checkSuccess(TAG, jo);
-        }
-        catch (Throwable t) {
-            Log.printStackTrace(t);
-        }
-        return false;
-    }
-    */
     /* 森林集市 */
     private static void greenLife() {
         sendEnergyByAction("GREEN_LIFE");

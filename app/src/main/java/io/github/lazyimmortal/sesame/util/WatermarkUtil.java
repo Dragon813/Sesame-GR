@@ -13,7 +13,7 @@ public class WatermarkUtil {
             System.loadLibrary("watermark");
             isLibraryLoaded = true;
         } catch (UnsatisfiedLinkError e) {
-            Log.printStackTrace(e);
+            //Log.printStackTrace(e);
             isLibraryLoaded = false;
         }
     }
@@ -29,7 +29,7 @@ public class WatermarkUtil {
         try {
             return getWatermarkTextNative();
         } catch (UnsatisfiedLinkError e) {
-            Log.printStackTrace(e);
+            //Log.printStackTrace(e);
             return "免费模块 交流QQ群:694474777";
         }
     }
@@ -45,7 +45,7 @@ public class WatermarkUtil {
         try {
             return getWatermarkAlphaNative();
         } catch (UnsatisfiedLinkError e) {
-            Log.printStackTrace(e);
+            //Log.printStackTrace(e);
             return 30;
         }
     }
@@ -61,7 +61,7 @@ public class WatermarkUtil {
         try {
             return getWatermarkTextSizeNative();
         } catch (UnsatisfiedLinkError e) {
-            Log.printStackTrace(e);
+            //Log.printStackTrace(e);
             return 16;
         }
     }
@@ -77,7 +77,7 @@ public class WatermarkUtil {
         try {
             return getWatermarkRotationNative();
         } catch (UnsatisfiedLinkError e) {
-            Log.printStackTrace(e);
+            //Log.printStackTrace(e);
             return -30.0f;
         }
     }

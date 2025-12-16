@@ -2109,12 +2109,14 @@ public class AntSports extends ModelTask {
                 if ("SIGNUP_COMPLETE".equals(status)) {
                     String taskType = task.getString("taskType");
                     if ("LIGHT_TASK".equals(taskType)) {
+                        if(task.has("logExtMap")){
                         JSONObject logExtMap = task.getJSONObject("logExtMap");
                         //if (TaskHelper.checkTaskCompleted(logExtMap.getString("taskType"), logExtMap.getString("bizId"))) {
                         //
                         //    TimeUtil.sleep(1000);
                         //    needRetry = true;
                         //}
+                            }
                     }
                     else if ("PROMOKERNEL_TASK".equals(taskType)) {
                         if (completeTask(task)) {
