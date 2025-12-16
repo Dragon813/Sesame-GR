@@ -571,6 +571,10 @@ public class AntForestV2 extends ModelTask {
                 if (dress.getValue()) {
                     dress();
                 }
+                if(!closeWhackMole.getValue()){
+                    whackMole();
+                }
+                
                 
                 ForestEnergyInfo();
             }

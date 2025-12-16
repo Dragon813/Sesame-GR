@@ -57,11 +57,11 @@ public class ForestChouChouLe {
             presetBad.add("FOREST_NORMAL_DRAW_SHARE"); // 邀请好友任务（屏蔽）
             presetBad.add("FOREST_ACTIVITY_DRAW_SHARE");
             presetBad.add("FOREST_ACTIVITY_DRAW_SGBHSD");
-            presetBad.add("FOREST_NORMAL_DRAW_XJSKP_ZH");
-            presetBad.add("FOREST_NORMAL_DRAW_LJZC_ZH");
-            presetBad.add("FOREST_ACTIVITY_DRAW_BWXRK_ZH");
-            presetBad.add("FOREST_NORMAL_DRAW_YXMYS_ZH");
-            presetBad.add("FOREST_ACTIVITY_DRAW_XSSLXCC");
+            //presetBad.add("FOREST_NORMAL_DRAW_XJSKP_ZH");
+            //presetBad.add("FOREST_NORMAL_DRAW_LJZC_ZH");
+            //presetBad.add("FOREST_ACTIVITY_DRAW_BWXRK_ZH");
+            //presetBad.add("FOREST_NORMAL_DRAW_YXMYS_ZH");
+            //presetBad.add("FOREST_ACTIVITY_DRAW_XSSLXCC");
 
             // 你可以在这里继续添加更多要屏蔽的任务
             
@@ -169,7 +169,7 @@ public class ForestChouChouLe {
                         // 统一处理 FOREST_NORMAL_DRAW 和 FOREST_ACTIVITY_DRAW开头任务
                         if ((taskType.startsWith("FOREST_NORMAL_DRAW") || taskType.startsWith("FOREST_ACTIVITY_DRAW")) && taskStatus.equals("TODO")) {
                             // ==================== 屏蔽逻辑 ====================
-                            if (presetBad.contains(taskType)) {
+                            if (presetBad.contains(taskType)||taskName.equals("【限时】玩游戏得2次机会")) {
                                 Log.record("已屏蔽任务，跳过：" + taskName);
                             }
                             else {
