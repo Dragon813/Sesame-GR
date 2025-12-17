@@ -6,18 +6,49 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.*;
-import android.widget.*;
+import android.view.Gravity;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TabHost;
+import android.widget.TabWidget;
 
 import androidx.core.content.ContextCompat;
 
 import io.github.lazyimmortal.sesame.R;
-import io.github.lazyimmortal.sesame.data.*;
+import io.github.lazyimmortal.sesame.data.AppConfig;
+import io.github.lazyimmortal.sesame.data.ConfigV2;
+import io.github.lazyimmortal.sesame.data.Model;
+import io.github.lazyimmortal.sesame.data.ModelConfig;
+import io.github.lazyimmortal.sesame.data.ModelField;
+import io.github.lazyimmortal.sesame.data.ModelFields;
+import io.github.lazyimmortal.sesame.data.ViewAppInfo;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.common.SelectModelFieldFunc;
 import io.github.lazyimmortal.sesame.data.task.ModelTask;
 import io.github.lazyimmortal.sesame.entity.AlipayUser;
-import io.github.lazyimmortal.sesame.util.*;
-import io.github.lazyimmortal.sesame.util.idMap.*;
+import io.github.lazyimmortal.sesame.util.FileUtil;
+import io.github.lazyimmortal.sesame.util.LibraryUtil;
+import io.github.lazyimmortal.sesame.util.Log;
+import io.github.lazyimmortal.sesame.util.StringUtil;
+import io.github.lazyimmortal.sesame.util.ToastUtil;
+import io.github.lazyimmortal.sesame.util.idMap.AnimalIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.BeachIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.CooperationIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.FarmOrnamentsIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.ForestHuntIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.MarathonIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.MemberBenefitIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.NewAncientTreeIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.PlantSceneIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.PromiseSimpleTemplateIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.ReserveIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.TreeIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.VitalityBenefitIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.WalkPathIdMap;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -172,7 +203,7 @@ public class SettingsActivity extends BaseActivity {
         menu.add(0, 2, 2, "导入配置");
         menu.add(0, 3, 3, "删除配置");
         menu.add(0, 4, 4, "单向好友");
-       if (!"TEST".equals(ViewAppInfo.getAppVersion()) && LibraryUtil.loadLibrary("sesame")) {
+        if (!"TEST".equals(ViewAppInfo.getAppVersion()) && LibraryUtil.loadLibrary("sesame")) {
             menu.add(0, 5, 5, "切换至新UI");
         }
         return super.onCreateOptionsMenu(menu);
