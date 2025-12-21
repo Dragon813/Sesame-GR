@@ -12,6 +12,8 @@ import io.github.lazyimmortal.sesame.util.Status;
 
 import io.github.lazyimmortal.sesame.util.Status;
 import io.github.lazyimmortal.sesame.util.Log;
+import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -139,7 +141,7 @@ public class Privilege {
         
         switch (status) {
             case TASK_RECEIVED:
-                Log.forest(PREFIX_PRIVILEGE + "[" + taskName + "]已领取");
+                Log.forest(PREFIX_PRIVILEGE + "[" + taskName + "]已领取[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                 break;
             case TASK_FINISHED:
                 handleYouthTaskAward(taskType, taskName, results);
@@ -155,7 +157,7 @@ public class Privilege {
             results.add(resultDesc);
             
             String logMessage = "处理成功".equals(resultDesc) ? "领取成功" : "领取结果：" + resultDesc;
-            Log.forest(PREFIX_PRIVILEGE + "[" + taskName + "]" + logMessage);
+            Log.forest(PREFIX_PRIVILEGE + "[" + taskName + "]" + logMessage+"[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
         } catch (JSONException e) {
             Log.error("奖励领取结果解析失败" + e);
             results.add("处理异常");

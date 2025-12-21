@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
+import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
 /**
  * 6秒拼手速打地鼠（多线程+间隔控制版）
@@ -23,7 +24,7 @@ public class WhackMole {
     private static final String TAG = WhackMole.class.getSimpleName();
     
     // 总游戏局数，同时开启3局游戏
-    private static final int TOTAL_ROUNDS = 3;
+    //private static int TOTAL_ROUNDS = 3;
     
     // 单个游戏任务的超时时间（秒），防止任务卡住
     private static final long TASK_TIMEOUT_SECONDS = 30;
@@ -47,12 +48,12 @@ public class WhackMole {
      * 开6局游戏打地鼠（并发执行）
      * 每局游戏独立计时，严格控制在6秒内完成
      */
-    public static void startWhackMole() {
+    public static void startWhackMole(int WhackMoleRoundNum) {
         String source = "senlinguangchangdadishu";
         List<Future<GameSession>> futures = new ArrayList<>();
         
         // 创建自定义线程池
-        ThreadPoolExecutor executor = new ThreadPoolExecutor(TOTAL_ROUNDS, TOTAL_ROUNDS, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), new ThreadFactory() {
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(WhackMoleRoundNum, WhackMoleRoundNum, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), new ThreadFactory() {
             private final AtomicInteger threadNumber = new AtomicInteger(1);
             
             @Override
@@ -65,8 +66,8 @@ public class WhackMole {
         
         try {
             // 1. 并发提交6局游戏任务
-            Log.i(TAG, "启动" + TOTAL_ROUNDS + "局打地鼠游戏（并发模式）");
-            for (int round = 1; round <= TOTAL_ROUNDS; round++) {
+            Log.i(TAG, "启动" + WhackMoleRoundNum + "局打地鼠游戏（并发模式）");
+            for (int round = 1; round <= WhackMoleRoundNum; round++) {
                 final int currentRound = round;
                 Callable<GameSession> task = () -> playRound(currentRound, source);
                 futures.add(executor.submit(task));
@@ -130,6 +131,8 @@ public class WhackMole {
         }
         return false;
     }
+    
+
     
     /**
      * 进行单局游戏（严格控制在6秒内）
@@ -228,7 +231,7 @@ public class WhackMole {
                 int totalEnergy = response.optInt("totalEnergy", 0);
                 int provideEnergy = response.optInt("provideDefaultEnergy", 0);
                 int whackedEnergy = totalEnergy - provideEnergy;
-                Log.forest("森林能量⚡️[6秒拼手速第" + session.roundNumber + "局结算" + " 打地鼠能量+" + whackedEnergy + "g" + " 默认奖励+" + provideEnergy + "g" + " 总能量+" + totalEnergy + "g]");
+                Log.forest("森林能量⚡️[6秒拼手速第" + session.roundNumber + "局结算" + " 打地鼠能量+" + whackedEnergy + "g" + " 默认奖励+" + provideEnergy + "g" + " 总能量+" + totalEnergy + "g#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
             }
         }
         catch (Exception e) {

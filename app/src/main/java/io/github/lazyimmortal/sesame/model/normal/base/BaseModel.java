@@ -44,6 +44,7 @@ public class BaseModel extends Model {
     private static final BooleanModelField recordLog = new BooleanModelField("recordLog", "记录日志", true);
     @Getter
     private static final BooleanModelField showToast = new BooleanModelField("showToast", "气泡提示", true);
+    //public static final BooleanModelField closeCaptchaDialogVPN = new BooleanModelField("closeCaptchaDialogVPN", "关闭VPN弹窗", false);
     @Getter
     private static final IntegerModelField toastOffsetY = new IntegerModelField("toastOffsetY", "气泡纵向偏移", 0);
     @Getter
@@ -80,6 +81,7 @@ public class BaseModel extends Model {
         modelFields.addField(batteryPerm);
         modelFields.addField(recordLog);
         modelFields.addField(showToast);
+   //     modelFields.addField(closeCaptchaDialogVPN);
         modelFields.addField(enableOnGoing);
         modelFields.addField(toastOffsetY);
         return modelFields;
@@ -96,6 +98,10 @@ public class BaseModel extends Model {
             }
         }).start();
     }
+    
+    //public static boolean getcloseCaptchaDialogVPN() {
+    //    return closeCaptchaDialogVPN.getValue();
+    //}
 
     public static void destroyData() {
         try {

@@ -29,23 +29,23 @@ import lombok.Data;
 
 @Data
 public class TokenConfig {
-
+    
     private static final String TAG = TokenConfig.class.getSimpleName();
-
+    
     public static final TokenConfig INSTANCE = new TokenConfig();
-
+    
     @JsonIgnore
     private boolean init;
-
+    
     // sports
     private final Queue<String> customWalkPathIdQueue = new LinkedList<>();
-
+    
     // farm
     private final Map<String, String> answerList = new HashMap<>();
-
+    
     // ecoLife
     private final Set<Map<String, String> > dishImageList = new HashSet<>();
-
+    
     public static String getCustomWalkPathId(Set<String> customWalkPathIdListSet) {
         String pathId = INSTANCE.customWalkPathIdQueue.poll();
         if (pathId != null) {
@@ -58,12 +58,12 @@ public class TokenConfig {
         }
         return null;
     }
-
+    
     public static Boolean addCustomWalkPathIdQueue(String pathId) {
         INSTANCE.customWalkPathIdQueue.add(pathId);
         return save();
     }
-
+    
     public static Boolean clearCustomWalkPathIdQueue() {
         TokenConfig tokenConfig = INSTANCE;
         if (!tokenConfig.customWalkPathIdQueue.isEmpty()) {
@@ -72,44 +72,44 @@ public class TokenConfig {
         }
         return true;
     }
-
+    
     public static String getAnswer(String question) {
         Calendar calendar = TimeUtil.getToday();
         long timeMillis = calendar.getTimeInMillis();
         return  INSTANCE.answerList.get(timeMillis + "::" + question);
     }
-
+    
     public static void saveAnswer(String question, String answer) {
         Calendar todayCalendar = TimeUtil.getToday();
         long todayTimeMillis = todayCalendar.getTimeInMillis();
         long tomorrowTimeMillis = todayTimeMillis + TimeUnit.DAYS.toMillis(1);
         String todayTimeMillisStr = String.valueOf(todayTimeMillis);
         String tomorrowTimeMillisStr = String.valueOf(tomorrowTimeMillis);
-
+        
         question = tomorrowTimeMillis + "::" + question;
         TokenConfig tokenConfig = INSTANCE;
         if (Objects.equals(tokenConfig.answerList.get(question), answer)) {
             return;
         }
         tokenConfig.answerList.put(question, answer);
-
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             tokenConfig.answerList.entrySet().removeIf(
                     entry -> !entry.getKey().startsWith(todayTimeMillisStr)
-                            && !entry.getKey().startsWith(tomorrowTimeMillisStr));
+                             && !entry.getKey().startsWith(tomorrowTimeMillisStr));
         } else {
             Iterator<Map.Entry<String, String>> iterator = tokenConfig.answerList.entrySet().iterator();
             while (iterator.hasNext()) {
                 Map.Entry<String, String> entry = iterator.next();
                 if (!entry.getKey().startsWith(todayTimeMillisStr)
-                        && !entry.getKey().startsWith(tomorrowTimeMillisStr)) {
+                    && !entry.getKey().startsWith(tomorrowTimeMillisStr)) {
                     iterator.remove();
                 }
             }
         }
         save();
     }
-
+    
     public static Map<String, String> getRandomDishImage() {
         List<Map<String, String> > list = new ArrayList<>(INSTANCE.dishImageList);
         if (list.isEmpty()) {
@@ -119,7 +119,7 @@ public class TokenConfig {
         Map<String, String> dishImage = list.get(pos);
         return checkDishImage(dishImage) ? dishImage : null;
     }
-
+    
     public static void saveDishImage(Map<String, String> dishImage) {
         if (!checkDishImage(dishImage)) {
             return;
@@ -130,17 +130,17 @@ public class TokenConfig {
             save();
         }
     }
-
+    
     public static int getDishImageCount() {
         load();
         return INSTANCE.dishImageList.size();
     }
-
+    
     public static Boolean clearDishImage() {
         TokenConfig.INSTANCE.dishImageList.clear();
         return save();
     }
-
+    
     public static Boolean checkDishImage(Map<String, String> dishImage) {
         if (dishImage == null) {
             return false;
@@ -148,15 +148,15 @@ public class TokenConfig {
         String beforeMealsImageId = dishImage.get("BEFORE_MEALS");
         String afterMealsImageId = dishImage.get("AFTER_MEALS");
         return !StringUtil.isEmpty(beforeMealsImageId)
-                && !StringUtil.isEmpty(afterMealsImageId)
-                && !Objects.equals(beforeMealsImageId, afterMealsImageId);
+               && !StringUtil.isEmpty(afterMealsImageId)
+               && !Objects.equals(beforeMealsImageId, afterMealsImageId);
     }
-
+    
     public static Boolean save() {
         Log.record("保存Token配置");
         return FileUtil.setTokenConfigFile(toSaveStr());
     }
-
+    
     public static synchronized TokenConfig load() {
         File tokenConfigFile = FileUtil.getTokenConfigFile();
         try {
@@ -189,7 +189,7 @@ public class TokenConfig {
         INSTANCE.setInit(true);
         return INSTANCE;
     }
-
+    
     public static synchronized void unload() {
         try {
             JsonUtil.copyMapper().updateValue(INSTANCE, new TokenConfig());
@@ -197,7 +197,7 @@ public class TokenConfig {
             Log.printStackTrace(TAG, e);
         }
     }
-
+    
     public static String toSaveStr() {
         return JsonUtil.toFormatJsonString(INSTANCE);
     }

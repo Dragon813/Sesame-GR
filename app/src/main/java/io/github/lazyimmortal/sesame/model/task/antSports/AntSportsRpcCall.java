@@ -99,11 +99,16 @@ public class AntSportsRpcCall {
         return ApplicationHook.requestString("alipay.antsports.walk.charity.donate", args);
     }
     
-    public static String queryWalkStep() {
-        String args = "[{}]";
-        return ApplicationHook.requestString("alipay.antsports.walk.user.queryWalkStep", args);
-    }
+    //public static String queryWalkStep() {
+    //    String args = "[{}]";
+    //    return ApplicationHook.requestString("alipay.antsports.walk.user.queryWalkStep", args);
+    //}
     
+    public static String queryWalkStep() {
+        String args = "[{\"appId\":\"healthstep\",\"bizId\":\"donation\",\"chInfo\":\"h5_donation_healthstep\",\"timeZone\":\"Asia/Shanghai\"}]";
+        return ApplicationHook.requestString("alipay.antsports.steps.query", args);
+    }
+
     public static String walkDonateSignInfo(int count) {
         return ApplicationHook.requestString("alipay.charity.mobile.donate.walk.walkDonateSignInfo", "[{\"needDonateAction\":false,\"source\":\"walkDonateHome\",\"steps\":" + count + ",\"timezoneId" + "\":\"" + timeZone + "\"}]");
     }
@@ -118,6 +123,8 @@ public class AntSportsRpcCall {
         return ApplicationHook.requestString("alipay.charity.mobile.donate.exchange.record", args);
     }
     
+    
+    //{"actId":"20160524001110000000000000001002","count":100000,"donateToken":"2088002795595507_1766240522284","timezoneId":"Asia/Shanghai","ver":"0"}]}
     public static String donateWalkExchange(String actId, int count, String donateToken) {
         return ApplicationHook.requestString("alipay.charity.mobile.donate.walk.exchange", "[{\"actId\":\"" + actId + "\",\"count\":" + count + ",\"donateToken\":\"" + donateToken + "\"," + "\"timezoneId\":\"" + timeZone + "\",\"ver\":0}]");
     }

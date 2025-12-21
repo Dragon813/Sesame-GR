@@ -33,7 +33,7 @@ public class ProtectEcology extends ModelTask {
     
     @Override
     public String getName() {
-        return "生态保护";
+        return "保护";
     }
     
     @Override

@@ -169,7 +169,7 @@ public class ForestChouChouLe {
                         // 统一处理 FOREST_NORMAL_DRAW 和 FOREST_ACTIVITY_DRAW开头任务
                         if ((taskType.startsWith("FOREST_NORMAL_DRAW") || taskType.startsWith("FOREST_ACTIVITY_DRAW")) && taskStatus.equals("TODO")) {
                             // ==================== 屏蔽逻辑 ====================
-                            if (presetBad.contains(taskType)||taskName.equals("【限时】玩游戏得2次机会")) {
+                            if (presetBad.contains(taskType)||taskName.equals("【限时】玩游戏得2次机会")||taskName.equals("去乐园开宝箱得机会")) {
                                 Log.record("已屏蔽任务，跳过：" + taskName);
                             }
                             else {

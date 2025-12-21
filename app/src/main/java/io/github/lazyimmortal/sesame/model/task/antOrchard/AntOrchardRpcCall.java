@@ -10,7 +10,6 @@ import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
 public class AntOrchardRpcCall {
     
-    //private static final String VERSION = "0.1.2401111000.31";
     private static final String VERSION = "20250812.01";
     
     public static String orchardIndex() {
@@ -63,8 +62,12 @@ public class AntOrchardRpcCall {
         return ApplicationHook.requestString("com.alipay.antorchard.orchardSyncIndex", "[{\"requestType\":\"NORMAL\",\"sceneCode\":\"ORCHARD\",\"source\":\"ch_appcenter__chsub_9patch\",\"syncIndexTypes\":\"QUERY_MAIN_ACCOUNT_INFO\",\"version\":\"" + VERSION + "\"}]");
     }
     
-    public static String orchardSpreadManure(Boolean useBatchSpread,String wua) {
-        return ApplicationHook.requestString("com.alipay.antfarm.orchardSpreadManure", "[{\"plantScene\":\"main\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ORCHARD\",\"source\":\"ch_appcenter__chsub_9patch\",\"useBatchSpread\":"+useBatchSpread+",\"version\":\"" + VERSION + "\",\"wua\":\"" + wua + "\"}]");
+    // 主要修复：统一方法签名，只保留一个orchardSpreadManure方法
+    public static String orchardSpreadManure(Boolean useBatchSpread, String wua) {
+        // 修复：正确格式化布尔值
+        String useBatchSpreadStr = Boolean.TRUE.equals(useBatchSpread) ? "true" : "false";
+        return ApplicationHook.requestString("com.alipay.antfarm.orchardSpreadManure",
+                "[{\"plantScene\":\"main\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ORCHARD\",\"source\":\"ch_appcenter__chsub_9patch\",\"useBatchSpread\":" + useBatchSpreadStr + ",\"version\":\"" + VERSION + "\",\"wua\":\"" + (wua != null ? wua : "") + "\"}]");
     }
     
     public static String receiveTaskAward(String sceneCode, String taskType) {
@@ -115,11 +118,6 @@ public class AntOrchardRpcCall {
     }
     
     /* 助力好友 */
-    //  public static String shareP2P() {
-    //        return ApplicationHook.requestString("com.alipay.antiep.shareP2P",
-    //                "[{\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM_ORCHARD_SHARE_P2P\",\"source\":\"ch_appcenter__chsub_9patch\",\"version\":\""
-    //                        + VERSION + "\"}]");
-    //    }
     public static String achieveBeShareP2P(String friendUserId) {
         String shareId = Base64.encodeToString((friendUserId + "-" + RandomUtil.getRandom(5) + "ANTFARM_ORCHARD_SHARE_P2P").getBytes(), Base64.NO_WRAP);
         String args = "[{\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM_ORCHARD_SHARE_P2P\",\"shareId\":\"" + shareId + "\",\"source\":\"share\"}]";
@@ -142,4 +140,26 @@ public class AntOrchardRpcCall {
         return ApplicationHook.requestString("com.alipay.yebbffweb.needle.yebHome.moneyTree.trigger", "[{\"sceneType\":\"default\",\"type\":\"trigger\"}]");
     }
     
+    /**
+     * 领取回访奖励
+     */
+    public static String receiveOrchardVisitAward() {
+        return ApplicationHook.requestString("com.alipay.antorchard.receiveOrchardVisitAward",
+                "[{\"requestType\":\"NORMAL\",\"sceneCode\":\"ORCHARD\",\"source\":\"ch_appcenter__chsub_9patch\",\"version\":\"" + VERSION + "\"}]");
+    }
+    
+    /**
+     * 带参数的 orchardSyncIndex（适配第二个文件中的调用）
+     * 注意：这里参数被忽略，调用无参版本
+     */
+    public static String orchardSyncIndex(String param) {
+        return orchardSyncIndex();
+    }
+    
+    /*
+     * 适配施肥调用（两个参数）- 已删除，使用统一版本
+     */
+    // public static String orchardSpreadManure(String wua, String source) {
+    //     return orchardSpreadManure(false, wua);
+    // }
 }

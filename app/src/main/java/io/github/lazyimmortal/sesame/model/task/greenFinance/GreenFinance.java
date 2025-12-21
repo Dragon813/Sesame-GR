@@ -38,7 +38,7 @@ public class GreenFinance extends ModelTask {
 
     @Override
     public String getName() {
-        return "绿色经营";
+        return "经营";
     }
 
     @Override

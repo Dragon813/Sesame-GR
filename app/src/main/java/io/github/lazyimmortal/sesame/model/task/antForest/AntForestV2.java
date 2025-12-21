@@ -156,6 +156,7 @@ public class AntForestV2 extends ModelTask {
     //PK能量
     private BooleanModelField pkEnergy;
     private BooleanModelField closeWhackMole;
+    private IntegerModelField WhackMoleRoundNum;
     private BooleanModelField collectProp;
     private StringModelField queryInterval;
     private StringModelField collectInterval;
@@ -255,6 +256,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(vitalityExchangeBenefit = new BooleanModelField("vitalityExchangeBenefit", "活力值 | 兑换权益", false));
         modelFields.addField(vitalityExchangeBenefitList = new SelectAndCountModelField("vitalityExchangeBenefitList", "活力值 | 权益列表", new LinkedHashMap<>(), VitalityBenefit::getList, "请填写兑换次数(每日)"));
         modelFields.addField(closeWhackMole = new BooleanModelField("closeWhackMole", "关闭6秒拼手速(打地鼠)", true));
+        modelFields.addField(WhackMoleRoundNum = new IntegerModelField("WhackMoleRoundNum", "打地鼠同时开局数(结算取最高局)", 6, 1, 12));
         modelFields.addField(collectProp = new BooleanModelField("collectProp", "收集道具", false));
         modelFields.addField(whoYouWantToGiveTo = new SelectModelField("whoYouWantToGiveTo", "赠送道具好友列表", new LinkedHashSet<>(), AlipayUser::getList, "会赠送所有可送道具都给已选择的好友"));
         modelFields.addField(energyRain = new BooleanModelField("energyRain", "收集能量雨", false));
@@ -1503,7 +1505,7 @@ public class AntForestV2 extends ModelTask {
                 } else {
                     // 主动执行打地鼠（今日首次）
                     Log.record("🎮 开始执行6秒拼手速（今日首次）");
-                    WhackMole.startWhackMole();
+                    WhackMole.startWhackMole(WhackMoleRoundNum.getValue());
                     Status.flagToday("forest::whackMole::executed");
                     Log.record("✅ 6秒拼手速已完成，今天不再执行");
                 }

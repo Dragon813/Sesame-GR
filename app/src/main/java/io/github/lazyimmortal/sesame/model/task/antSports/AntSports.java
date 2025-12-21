@@ -109,8 +109,8 @@ public class AntSports extends ModelTask {
         modelFields.addField(clubTradeMemberType = new ChoiceModelField("clubTradeMemberType", "抢好友 | 抢购动作", TradeMemberType.NONE, TradeMemberType.nickNames));
         modelFields.addField(clubTradeMemberList = new SelectModelField("clubTradeMemberList", "抢好友 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
         modelFields.addField(tiyubiz = new BooleanModelField("tiyubiz", "文体中心", false));
-        modelFields.addField(minExchangeCount = new IntegerModelField("minExchangeCount", "行走捐 | 最小捐步步数", 0));
-        modelFields.addField(latestExchangeTime = new IntegerModelField("latestExchangeTime", "行走捐 | 最晚捐步时间(24小时制)", 22));
+        modelFields.addField(minExchangeCount = new IntegerModelField("minExchangeCount", "行走捐 | 最小捐步步数", 10));
+        //modelFields.addField(latestExchangeTime = new IntegerModelField("latestExchangeTime", "行走捐 | 最晚捐步时间(24小时制)", 22));
         modelFields.addField(syncStepCount = new IntegerModelField("syncStepCount", "自定义同步步数", 22000));
         modelFields.addField(neverLand = new BooleanModelField("neverLand", "健康岛 | 开启", false));
         //modelFields.addField(energyStrategy = new ChoiceModelField("energyStrategy", "能量策略", EnergyStrategy.NONE, EnergyStrategy.nickNames));
@@ -298,7 +298,7 @@ public class AntSports extends ModelTask {
                         continue;
                     }
                     if (completeTask(taskAction, taskId, taskName)) {
-                        TimeUtil.sleep(1000);
+                        TimeUtil.sleep(2000);
                     }
                     continue;
                 }
@@ -331,6 +331,7 @@ public class AntSports extends ModelTask {
             JSONObject jo = new JSONObject(AntSportsRpcCall.completeTask(taskAction, taskId));
             if (MessageUtil.checkSuccess(TAG, jo)) {
                 Log.other("运动任务🧾完成[得运动币:" + taskName + "]");
+                TimeUtil.sleep(1000);
                 return true;
             }
         }
@@ -850,6 +851,7 @@ public class AntSports extends ModelTask {
             JSONObject jo = new JSONObject(AntSportsRpcCall.donate(donateCharityCoin, projectId));
             if (MessageUtil.checkResultCode(TAG, jo)) {
                 Log.other("公益捐赠❤️[捐赠运动币:" + title + "]捐赠" + donateCharityCoin + "运动币");
+                
                 return true;
             }
         }
@@ -891,20 +893,26 @@ public class AntSports extends ModelTask {
         if (!canDonateWalkExchangeToday()) {
             return;
         }
+        if (Status.hasFlagToday("sport::donateWalk")) {
+            return;
+        }
         try {
             JSONObject jo = new JSONObject(AntSportsRpcCall.queryWalkStep());
             if (!MessageUtil.checkResultCode(TAG, jo)) {
                 return;
             }
-            jo = jo.getJSONObject("dailyStepModel");
-            int produceQuantity = jo.getInt("produceQuantity");
+            //jo = jo.getJSONObject("dailyStepModel");
+            long produceQuantity = jo.getLong("stepLastTime");
             int hour = Integer.parseInt(Log.getFormatTime().split(":")[0]);
-            if (produceQuantity < minExchangeCount.getValue() && hour < latestExchangeTime.getValue()) {
+            
+            int stepCount= jo.optInt("stepCount");
+            //if (stepCount < minExchangeCount.getValue() && hour < latestExchangeTime.getValue()) {
+            if (stepCount < minExchangeCount.getValue()) {
                 return;
             }
             
-            AntSportsRpcCall.walkDonateSignInfo(produceQuantity);
-            jo = new JSONObject(AntSportsRpcCall.donateWalkHome(produceQuantity));
+            AntSportsRpcCall.walkDonateSignInfo(stepCount);
+            jo = new JSONObject(AntSportsRpcCall.donateWalkHome(stepCount));
             if (!MessageUtil.checkResultCode(TAG, jo)) {
                 return;
             }
@@ -918,7 +926,7 @@ public class AntSports extends ModelTask {
             JSONObject walkCharityActivityModel = walkDonateHomeModel.getJSONObject("walkCharityActivityModel");
             String activityId = walkCharityActivityModel.getString("activityId");
             
-            jo = new JSONObject(AntSportsRpcCall.donateWalkExchange(activityId, produceQuantity, donateToken));
+            jo = new JSONObject(AntSportsRpcCall.donateWalkExchange(activityId, stepCount, donateToken));
             if (!MessageUtil.checkResultCode(TAG, jo)) {
                 return;
             }
@@ -927,6 +935,7 @@ public class AntSports extends ModelTask {
             double amount = donateExchangeResultModel.getJSONObject("userAmount").getDouble("amount");
             String donateTitle = donateExchangeResultModel.getString("donateTitle");
             Log.other("公益捐赠❤️[捐步做公益:" + donateTitle + "]捐赠" + userCount + "步,兑换" + amount + "元公益金");
+            Status.flagToday("sport::donateWalk");
         }
         catch (Throwable t) {
             Log.i(TAG, "queryWalkStep err:");
@@ -1612,6 +1621,7 @@ public class AntSports extends ModelTask {
             if (MessageUtil.checkSuccess(TAG, jsonResult)) {
                 String taskName = task.getString("title");
                 Log.other("悦动健康🚑️完成任务[" + taskName + "]");
+                TimeUtil.sleep(1000);
                 return true;
             }
         }
@@ -2121,7 +2131,7 @@ public class AntSports extends ModelTask {
                     else if ("PROMOKERNEL_TASK".equals(taskType)) {
                         if (completeTask(task)) {
                             task.put("taskStatus", "TO_RECEIVE");
-                            TimeUtil.sleep(1000);
+                            TimeUtil.sleep(2000);
                             needRetry = true;
                         }
                     }
