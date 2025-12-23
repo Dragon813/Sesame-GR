@@ -624,7 +624,7 @@ public class AntOrchard extends ModelTask {
                     String result = AntOrchardRpcCall.finishTask(sceneCode, taskId);
                     JSONObject finishResponse = new JSONObject(result);
                     if (MessageUtil.checkResultCode(TAG, finishResponse)) {
-                        Log.farm("芭芭农场广告任务📺[" + title + "] 第" + (rightsTimes + cnt + 1) + "次");
+                        Log.farm("农场任务🧾完成任务[" + title + "]第" + (rightsTimes + cnt + 1) + "次");
                     } else {
                         Log.record("失败：芭芭农场广告任务📺[" + title + "] " + finishResponse.optString("desc"));
                         break;

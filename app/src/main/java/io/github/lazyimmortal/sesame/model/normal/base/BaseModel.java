@@ -1,5 +1,6 @@
 package io.github.lazyimmortal.sesame.model.normal.base;
 
+import io.github.lazyimmortal.sesame.hook.CaptchaHook;
 import lombok.Getter;
 
 import io.github.lazyimmortal.sesame.data.Model;
@@ -44,7 +45,7 @@ public class BaseModel extends Model {
     private static final BooleanModelField recordLog = new BooleanModelField("recordLog", "记录日志", true);
     @Getter
     private static final BooleanModelField showToast = new BooleanModelField("showToast", "气泡提示", true);
-    //public static final BooleanModelField closeCaptchaDialogVPN = new BooleanModelField("closeCaptchaDialogVPN", "关闭VPN弹窗", false);
+    //public static final BooleanModelField closeCaptchaDialogVPN = new BooleanModelField("closeCaptchaDialogVPN", "关闭请检查是否使用了代理软件或VPN", false);
     @Getter
     private static final IntegerModelField toastOffsetY = new IntegerModelField("toastOffsetY", "气泡纵向偏移", 0);
     @Getter
@@ -64,7 +65,15 @@ public class BaseModel extends Model {
     public String getEnableFieldName() {
         return "启用模块";
     }
-
+    public void boot(ClassLoader classLoader) {
+        /*// 配置已加载，更新验证码Hook状态
+        try {
+            CaptchaHook.updateHooks(closeCaptchaDialogVPN.getValue());
+            Log.record("✅ 验证码Hook配置已同步");
+        } catch (Throwable t) {
+            Log.printStackTrace("❌ 验证码Hook配置同步失败", t);
+        }*/
+    }
     @Override
     public ModelFields getFields() {
         ModelFields modelFields = new ModelFields();
@@ -81,7 +90,7 @@ public class BaseModel extends Model {
         modelFields.addField(batteryPerm);
         modelFields.addField(recordLog);
         modelFields.addField(showToast);
-   //     modelFields.addField(closeCaptchaDialogVPN);
+        //modelFields.addField(closeCaptchaDialogVPN);
         modelFields.addField(enableOnGoing);
         modelFields.addField(toastOffsetY);
         return modelFields;

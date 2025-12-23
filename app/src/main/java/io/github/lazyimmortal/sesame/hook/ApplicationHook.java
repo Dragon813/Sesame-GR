@@ -147,6 +147,14 @@ public class ApplicationHook implements IXposedHookLoadPackage {
     
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) {
+        // Hook验证码关闭功能
+        /*
+        try {
+            CaptchaHook.INSTANCE.setupHook(classLoader);
+            Log.i(TAG+"验证码Hook系统已初始化");
+        } catch (Throwable t) {
+            Log.printStackTrace(TAG+"验证码Hook初始化失败", t);
+        }*/
         if (Objects.equals(BuildConfig.APPLICATION_ID, lpparam.packageName)) {
             try {
                 XposedHelpers.callStaticMethod(lpparam.classLoader.loadClass(ViewAppInfo.class.getName()), "setRunTypeByCode", RunType.MODEL.getCode());
