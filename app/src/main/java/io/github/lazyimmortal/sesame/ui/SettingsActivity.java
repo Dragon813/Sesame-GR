@@ -173,8 +173,8 @@ public class SettingsActivity extends BaseActivity {
         menu.add(0, 3, 3, "删除配置");
         menu.add(0, 4, 4, "单向好友");
        if (!"TEST".equals(ViewAppInfo.getAppVersion()) && LibraryUtil.loadLibrary("sesame")) {
-            menu.add(0, 5, 5, "切换至新UI");
-        }
+           menu.add(0, 5, 5, "切换至新UI");
+       }
         return super.onCreateOptionsMenu(menu);
     }
 

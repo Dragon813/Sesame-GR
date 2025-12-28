@@ -2502,7 +2502,7 @@ public class AntFarm extends ModelTask {
             if (familyOptions.getValue().contains("shareToFriends")) {
                 familyShareToFriends(familyUserIds, notInviteList);
             }
-            if (familyInteractActions != null) {
+            /*if (familyInteractActions != null) {
                 boolean canEatTogether = true;
                 for (int i = 0; i < familyInteractActions.length(); i++) {
                     jo = familyInteractActions.getJSONObject(i);
@@ -2513,7 +2513,7 @@ public class AntFarm extends ModelTask {
                 if (canEatTogether && familyOptions.getValue().contains("familyEatTogether")) {
                     familyEatTogether(ownerGroupId, friendUserIds);
                 }
-            }
+            }*/
         }
         catch (Throwable t) {
             Log.i(TAG, "family err:");
@@ -2607,7 +2607,7 @@ public class AntFarm extends ModelTask {
             boolean isEat = false;
             JSONArray periodItemList = eatTogetherConfig.optJSONArray("periodItemList");
             if (periodItemList == null || periodItemList.length() == 0) {
-                Log.record("美食不足,无法请客,请检查小鸡厨房");
+                Log.record("未获取请客的时间段，请检查enterFamily");
                 return;
             }
             
@@ -2668,7 +2668,7 @@ public class AntFarm extends ModelTask {
                 userIdsArray.put(userId);
             }
             
-            JSONObject jo = new JSONObject(AntFarmRpcCall.familyEatTogether(ownerGroupId, userIdsArray, array));
+            JSONObject jo = new JSONObject(AntFarmRpcCall.familyEatTogether(ownerGroupId, array, userIdsArray));
             if (MessageUtil.checkMemo(TAG, jo)) {
                 Log.farm("家庭任务🏠请客" + periodName + "#消耗美食" + familyUserIds.size() + "份");
             }

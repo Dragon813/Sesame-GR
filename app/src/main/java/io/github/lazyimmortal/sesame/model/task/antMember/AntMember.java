@@ -92,9 +92,9 @@ public class AntMember extends ModelTask {
                 collectSesame();
             }
             // 生活记录
-            if (promise.getValue()) {
-                promise();
-            }
+            //if (promise.getValue()) {
+            //    promise();
+            //}
             // 我的快递任务
             if (KuaiDiFuLiJia.getValue()) {
                 RecommendTask();
@@ -103,9 +103,9 @@ public class AntMember extends ModelTask {
             if (enableGoldTicket.getValue()) {
                 goldTicket();
             }
-            if (antInsurance.getValue()) {
-                AntInsurance.executeTask(antInsuranceOptions.getValue());
-            }
+            //if (antInsurance.getValue()) {
+            //    AntInsurance.executeTask(antInsuranceOptions.getValue());
+            //}
             // 消费金签到
             if (signinCalendar.getValue()) {
                 signinCalendar();
