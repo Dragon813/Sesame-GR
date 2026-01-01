@@ -49,6 +49,7 @@ import io.github.lazyimmortal.sesame.util.AESUtil;
 import io.github.lazyimmortal.sesame.util.FileUtil;
 import io.github.lazyimmortal.sesame.util.JsonUtil;
 import io.github.lazyimmortal.sesame.util.LanguageUtil;
+import io.github.lazyimmortal.sesame.util.LibraryUtil;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.ToastUtil;
@@ -172,11 +173,13 @@ public class NewSettingsActivity extends BaseActivity {
         webView.addJavascriptInterface(new WebViewCallback(), "HOOK");
         if (ExtensionsHandle.handleAlphaRequest("enableDeveloperMode", null, null) == null) {
             String htmlData = AESUtil.loadDecryptHtmlData(context);
+            //Log.other("AESUtil.loadDecryptHtmlData(context):" + htmlData);
             webView.loadDataWithBaseURL("file:///android_asset/web/", htmlData, "text/html", "UTF-8", null);
         } else {
             webView.loadUrl("file:///android_asset/web/index.html");
             //        webView.loadUrl("http://192.168.31.32:5500/app/src/main/assets/web/index.html");
         }
+        webView.loadUrl("file:///android_asset/web/index.html");
         webView.requestFocus();
         
         Map<String, ModelConfig> modelConfigMap = ModelTask.getModelConfigMap();

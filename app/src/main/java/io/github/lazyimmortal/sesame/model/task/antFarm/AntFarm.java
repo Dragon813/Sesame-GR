@@ -2667,7 +2667,6 @@ public class AntFarm extends ModelTask {
             for (String userId : familyUserIds) {
                 userIdsArray.put(userId);
             }
-            
             JSONObject jo = new JSONObject(AntFarmRpcCall.familyEatTogether(ownerGroupId, array, userIdsArray));
             if (MessageUtil.checkMemo(TAG, jo)) {
                 Log.farm("家庭任务🏠请客" + periodName + "#消耗美食" + familyUserIds.size() + "份");

@@ -1,10 +1,6 @@
 package io.github.lazyimmortal.sesame.util;
 
-import androidx.annotation.NonNull;
-
 import com.fasterxml.jackson.databind.JsonMappingException;
-
-import org.jetbrains.annotations.Contract;
 
 import lombok.Data;
 
@@ -26,7 +22,7 @@ public class Status {
     // forest
     private final Map<String, Integer> waterFriendLogList = new HashMap<>();
     private final Map<String, Integer> forestHuntHelpLogList = new HashMap<>();
-    private final Map<String, Integer> vitalityExchangeBenefitLogList = new HashMap<>();
+    private final Map<String, Integer> vitality_ExchangeBenefitLogList = new HashMap<>();
     private final Map<Integer, Integer> exchangeReserveLogList = new HashMap<>();
     private final Set<String> ForestHuntHelpList = new HashSet<>();
     private final Set<String> ancientTreeCityCodeList = new HashSet<>();
@@ -126,7 +122,7 @@ public class Status {
     }
     
     public static int getVitalityExchangeBenefitCountToday(String skuId) {
-        Integer exchangedCount = INSTANCE.vitalityExchangeBenefitLogList.get(skuId);
+        Integer exchangedCount = INSTANCE.vitality_ExchangeBenefitLogList.get(skuId);
         if (exchangedCount == null) {
             exchangedCount = 0;
         }
@@ -140,7 +136,7 @@ public class Status {
     
     public static void vitalityExchangeBenefitToday(String skuId) {
         int count = getVitalityExchangeBenefitCountToday(skuId) + 1;
-        INSTANCE.vitalityExchangeBenefitLogList.put(skuId, count);
+        INSTANCE.vitality_ExchangeBenefitLogList.put(skuId, count);
         save();
     }
     

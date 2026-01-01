@@ -179,7 +179,7 @@ public class AntForestV2 extends ModelTask {
     private SelectAndCountModelField waterFriendList;
     private SelectModelField giveEnergyRainList;
     private BooleanModelField vitalityExchangeBenefit;
-    private SelectAndCountModelField vitalityExchangeBenefitList;
+    private SelectAndCountModelField vitality_ExchangeBenefitList;
     private BooleanModelField userPatrol;
     private BooleanModelField collectGiftBox;
     private BooleanModelField medicalHealth;
@@ -257,7 +257,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(helpFriendCollectList = new SelectModelField("helpFriendCollectList", "复活能量 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
         modelFields.addField(helpFriendCollectListLimit = new IntegerModelField("helpFriendCollectListLimit", "复活好友能量下限(大于该值复活)", 0, 0, 100000));
         modelFields.addField(vitalityExchangeBenefit = new BooleanModelField("vitalityExchangeBenefit", "活力值 | 兑换权益", false));
-        modelFields.addField(vitalityExchangeBenefitList = new SelectAndCountModelField("vitalityExchangeBenefitList", "活力值 | 权益列表", new LinkedHashMap<>(), VitalityBenefit::getList, "请填写兑换次数(每日)"));
+        modelFields.addField(vitality_ExchangeBenefitList = new SelectAndCountModelField("vitality_ExchangeBenefitList", "活力值 | 权益列表", new LinkedHashMap<>(), VitalityBenefit::getList, "请填写兑换次数(每日)"));
         modelFields.addField(closeWhackMole = new BooleanModelField("closeWhackMole", "关闭6秒拼手速(打地鼠)", true));
         modelFields.addField(WhackMoleRoundNum = new IntegerModelField("WhackMoleRoundNum", "打地鼠同时开局数(结算取最高局)", 6, 1, 12));
         modelFields.addField(collectProp = new BooleanModelField("collectProp", "收集道具", false));
@@ -1781,7 +1781,7 @@ public class AntForestV2 extends ModelTask {
     private void vitalityExchangeBenefit() {
         try {
             getAllSkuInfo();
-            Map<String, Integer> exchangeList = vitalityExchangeBenefitList.getValue();
+            Map<String, Integer> exchangeList = vitality_ExchangeBenefitList.getValue();
             for (Map.Entry<String, Integer> entry : exchangeList.entrySet()) {
                 String skuId = entry.getKey();
                 Integer count = entry.getValue();
