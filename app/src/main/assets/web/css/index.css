@@ -257,6 +257,74 @@ video {
   justify-content: center;
   align-items: center;
 }
+
+.theme1 {
+  background-color: #f6f6f6;
+  padding: 0 10px !important; /* 底板离屏幕边框距离 保持不变 */
+}
+.theme1 .van-tabs__wrap::before {
+  position: fixed;
+  top: 0;
+  content: '';
+  height: 1px;
+  width: 100%;
+  background-color: #fff;
+}
+
+.theme1 .content-box {
+  width: calc(100vw - 40px) !important;
+  min-height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  margin: 10px auto !important;
+  padding: 6px 5px !important; /* 底板内间距 保持不变（与下拉内容间距统一） */
+  background-color: #ffffff;
+  box-sizing: border-box !important;
+}
+
+.theme1 .title-box {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px !important;
+  line-height: 46px !important;
+  min-height: 46px !important;
+}
+
+/* ✅ 核心微调：图标轻微向上偏移1px，和文字完美对齐（唯一改动） */
+.theme1 .list-icon {
+  width: 18px !important;
+  height: 18px !important;
+  color: #216eee;
+  display: inline-block !important;
+  transform: translateY(3px) !important; /* 图标向上1px，精准对齐文字 */
+  flex-shrink: 0;
+}
+
+.theme1 .list-label {
+  margin-top: 0 !important;
+  line-height: inherit !important;
+  font-size: 17px !important;
+}
+
+.theme1 .van-collapse-item__title {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  min-height: 46px !important;
+  line-height: 46px !important;
+  padding: 0 5px !important;
+}
+.theme1 .van-cell__right-icon,
+.theme1 .van-collapse-item__title .van-icon {
+  transform: none !important;
+  vertical-align: middle !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px !important;
+}
+
 .theme2 {
   background-color: #f6f6f6;
 }

@@ -356,7 +356,7 @@ public class NewSettingsActivity extends BaseActivity {
         
         @JavascriptInterface
         public void Log(String log) {
-            Log.record("设置："+ log);
+            //Log.record("设置："+ log);
         }
         
     }

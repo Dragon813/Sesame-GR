@@ -502,17 +502,10 @@ public class AntFarmRpcCall {
         return ApplicationHook.requestString("com.alipay.antfarm.wakeUp", args);
     }
     
-    public static String familyEatTogether(String groupId, JSONArray cuisines, JSONArray friendUserIdList) {
-        // 确保JSON格式正确
-        String args = "[{\"cuisines\":" + cuisines.toString() +
-                      ",\"friendUserIds\":" + friendUserIdList.toString() +
-                      ",\"groupId\":\"" + groupId +
-                      "\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\"," +
-                      "\"source\":\"H5\",\"spaceType\":\"ChickFamily\"}]";
+    public static String familyEatTogether(String groupId, JSONArray cuisines, JSONArray EatTogetherUserIds) {
+        String args = "[{\"cuisines\":" + cuisines + ",\"friendUserIds\":" + EatTogetherUserIds + ",\"groupId\":\"" + groupId + "\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"spaceType\":\"ChickFamily\"}]";
         return ApplicationHook.requestString("com.alipay.antfarm.familyEatTogether", args);
     }
-    
-    // 添加到 AntFarmRpcCall.java 中
     
     public static String familyTaskTips(JSONArray familyAnimalsExceptUser) {
         String args = "[{\"animals\":" + familyAnimalsExceptUser.toString() + ",\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"taskSceneCode\":\"ANTFARM_FAMILY_TASK\",\"timeZoneId\":\"Asia/Shanghai\"}]";

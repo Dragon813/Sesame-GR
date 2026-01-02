@@ -287,9 +287,9 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(NORMALForestHuntHelp = new BooleanModelField("NORMALForestHuntHelp", "普通场景强制助力" + "(助力任务不在列表中时使用，如果日志显示失效请关闭)", false));
         modelFields.addField(ACTIVITYForestHuntHelp = new BooleanModelField("ACTIVITYForestHuntHelp", "活动场景强制助力" + "(助力任务不在列表中时使用，如果日志显示失效请关闭)", false));
         modelFields.addField(ForestHuntHelpList = new SelectModelField("ForestHuntHelpList", "点击配置寻宝助力列表" + "(填写shareId中开头的22-24位字符在\"4O7FEYDgn\"前的)", new LinkedHashSet<>(), AlipayForestHunt::getList));
-        modelFields.addField(dress = new BooleanModelField("dress", "装扮保护 | 开启", false));
-        modelFields.addField(dressDetailList = new TextModelField("dressDetailList", "装扮保护 | " + "装扮信息", ""));
-        modelFields.addField(new EmptyModelField("dressDetailListClear", "装扮保护 | 装扮信息清除", () -> dressDetailList.reset()));
+        //modelFields.addField(dress = new BooleanModelField("dress", "装扮保护 | 开启", false));
+        //modelFields.addField(dressDetailList = new TextModelField("dressDetailList", "装扮保护 | " + "装扮信息", ""));
+        //modelFields.addField(new EmptyModelField("dressDetailListClear", "装扮保护 | 装扮信息清除", () -> dressDetailList.reset()));
         return modelFields;
     }
     
@@ -585,9 +585,9 @@ public class AntForestV2 extends ModelTask {
                     // 医疗健康 电子小票 4g*10能量
                     queryForestEnergy("BILL");
                 }
-                if (dress.getValue()) {
-                    dress();
-                }
+                //if (dress.getValue()) {
+                //    dress();
+                //}
                 if (!closeWhackMole.getValue()) {
                     whackMole();
                 }

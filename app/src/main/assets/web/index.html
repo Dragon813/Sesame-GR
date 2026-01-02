@@ -162,7 +162,7 @@
               </div>
             </van-collapse-item>
 
-            <van-collapse-item name="13" title="主题设置" id="collapse-item_13">
+            <van-collapse-item name="13" title="主题" id="collapse-item_13">
               <template #title>
                 <div class="title-box">
                   <div v-show="currentTab==13">
@@ -183,7 +183,7 @@
                       src="./png/13.png"
                     />
                   </div>
-                  <div>主题设置</div>
+                  <div>主题</div>
                 </div>
               </template>
               <div class="content-box">
@@ -232,9 +232,7 @@
                   感谢:<br/>
                   <span class="light-label">@wh-990624</span> 开发新UI<br/>
                   <span class="light-label">༒激༙྇流༙྇泉༙྇༒</span> 设计新UI<br/>
-                  <a href="https://github.com/TKaxv-7S/Sesame-TK/graphs/contributors">
-                    <img src="https://contrib.rocks/image?repo=TKaxv-7S/Sesame-TK" style="width: 100vw;margin-top:10px;"/>
-                  </a>
+                    <span class="light-label">TKaxv-7S</span> 撰写代码<br/>
                 </div>
               </div>
             </van-collapse-item>
@@ -357,7 +355,7 @@
               </div>
             </van-tab>
 
-            <van-tab name="13" title="主题设置">
+            <van-tab name="13" title="主题">
               <template #title>
                 <div class="title-box">
                   <div v-show="currentTab==13">
@@ -378,7 +376,7 @@
                       src="./png/13.png"
                     />
                   </div>
-                  <div class="list-label">主题设置</div>
+                  <div class="list-label">主题</div>
                 </div>
               </template>
               <div class="content-box">
@@ -427,9 +425,7 @@
                   感谢:<br/>
                   <span class="light-label">@wh-990624</span> 开发新UI<br/>
                   <span class="light-label">༒激༙྇流༙྇泉༙྇༒</span> 设计新UI<br/>
-                  <a href="https://github.com/TKaxv-7S/Sesame-TK/graphs/contributors">
-                    <img src="https://contrib.rocks/image?repo=TKaxv-7S/Sesame-TK" style="width: 100vw;margin-top:10px;"/>
-                  </a>
+                    <span class="light-label">TKaxv-7S</span> 撰写代码<br/>
                 </div>
               </div>
             </van-tab>
@@ -505,7 +501,7 @@
             })
           );
 
-          const theme = ref(localStorage.getItem("theme") || "theme1");
+          const theme = ref(localStorage.getItem("theme") || "theme2");
 
           // 用户列表弹窗
           const person_list = ref({
