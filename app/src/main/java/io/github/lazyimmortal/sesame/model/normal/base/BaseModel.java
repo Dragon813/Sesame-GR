@@ -1,6 +1,5 @@
 package io.github.lazyimmortal.sesame.model.normal.base;
 
-import io.github.lazyimmortal.sesame.hook.CaptchaHook;
 import lombok.Getter;
 
 import io.github.lazyimmortal.sesame.data.Model;
@@ -18,7 +17,7 @@ import io.github.lazyimmortal.sesame.util.idMap.*;
  * 基础配置模块
  */
 public class BaseModel extends Model {
-
+    
     @Getter
     private static final BooleanModelField stayAwake = new BooleanModelField("stayAwake", "保持唤醒", true);
     @Getter
@@ -50,21 +49,22 @@ public class BaseModel extends Model {
     private static final IntegerModelField toastOffsetY = new IntegerModelField("toastOffsetY", "气泡纵向偏移", 0);
     @Getter
     private static final BooleanModelField enableOnGoing = new BooleanModelField("enableOnGoing", "开启状态栏禁删", false);
-
+    
     @Override
     public String getName() {
         return "基础";
     }
-
+    
     @Override
     public ModelGroup getGroup() {
         return ModelGroup.BASE;
     }
-
+    
     @Override
     public String getEnableFieldName() {
         return "启用模块";
     }
+    
     public void boot(ClassLoader classLoader) {
         /*// 配置已加载，更新验证码Hook状态
         try {
@@ -74,6 +74,7 @@ public class BaseModel extends Model {
             Log.printStackTrace("❌ 验证码Hook配置同步失败", t);
         }*/
     }
+    
     @Override
     public ModelFields getFields() {
         ModelFields modelFields = new ModelFields();
@@ -95,14 +96,15 @@ public class BaseModel extends Model {
         modelFields.addField(toastOffsetY);
         return modelFields;
     }
-
+    
     public static void initData() {
         new Thread(() -> {
             try {
                 TimeUtil.sleep(5000);
                 ProtectEcology.initForest();
                 ProtectEcology.initOcean();
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 Log.printStackTrace(e);
             }
         }).start();
@@ -111,7 +113,7 @@ public class BaseModel extends Model {
     //public static boolean getcloseCaptchaDialogVPN() {
     //    return closeCaptchaDialogVPN.getValue();
     //}
-
+    
     public static void destroyData() {
         try {
             TreeIdMap.clear();
@@ -122,19 +124,28 @@ public class BaseModel extends Model {
             BeachIdMap.clear();
             PlantSceneIdMap.clear();
             ForestHuntIdMap.clear();
-        } catch (Exception e) {
+            MemberCreditSesameTaskListMap.clear();
+            AntForestVitalityTaskListMap.clear();
+            AntForestHuntTaskListMap.clear();
+            AntFarmDoFarmTaskListMap.clear();
+            AntFarmDrawMachineTaskListMap.clear();
+            AntOceanAntiepTaskListMap.clear();
+            AntOrchardTaskListMap.clear();
+            AntStallTaskListMap.clear();
+        }
+        catch (Exception e) {
             Log.printStackTrace(e);
         }
     }
-
+    
     public interface TimedTaskModel {
-
+        
         int SYSTEM = 0;
-
+        
         int PROGRAM = 1;
-
+        
         String[] nickNames = {"系统计时", "程序计时"};
-
+        
     }
-
+    
 }

@@ -54,7 +54,15 @@ import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.ToastUtil;
 import io.github.lazyimmortal.sesame.util.idMap.AnimalIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.AntFarmDoFarmTaskListMap;
+import io.github.lazyimmortal.sesame.util.idMap.AntFarmDrawMachineTaskListMap;
+import io.github.lazyimmortal.sesame.util.idMap.AntForestHuntTaskListMap;
+import io.github.lazyimmortal.sesame.util.idMap.AntForestVitalityTaskListMap;
+import io.github.lazyimmortal.sesame.util.idMap.AntOceanAntiepTaskListMap;
+import io.github.lazyimmortal.sesame.util.idMap.AntOrchardTaskListMap;
+import io.github.lazyimmortal.sesame.util.idMap.AntStallTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.BeachIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.MemberCreditSesameTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.PlantSceneIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.ForestHuntIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.CooperationIdMap;
@@ -118,6 +126,14 @@ public class NewSettingsActivity extends BaseActivity {
         BeachIdMap.load();
         PlantSceneIdMap.load();
         ForestHuntIdMap.load();
+        MemberCreditSesameTaskListMap.load();
+        AntForestVitalityTaskListMap.load();
+        AntForestHuntTaskListMap.load();
+        AntFarmDoFarmTaskListMap.load();
+        AntFarmDrawMachineTaskListMap.load();
+        AntOceanAntiepTaskListMap.load();
+        AntOrchardTaskListMap.load();
+        AntStallTaskListMap.load();
         WalkPathIdMap.load();
         ConfigV2.load(userId);
         setContentView(R.layout.activity_new_settings);
@@ -152,12 +168,7 @@ public class NewSettingsActivity extends BaseActivity {
                 Uri requestUrl = request.getUrl();
                 String scheme = requestUrl.getScheme();
                 assert scheme != null;
-                if (
-                        scheme.equalsIgnoreCase("http")
-                        || scheme.equalsIgnoreCase("https")
-                        || scheme.equalsIgnoreCase("ws")
-                        || scheme.equalsIgnoreCase("wss")
-                ) {
+                if (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https") || scheme.equalsIgnoreCase("ws") || scheme.equalsIgnoreCase("wss")) {
                     view.loadUrl(requestUrl.toString());
                     return true;
                 }
@@ -175,7 +186,8 @@ public class NewSettingsActivity extends BaseActivity {
             String htmlData = AESUtil.loadDecryptHtmlData(context);
             //Log.other("AESUtil.loadDecryptHtmlData(context):" + htmlData);
             webView.loadDataWithBaseURL("file:///android_asset/web/", htmlData, "text/html", "UTF-8", null);
-        } else {
+        }
+        else {
             webView.loadUrl("file:///android_asset/web/index.html");
             //        webView.loadUrl("http://192.168.31.32:5500/app/src/main/assets/web/index.html");
         }
@@ -197,7 +209,8 @@ public class NewSettingsActivity extends BaseActivity {
     public void onBackPressed() {
         if (webView.canGoBack()) {
             webView.goBack();
-        } else {
+        }
+        else {
             super.onBackPressed();
             save();
         }
@@ -209,7 +222,8 @@ public class NewSettingsActivity extends BaseActivity {
             runOnUiThread(() -> {
                 if (webView.canGoBack()) {
                     webView.goBack();
-                } else {
+                }
+                else {
                     NewSettingsActivity.this.finish();
                 }
             });
@@ -318,7 +332,8 @@ public class NewSettingsActivity extends BaseActivity {
                         }
                     }
                     return "SUCCESS";
-                } catch (Exception e) {
+                }
+                catch (Exception e) {
                     Log.printStackTrace(e);
                 }
             }
@@ -347,7 +362,8 @@ public class NewSettingsActivity extends BaseActivity {
                         modelField.setConfigValue(fieldValue);
                         return "SUCCESS";
                     }
-                } catch (Exception e) {
+                }
+                catch (Exception e) {
                     Log.printStackTrace(e);
                 }
             }
@@ -389,26 +405,22 @@ public class NewSettingsActivity extends BaseActivity {
                 startActivityForResult(importIntent, IMPORT_REQUEST_CODE);
                 break;
             case 3:
-                new AlertDialog.Builder(context)
-                        .setTitle("警告")
-                        .setMessage("确认删除该配置？")
-                        .setPositiveButton(R.string.ok, (dialog, id) -> {
-                            File userConfigDirectoryFile;
-                            if (StringUtil.isEmpty(userId)) {
-                                userConfigDirectoryFile = FileUtil.getDefaultConfigV2File();
-                            } else {
-                                userConfigDirectoryFile = FileUtil.getUserConfigDirectoryFile(userId);
-                            }
-                            if (FileUtil.deleteFile(userConfigDirectoryFile)) {
-                                ToastUtil.show(this, "配置删除成功");
-                            } else {
-                                ToastUtil.show(this, "配置删除失败");
-                            }
-                            finish();
-                        })
-                        .setNegativeButton(R.string.cancel, (dialog, id) -> dialog.dismiss())
-                        .create()
-                        .show();
+                new AlertDialog.Builder(context).setTitle("警告").setMessage("确认删除该配置？").setPositiveButton(R.string.ok, (dialog, id) -> {
+                    File userConfigDirectoryFile;
+                    if (StringUtil.isEmpty(userId)) {
+                        userConfigDirectoryFile = FileUtil.getDefaultConfigV2File();
+                    }
+                    else {
+                        userConfigDirectoryFile = FileUtil.getUserConfigDirectoryFile(userId);
+                    }
+                    if (FileUtil.deleteFile(userConfigDirectoryFile)) {
+                        ToastUtil.show(this, "配置删除成功");
+                    }
+                    else {
+                        ToastUtil.show(this, "配置删除失败");
+                    }
+                    finish();
+                }).setNegativeButton(R.string.cancel, (dialog, id) -> dialog.dismiss()).create().show();
                 break;
             case 4:
                 ListDialog.show(this, "单向好友列表", AlipayUser.getList(user -> user.getFriendStatus() != 1), SelectModelFieldFunc.newMapInstance(), false, ListDialog.ListType.SHOW);
@@ -421,7 +433,8 @@ public class NewSettingsActivity extends BaseActivity {
                     intent.putExtra("userName", userName);
                     finish();
                     startActivity(intent);
-                } else {
+                }
+                else {
                     ToastUtil.show(this, "切换失败");
                 }
                 break;
@@ -442,28 +455,33 @@ public class NewSettingsActivity extends BaseActivity {
                     File configV2File;
                     if (StringUtil.isEmpty(userId)) {
                         configV2File = FileUtil.getDefaultConfigV2File();
-                    } else {
+                    }
+                    else {
                         configV2File = FileUtil.getConfigV2File(userId);
                     }
                     FileInputStream inputStream = new FileInputStream(configV2File);
                     if (FileUtil.streamTo(inputStream, getContentResolver().openOutputStream(data.getData()))) {
                         ToastUtil.show(this, "导出成功！");
-                    } else {
+                    }
+                    else {
                         ToastUtil.show(this, "导出失败！");
                     }
-                } catch (IOException e) {
+                }
+                catch (IOException e) {
                     Log.printStackTrace(e);
                     ToastUtil.show(this, "导出失败！");
                 }
             }
-        } else if (requestCode == IMPORT_REQUEST_CODE) {
+        }
+        else if (requestCode == IMPORT_REQUEST_CODE) {
             Uri uri = data.getData();
             if (uri != null) {
                 try {
                     File configV2File;
                     if (StringUtil.isEmpty(userId)) {
                         configV2File = FileUtil.getDefaultConfigV2File();
-                    } else {
+                    }
+                    else {
                         configV2File = FileUtil.getConfigV2File(userId);
                     }
                     FileOutputStream outputStream = new FileOutputStream(configV2File);
@@ -474,17 +492,20 @@ public class NewSettingsActivity extends BaseActivity {
                                 Intent intent = new Intent("com.eg.android.AlipayGphone.sesame.restart");
                                 intent.putExtra("userId", userId);
                                 sendBroadcast(intent);
-                            } catch (Throwable th) {
+                            }
+                            catch (Throwable th) {
                                 Log.printStackTrace(th);
                             }
                         }
                         Intent intent = getIntent();
                         finish();
                         startActivity(intent);
-                    } else {
+                    }
+                    else {
                         ToastUtil.show(this, "导入失败！");
                     }
-                } catch (IOException e) {
+                }
+                catch (IOException e) {
                     Log.printStackTrace(e);
                     ToastUtil.show(this, "导入失败！");
                 }
@@ -500,7 +521,8 @@ public class NewSettingsActivity extends BaseActivity {
                     Intent intent = new Intent("com.eg.android.AlipayGphone.sesame.restart");
                     intent.putExtra("userId", userId);
                     sendBroadcast(intent);
-                } catch (Throwable th) {
+                }
+                catch (Throwable th) {
                     Log.printStackTrace(th);
                 }
             }

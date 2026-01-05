@@ -263,7 +263,7 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                                 }
                                 Log.record("应用版本：" + alipayVersion.getVersionString());
                                 Log.record("模块版本：" + modelVersion);
-                                Log.record("开始执行");
+                                Log.record("开始执行（交流更新QQ群：694474777）");
                                 try {
                                     int checkInterval = BaseModel.getCheckInterval().getValue();
                                     if (lastExecTime + 2000 > System.currentTimeMillis()) {

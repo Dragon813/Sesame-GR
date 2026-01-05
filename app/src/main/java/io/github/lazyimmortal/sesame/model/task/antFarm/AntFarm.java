@@ -1,5 +1,11 @@
 package io.github.lazyimmortal.sesame.model.task.antFarm;
 
+import io.github.lazyimmortal.sesame.entity.AlipayAntFarmDoFarmTaskList;
+import io.github.lazyimmortal.sesame.entity.AlipayAntFarmDrawMachineTaskList;
+import io.github.lazyimmortal.sesame.model.task.antMember.AntMemberRpcCall;
+import io.github.lazyimmortal.sesame.util.idMap.AntFarmDoFarmTaskListMap;
+import io.github.lazyimmortal.sesame.util.idMap.AntFarmDrawMachineTaskListMap;
+import io.github.lazyimmortal.sesame.util.idMap.MemberCreditSesameTaskListMap;
 import lombok.Getter;
 
 import org.json.JSONArray;
@@ -56,6 +62,8 @@ public class AntFarm extends ModelTask {
         return ModelGroup.FARM;
     }
     
+    private BooleanModelField AutoAntFarmDoFarmTaskList;
+    private SelectModelField AntFarmDoFarmTaskList;
     private StringModelField sleepTime;
     private IntegerModelField sleepMinutes;
     private BooleanModelField feedAnimal;
@@ -86,6 +94,8 @@ public class AntFarm extends ModelTask {
     private SelectAndCountModelField visitFriendList;
     private BooleanModelField chickenDiary;
     private BooleanModelField drawMachine;
+    private BooleanModelField AutoAntFarmDrawMachineTaskList;
+    private SelectModelField AntFarmDrawMachineTaskList;
     private BooleanModelField ornamentsDressUp;
     private SelectModelField ornamentsDressUpList;
     private IntegerModelField ornamentsDressUpDays;
@@ -103,6 +113,8 @@ public class AntFarm extends ModelTask {
     @Override
     public ModelFields getFields() {
         ModelFields modelFields = new ModelFields();
+        modelFields.addField(AutoAntFarmDoFarmTaskList = new BooleanModelField("AutoAntFarmDoFarmTaskList", "庄园饲料 | 自动黑白名单", true));
+        modelFields.addField(AntFarmDoFarmTaskList = new SelectModelField("AntFarmDoFarmTaskList", "庄园饲料 | 黑名单任务列表", new LinkedHashSet<>(), AlipayAntFarmDoFarmTaskList::getList));
         modelFields.addField(useNewEggTool = new BooleanModelField("useNewEggTool", "新蛋卡 | 使用", false));
         modelFields.addField(useAccelerateTool = new BooleanModelField("useAccelerateTool", "加速卡 | 使用", false));
         modelFields.addField(useAccelerateToolOptions = new SelectModelField("useAccelerateToolOptions", "加速卡 | 选项", new LinkedHashSet<>(), CustomOption::getUseAccelerateToolOptions));
@@ -125,6 +137,8 @@ public class AntFarm extends ModelTask {
         modelFields.addField(ornamentsDressUpList = new SelectModelField("ornamentsDressUpList", "装扮焕新 | 套装列表", new LinkedHashSet<>(), FarmOrnaments::getList));
         modelFields.addField(ornamentsDressUpDays = new IntegerModelField("ornamentsDressUpDays", "装扮焕新 | 焕新频率(天)", 7));
         modelFields.addField(drawMachine = new BooleanModelField("drawMachine", "装扮抽抽乐", false));
+        modelFields.addField(AutoAntFarmDrawMachineTaskList = new BooleanModelField("AutoAntFarmDrawMachineTaskList", "装扮抽抽乐 | 自动黑白名单", true));
+        modelFields.addField(AntFarmDrawMachineTaskList = new SelectModelField("AntFarmDrawMachineTaskList", "装扮抽抽乐 | 黑名单任务列表", new LinkedHashSet<>(), AlipayAntFarmDrawMachineTaskList::getList));
         modelFields.addField(donationType = new ChoiceModelField("donationType", "每日捐蛋 | 方式", DonationType.ZERO, DonationType.nickNames));
         modelFields.addField(donationAmount = new IntegerModelField("donationAmount", "每日捐蛋 | 倍数(每项)", 1));
         modelFields.addField(family = new BooleanModelField("family", "亲密家庭 | 开启", false));
@@ -170,6 +184,9 @@ public class AntFarm extends ModelTask {
             if (enterFarm() == null) {
                 return;
             }
+            
+            //初始任务列表
+            initAntFarmTaskListMap(AutoAntFarmDoFarmTaskList.getValue(), AutoAntFarmDrawMachineTaskList.getValue());
             
             if (rewardFriend.getValue()) {
                 rewardFriend();
@@ -364,6 +381,147 @@ public class AntFarm extends ModelTask {
         }
         catch (Throwable t) {
             Log.i(TAG, "AntFarm.start.run err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    public static void initAntFarmTaskListMap(boolean AutoAntFarmDoFarmTaskList, boolean AutoAntFarmDrawMachineTaskList) {
+        try {
+            //初始化AntFarmDoFarmTaskListMap
+            AntFarmDoFarmTaskListMap.load();
+            Set<String> blackList = new HashSet<>();
+            blackList.add("到店付款");
+            blackList.add("线上支付");
+            blackList.add("逛闪购外卖1元起吃");
+            blackList.add("用花呗完成一笔支付");
+            Set<String> whiteList = new HashSet<>();// 从黑名单中移除该任务
+            //whiteList.add("逛一逛树");
+            for (String task : blackList) {
+                AntFarmDoFarmTaskListMap.add(task, task);
+            }
+            
+            JSONObject jo = new JSONObject(AntFarmRpcCall.listFarmTask());
+            if (MessageUtil.checkMemo(TAG, jo)) {
+                JSONArray ja = jo.getJSONArray("farmTaskList");
+                for (int i = 0; i < ja.length(); i++) {
+                    jo = ja.getJSONObject(i);
+                    String title = jo.getString("title");
+                    AntFarmDoFarmTaskListMap.add(title, title);
+                }
+            }
+            //保存任务到配置文件
+            AntFarmDoFarmTaskListMap.save();
+            Log.record("同步任务：庄园饲料任务列表");
+            
+            //自动按模块初始化设定调整黑名单和白名单
+            if (AutoAntFarmDoFarmTaskList) {
+                // 初始化黑白名单（使用集合统一操作）
+                ConfigV2 config = ConfigV2.INSTANCE;
+                ModelFields AntFarm = config.getModelFieldsMap().get("AntFarm");
+                SelectModelField AntFarmDoFarmTaskList = (SelectModelField) AntFarm.get("AntFarmDoFarmTaskList");
+                if (AntFarmDoFarmTaskList == null) {
+                    return;
+                }
+                // 2. 批量添加黑名单任务（确保存在）
+                Set<String> currentValues = AntFarmDoFarmTaskList.getValue();//该处直接返回列表地址
+                if (currentValues != null) {
+                    for (String task : blackList) {
+                        if (!currentValues.contains(task)) {
+                            AntFarmDoFarmTaskList.add(task, 0);
+                        }
+                    }
+                }
+                currentValues = AntFarmDoFarmTaskList.getValue();//该处直接返回列表地址
+                if (currentValues != null) {
+                    
+                    // 3. 批量移除白名单任务（从现有列表中删除）
+                    for (String task : whiteList) {
+                        currentValues.remove(task);
+                    }
+                }
+                // 4. 保存配置
+                if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
+                    Log.record("庄园饲料任务黑白名单自动设置: " + AntFarmDoFarmTaskList.getValue());
+                }
+                else {
+                    Log.record("庄园饲料任务黑白名单设置失败");
+                }
+            }
+            
+            //初始化AntFarmDrawMachineTaskListMap
+            AntFarmDrawMachineTaskListMap.load();
+            blackList = new HashSet<>();
+            blackList.add("【限时】玩游戏得新机会");
+            blackList.add("伸出援手，点亮希望");
+            whiteList = new HashSet<>();// 从黑名单中移除该任务
+            //whiteList.add("逛一逛树");
+            for (String task : blackList) {
+                AntFarmDrawMachineTaskListMap.add(task, task);
+            }
+            jo = new JSONObject(AntFarmRpcCall.queryLoveCabin(UserIdMap.getCurrentUid()));
+            if (MessageUtil.checkMemo(TAG, jo)) {
+                jo = new JSONObject(AntFarmRpcCall.listFarmDrawTask("ANTFARM_DAILY_DRAW_TASK"));
+                if (MessageUtil.checkMemo(TAG, jo)) {
+                    JSONArray farmTaskList = jo.getJSONArray("farmTaskList");
+                    for (int i = 0; i < farmTaskList.length(); i++) {
+                        jo = farmTaskList.getJSONObject(i);
+                        String title = jo.getString("title");
+                        AntFarmDrawMachineTaskListMap.add(title, title);
+                    }
+                    JSONObject queryDrawMachineActivityjo = new JSONObject(AntFarmRpcCall.queryDrawMachineActivity("ipDrawMachine", "dailyDrawMachine"));
+                    if (MessageUtil.checkMemo(TAG, jo)) {
+                        if (queryDrawMachineActivityjo.has("otherDrawMachineActivityIds")) {
+                            if (queryDrawMachineActivityjo.getJSONArray("otherDrawMachineActivityIds").length() > 0) {
+                                jo = new JSONObject(AntFarmRpcCall.listFarmDrawTask("ANTFARM_IP_DRAW_TASK"));
+                                if (MessageUtil.checkMemo(TAG, jo)) {
+                                    farmTaskList = jo.getJSONArray("farmTaskList");
+                                    for (int i = 0; i < farmTaskList.length(); i++) {
+                                        jo = farmTaskList.getJSONObject(i);
+                                        String title = jo.getString("title");
+                                        AntFarmDrawMachineTaskListMap.add(title, title);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            //保存任务到配置文件
+            AntFarmDrawMachineTaskListMap.save();
+            Log.record("同步任务：装扮抽抽乐任务列表");
+            
+            //自动按模块初始化设定调整黑名单和白名单
+            if (AutoAntFarmDrawMachineTaskList) {
+                // 初始化黑白名单（使用集合统一操作）
+                ConfigV2 config = ConfigV2.INSTANCE;
+                ModelFields AntFarm = config.getModelFieldsMap().get("AntFarm");
+                SelectModelField AntFarmDrawMachineTaskList = (SelectModelField) AntFarm.get("AntFarmDrawMachineTaskList");
+                if (AntFarmDrawMachineTaskList == null) {
+                    return;
+                }
+                Set<String> currentValues = AntFarmDrawMachineTaskList.getValue();//该处直接返回列表地址
+                if (currentValues != null) {
+                    for (String task : blackList) {
+                        if (!currentValues.contains(task)) {
+                            AntFarmDrawMachineTaskList.add(task, 0);
+                        }
+                    }
+                    for (String task : whiteList) {
+                        currentValues.remove(task);
+                    }
+                }
+                // 4. 保存配置
+                if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
+                    Log.record("庄园装扮抽抽乐任务黑白名单自动设置: " + AntFarmDrawMachineTaskList.getValue());
+                }
+                else {
+                    Log.record("庄园装扮抽抽乐任务黑白名单设置失败");
+                }
+            }
+            
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "initAntFarmTaskListMap err:");
             Log.printStackTrace(TAG, t);
         }
     }
@@ -980,9 +1138,8 @@ public class AntFarm extends ModelTask {
                 jo = ja.getJSONObject(i);
                 TaskStatus taskStatus = TaskStatus.valueOf(jo.getString("taskStatus"));
                 String title = jo.getString("title");
-                
-                //屏蔽任务
-                if (title.equals("到店付款") || title.equals("线上支付") || title.equals("逛闪购外卖1元起吃") || title.equals("用花呗完成一笔支付")) {
+                //黑名单任务跳过
+                if (AntFarmDoFarmTaskList.getValue().contains(title)) {
                     continue;
                 }
                 if (taskStatus == TaskStatus.RECEIVED || taskStatus != Mode) {
@@ -1142,8 +1299,6 @@ public class AntFarm extends ModelTask {
             String title = task.getString("title");
             String bizKey = task.getString("bizKey");
             
-            //屏蔽任务
-            //if(bizKey.contains("HEART_DONAT")||bizKey.equals("BAIDUJS_202512")||bizKey.equals("BABAFARM_TB")||bizKey.equals("TAO_GOLDEN_V2"))
             if (bizKey.contains("HEART_DONAT") || bizKey.equals("BAIDUJS_202512") || bizKey.equals("BABAFARM_TB")) {
                 return false;
             }
@@ -2012,11 +2167,8 @@ public class AntFarm extends ModelTask {
                 jo = farmTaskList.getJSONObject(i);
                 String taskStatus = jo.getString("taskStatus");
                 String title = jo.getString("title");
-                String desc = jo.getString("desc");
-                //屏蔽玩游戏和捐赠任务
-                //if(title.contains("玩游戏得新机会")||desc.contains("单笔捐赠")||desc.contains("玩30秒")){
-                if (title.contains("玩游戏得新机会") || desc.contains("单笔捐赠")) {
-                    Log.record("装扮抽抽乐跳过屏蔽任务：" + title);
+                //黑名单任务跳过
+                if (AntFarmDrawMachineTaskList.getValue().contains(title)) {
                     continue;
                 }
                 
@@ -2030,13 +2182,17 @@ public class AntFarm extends ModelTask {
                     
                     if (jo.optString("taskId").contains("EXCHANGE") || jo.optString("taskId").contains("FKDWChuodong") || jo.optString("taskId").contains("GYG2") || jo.optString("taskId").equals("jiatingdongrirongrongwu")) {
                         for (int j = 0; j < (rightsTimesLimit - rightsTimes); j++) {
-                            AntFarmRpcCall.doFarmTask(jo.optString("bizKey"), taskSceneCode);
+                            JSONObject jodoFarmTask = new JSONObject(AntFarmRpcCall.doFarmTask(jo.optString("bizKey"), taskSceneCode));
+                            //检查并标记黑名单任务
+                            MessageUtil.checkResultCodeAndMarkTaskBlackList("MemberCreditSesameTaskList", title, jodoFarmTask);
                         }
                         TimeUtil.sleep(1000);
                     }
                     if (jo.optString("taskId").contains("SHANGYEHUA") || jo.optString("taskId").contains("30s")) {
                         for (int j = 0; j < (rightsTimesLimit - rightsTimes); j++) {
-                            AntFarmRpcCall.finishTask(jo.optString("taskId"), taskSceneCode);
+                            JSONObject jofinishTask = new JSONObject(AntFarmRpcCall.finishTask(jo.optString("taskId"), taskSceneCode));
+                            //检查并标记黑名单任务
+                            MessageUtil.checkResultCodeAndMarkTaskBlackList("MemberCreditSesameTaskList", title, jofinishTask);
                         }
                         TimeUtil.sleep(2000);
                     }
@@ -2415,16 +2571,17 @@ public class AntFarm extends ModelTask {
             Log.record("ExtensionsHandle 类未找到，跳过扩展处理");
         }
         try {
-            JSONObject jo = enterFamily();
-            if (jo == null) {
+            JSONObject joenterFamily = enterFamily();
+            JSONObject jo;
+            if (joenterFamily == null) {
                 return;
             }
-            ownerGroupId = jo.getString("groupId");
-            int familyAwardNum = jo.getInt("familyAwardNum");
-            boolean familySignTips = jo.getBoolean("familySignTips");
-            JSONObject assignFamilyMemberInfo = jo.optJSONObject("assignFamilyMemberInfo");
-            boolean feedFriendLimit = jo.optBoolean("feedFriendLimit", false);
-            JSONArray familyAnimals = jo.getJSONArray("animals");
+            ownerGroupId = joenterFamily.getString("groupId");
+            int familyAwardNum = joenterFamily.getInt("familyAwardNum");
+            boolean familySignTips = joenterFamily.getBoolean("familySignTips");
+            JSONObject assignFamilyMemberInfo = joenterFamily.optJSONObject("assignFamilyMemberInfo");
+            boolean feedFriendLimit = joenterFamily.optBoolean("feedFriendLimit", false);
+            JSONArray familyAnimals = joenterFamily.getJSONArray("animals");
             JSONArray EatTogetherUserIds = new JSONArray();
             JSONArray familyAnimalsExceptUser = familyAnimals;
             for (int i = familyAnimalsExceptUser.length() - 1; i >= 0; i--) {
@@ -2458,7 +2615,6 @@ public class AntFarm extends ModelTask {
                 }
             }
             
-
             // 家庭签到
             if (familySignTips && familyOptions.getValue().contains("familySign")) {
                 familySign();
@@ -2485,8 +2641,8 @@ public class AntFarm extends ModelTask {
                 familyFeedFriendAnimal(familyAnimals);
             }
             
-            JSONArray familyInteractActions = jo.optJSONArray("familyInteractActions");
-            JSONObject eatTogetherConfig = jo.optJSONObject("eatTogetherConfig");
+            JSONArray familyInteractActions = joenterFamily.optJSONArray("familyInteractActions");
+            JSONObject eatTogetherConfig = joenterFamily.getJSONObject("eatTogetherConfig");
             //家庭请客吃饭
             boolean canEatTogether = true;
             if (familyInteractActions != null) {
@@ -2498,7 +2654,7 @@ public class AntFarm extends ModelTask {
                 }
             }
             // 一起吃饭
-            if (canEatTogether && familyOptions.getValue().contains("familyEatTogether") && eatTogetherConfig != null) {
+            if (canEatTogether && familyOptions.getValue().contains("familyEatTogether") && eatTogetherConfig.has("periodItemList")) {
                 familyEatTogether(ownerGroupId, EatTogetherUserIds);
             }
             
@@ -2594,6 +2750,7 @@ public class AntFarm extends ModelTask {
             Log.printStackTrace(TAG, t);
         }
     }
+    
     private void familyEatTogether(String groupId, JSONArray EatTogetherUserIds) {
         long currentTime = System.currentTimeMillis();
         String periodName;

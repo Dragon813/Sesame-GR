@@ -277,7 +277,71 @@ public class FileUtil {
         }
         return file;
     }
+    
+    public static File getMemberCreditSesameTaskListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "MemberCreditSesameTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+    
 
+    
+    public static File getAntForestVitalityTaskListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "AntForestVitalityTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+    
+    public static File getAntForestHuntTaskListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "AntForestHuntTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+    
+    public static File getAntFarmDoFarmTaskListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "AntFarmDoFarmTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+    
+    public static File getAntFarmDrawMachineTaskListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "AntFarmDrawMachineTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+    
+    public static File getAntOceanAntiepTaskListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "AntOceanAntiepTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+    public static File getAntOrchardTaskListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "AntOrchardTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+    public static File getAntStallTaskListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "AntStallTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+    
     public static File getWalkPathIdMapFile() {
         File file = new File(MAIN_DIRECTORY_FILE, "walkPath.json");
         if (file.exists() && file.isDirectory()) {
