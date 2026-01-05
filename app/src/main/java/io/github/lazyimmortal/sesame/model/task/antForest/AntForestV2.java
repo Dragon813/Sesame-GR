@@ -296,7 +296,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(loveteamWater = new BooleanModelField("loveteamWater", "真爱合种浇水", false));
         modelFields.addField(loveteamWaterNum = new IntegerModelField("loveteamWaterNum", "真爱合种浇水" + "(g)", 20, 20, 10000));
         modelFields.addField(ForestHunt = new BooleanModelField("ForestHunt", "森林寻宝", false));
-        modelFields.addField(AutoAntForestHuntTaskList = new BooleanModelField("AutoAntForestHuntTaskList", "寻宝抽抽乐 | 手动调整黑白名单", false));
+        modelFields.addField(AutoAntForestHuntTaskList = new BooleanModelField("AutoAntForestHuntTaskList", "寻宝抽抽乐 | 自动调整黑白名单", true));
         modelFields.addField(AntForestHuntTaskList = new SelectModelField("AntForestHuntTaskList", "寻宝抽抽乐 | 黑名单任务列表", new LinkedHashSet<>(), AlipayAntForestHuntTaskList::getList));
         modelFields.addField(ForestHuntDraw = new BooleanModelField("ForestHuntDraw", "森林寻宝抽奖", false));
         modelFields.addField(ForestHuntHelp = new BooleanModelField("ForestHuntHelp", "森林寻宝助力", false));
