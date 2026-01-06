@@ -132,6 +132,8 @@ public class BaseModel extends Model {
             AntOceanAntiepTaskListMap.clear();
             AntOrchardTaskListMap.clear();
             AntStallTaskListMap.clear();
+            AntSportsTaskListMap.clear();
+            AntMemberTaskListMap.clear();
         }
         catch (Exception e) {
             Log.printStackTrace(e);

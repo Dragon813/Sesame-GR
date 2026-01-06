@@ -603,12 +603,9 @@ public class AntFarm extends ModelTask {
                             if (MessageUtil.checkMemo(TAG, jo)) {
                                 Log.farm("惊喜礼包🎁[" + foodSubType + "*" + foodCount + "]");
                             }
-                            
                         }
                     }
-                    
                 }
-                
             }
             
             if (useSpecialFood.getValue()) {
@@ -1140,6 +1137,9 @@ public class AntFarm extends ModelTask {
                 String title = jo.getString("title");
                 //黑名单任务跳过
                 if (AntFarmDoFarmTaskList.getValue().contains(title)) {
+                    if (taskStatus == TaskStatus.FINISHED) {
+                        receiveFarmTaskAward(jo);
+                    }
                     continue;
                 }
                 if (taskStatus == TaskStatus.RECEIVED || taskStatus != Mode) {
@@ -1298,7 +1298,6 @@ public class AntFarm extends ModelTask {
         try {
             String title = task.getString("title");
             String bizKey = task.getString("bizKey");
-            
             if (bizKey.contains("HEART_DONAT") || bizKey.equals("BAIDUJS_202512") || bizKey.equals("BABAFARM_TB")) {
                 return false;
             }
@@ -2167,12 +2166,11 @@ public class AntFarm extends ModelTask {
                 jo = farmTaskList.getJSONObject(i);
                 String taskStatus = jo.getString("taskStatus");
                 String title = jo.getString("title");
-                //黑名单任务跳过
-                if (AntFarmDrawMachineTaskList.getValue().contains(title)) {
+                if (TaskStatus.RECEIVED.name().equals(taskStatus)) {
                     continue;
                 }
-                
-                if (TaskStatus.RECEIVED.name().equals(taskStatus)) {
+                //黑名单任务跳过
+                if (AntFarmDrawMachineTaskList.getValue().contains(title)) {
                     continue;
                 }
                 

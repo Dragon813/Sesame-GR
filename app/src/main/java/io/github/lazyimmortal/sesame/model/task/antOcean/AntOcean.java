@@ -815,10 +815,6 @@ public class AntOcean extends ModelTask {
                 String taskType = jo.getString("taskType");
                 JSONObject bizInfo = new JSONObject(jo.getString("bizInfo"));
                 String taskTitle = bizInfo.optString("taskTitle");
-                //黑名单任务跳过
-                if (AntOceanAntiepTaskList.getValue().contains(taskTitle)) {
-                    continue;
-                }
                 if (TaskStatus.RECEIVED.name().equals(taskStatus)) {
                     continue;
                 }
@@ -854,13 +850,17 @@ public class AntOcean extends ModelTask {
         }
     }
     
-    private static Boolean finishOceanTask(JSONObject task) {
+    private Boolean finishOceanTask(JSONObject task) {
         try {
             if (task.has("taskProgress")) {
                 return false;
             }
             JSONObject bizInfo = new JSONObject(task.getString("bizInfo"));
             String taskTitle = bizInfo.optString("taskTitle");
+            //黑名单任务跳过
+            if (AntOceanAntiepTaskList.getValue().contains(taskTitle)) {
+                return false;
+            }
             if (taskTitle.equals("每日任务：答题学海洋知识")) {
                 // 答题操作
                 if (answerQuestion()) {

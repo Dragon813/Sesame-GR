@@ -84,10 +84,7 @@ public class ForestChouChouLe {
                         JSONObject taskBaseInfo = taskInfo.getJSONObject("taskBaseInfo");
                         JSONObject bizInfo = new JSONObject(taskBaseInfo.getString("bizInfo"));
                         String taskName = bizInfo.getString("title");
-                        //黑名单任务跳过
-                        if (AntForestHuntTaskList.contains(taskName)) {
-                            continue;
-                        }
+
                         String taskSceneCode = taskBaseInfo.getString("sceneCode");
                         String taskStatus = taskBaseInfo.getString("taskStatus");
                         String taskType = taskBaseInfo.getString("taskType");
@@ -95,6 +92,24 @@ public class ForestChouChouLe {
                         JSONObject taskRights = taskInfo.getJSONObject("taskRights");
                         int rightsTimes = taskRights.getInt("rightsTimes");
                         int rightsTimesLimit = taskRights.getInt("rightsTimesLimit");
+                        
+                        // 已完成任务领取奖励
+                        if (taskStatus.equals("FINISHED")) {
+                            TimeUtil.sleep(2000);
+                            JSONObject sginRes = new JSONObject(AntForestRpcCall.receiveTaskAwardopengreen("task_entry", taskSceneCode, taskType));
+                            if (MessageUtil.checkSuccess(TAG, sginRes)) {
+                                int incAwardCount = sginRes.getInt("incAwardCount");
+                                Log.forest("森林寻宝🎖️[" + taskName + "]获得抽奖*" + incAwardCount);
+                                if (rightsTimesLimit - rightsTimes > 0) {
+                                    doublecheck = true;
+                                }
+                            }
+                        }
+                        
+                        //黑名单任务跳过
+                        if (AntForestHuntTaskList.contains(taskName)) {
+                            continue;
+                        }
                         
                         if (taskType.contains("_DRAW_SHARE") && ForestHuntHelp) {
                             // if (!Status.hasFlagToday("Forest::" + sceneCode)) {
@@ -172,24 +187,11 @@ public class ForestChouChouLe {
                             else {
                                 result = new JSONObject(AntForestRpcCall.finishTaskopengreen(taskType, taskSceneCode));
                             }
-                            
+                            //检查并标记黑名单任务
+                            MessageUtil.checkResultCodeAndMarkTaskBlackList("AntForestHuntTaskList", taskName,result);
                             if (MessageUtil.checkSuccess(TAG, result)) {
                                 Log.forest("森林寻宝🧾完成[" + taskName + "]");
                                 doublecheck = true;
-                            }
-                            
-                        }
-                        
-                        // 已完成任务领取奖励
-                        if (taskStatus.equals("FINISHED")) {
-                            TimeUtil.sleep(2000);
-                            JSONObject sginRes = new JSONObject(AntForestRpcCall.receiveTaskAwardopengreen("task_entry", taskSceneCode, taskType));
-                            if (MessageUtil.checkSuccess(TAG, sginRes)) {
-                                int incAwardCount = sginRes.getInt("incAwardCount");
-                                Log.forest("森林寻宝🎖️[" + taskName + "]获得抽奖*" + incAwardCount);
-                                if (rightsTimesLimit - rightsTimes > 0) {
-                                    doublecheck = true;
-                                }
                             }
                         }
                     }

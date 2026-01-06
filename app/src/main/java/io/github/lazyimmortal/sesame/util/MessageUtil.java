@@ -177,77 +177,114 @@ public class MessageUtil {
         return false;
     }
     
-    public static void checkResultCodeAndMarkTaskBlackList(String listTitle, String taskTitle,JSONObject jo) {
+    public static void checkResultCodeAndMarkTaskBlackList(String listTitle, String taskTitle, JSONObject jo) {
         try {
             if (jo == null) {
                 Log.i(listTitle, "JSON对象为空");
                 return;
             }
             //标记是否加黑
-            Boolean canAddBlackList=false;
+            Boolean canAddBlackList = false;
             
             //共性返回失败关键字
             if (jo.has("desc")) {
                 String desc = jo.optString("desc");
-                if (desc.contains("不支持rpc调用")||desc.contains("不支持RPC调用")) {
-                    canAddBlackList=true;
+                if (desc.contains("不支持rpc调用") || desc.contains("不支持RPC调用")) {
+                    canAddBlackList = true;
                 }
             }
             
             //这里根据对应任务返回异常的值精准设置拉黑条件
             switch (listTitle) {
-                //会员芝麻信用任务芝麻粒AntMember
-                case "MemberCreditSesameTaskList":
-                    if (jo.has("resultView")) {
-                        String resultView = jo.optString("resultView");
-                        if (resultView.contains("不是有效的入参")) {
-                            canAddBlackList=true;
-                        }
-                    }
-                    if(canAddBlackList){
-                    MarkTaskBlackList("AntMember",listTitle, "会员芝麻信用任务芝麻粒",taskTitle);}
-                    break;
                 //蚂蚁森林活力值任务AntForestV2
                 case "AntForestVitalityTaskList":
-                    if(canAddBlackList){
-                        MarkTaskBlackList("AntForestV2",listTitle, "蚂蚁森林活力值任务",taskTitle);}
+                    if (canAddBlackList) {
+                        MarkTaskBlackList("AntForestV2", listTitle, "蚂蚁森林活力值任务", taskTitle);
+                    }
                     break;
+                    
                 //蚂蚁森林抽抽乐任务AntForestV2
                 case "AntForestHuntTaskList":
-                    if(canAddBlackList){
-                        MarkTaskBlackList("AntForestV2",listTitle, "蚂蚁森林抽抽乐任务",taskTitle);}
+                    if (canAddBlackList) {
+                        MarkTaskBlackList("AntForestV2", listTitle, "蚂蚁森林抽抽乐任务", taskTitle);
+                    }
                     break;
+                    
                 //庄园饲料任务AntFarm
                 case "AntFarmDoFarmTaskList":
-                    if(canAddBlackList){
-                        MarkTaskBlackList("AntFarm",listTitle, "庄园饲料任务",taskTitle);}
+                    if (canAddBlackList) {
+                        MarkTaskBlackList("AntFarm", listTitle, "庄园饲料任务", taskTitle);
+                    }
                     break;
+                    
                 //庄园装扮抽抽乐任务AntFarm
                 case "AntFarmDrawMachineTaskList":
-                    if(canAddBlackList){
-                        MarkTaskBlackList("AntFarm",listTitle, "庄园装扮抽抽乐任务",taskTitle);}
+                    if (canAddBlackList) {
+                        MarkTaskBlackList("AntFarm", listTitle, "庄园装扮抽抽乐任务", taskTitle);
+                    }
                     break;
+                    
                 //神奇海洋普通任务AntOcean
                 case "AntOceanAntiepTaskList":
-                    if(canAddBlackList){
-                        MarkTaskBlackList("AntOcean",listTitle, "神奇海洋普通任务",taskTitle);}
+                    if (canAddBlackList) {
+                        MarkTaskBlackList("AntOcean", listTitle, "神奇海洋普通任务", taskTitle);
+                    }
                     break;
+                    
                 //农场肥料任务AntOrchard
                 case "AntOrchardTaskList":
                     if (jo.has("desc")) {
                         String desc = jo.optString("desc");
                         if (desc.contains("任务全局配置不存在")) {
-                            canAddBlackList=true;
+                            canAddBlackList = true;
                         }
                     }
-                    if(canAddBlackList){
-                        MarkTaskBlackList("AntOrchard",listTitle, "农场肥料任务",taskTitle);}
+                    if (canAddBlackList) {
+                        MarkTaskBlackList("AntOrchard", listTitle, "农场肥料任务", taskTitle);
+                    }
                     break;
+                    
                 //新村任务AntStall
                 case "AntStallTaskList":
-                    if(canAddBlackList){
-                        MarkTaskBlackList("AntStall",listTitle, "新村任务",taskTitle);}
+                    if (canAddBlackList) {
+                        MarkTaskBlackList("AntStall", listTitle, "新村任务", taskTitle);
+                    }
                     break;
+                    
+                //运动任务AntSports
+                case "AntSportsTaskList":
+                    if (jo.has("errorCode")) {
+                        String errorCode = jo.optString("errorCode");
+                        // {"ariverRpcTraceId":"21a4804717677001946607240e1734","errorCode":"TASK_ID_INVALID","errorMsg":"海豚任务id非法","retryable":false,"success":false}
+                        if (errorCode.contains("TASK_ID_INVALID")) {
+                            canAddBlackList = true;
+                        }
+                    }
+                    if (canAddBlackList) {
+                        MarkTaskBlackList("AntSports", listTitle, "运动任务", taskTitle);
+                    }
+                    break;
+                    
+                //会员任务AntMember
+                case "AntMemberTaskList":
+                    if (canAddBlackList) {
+                        MarkTaskBlackList("AntMember", listTitle, "会员任务", taskTitle);
+                    }
+                    break;
+                    
+                //会员芝麻信用任务芝麻粒AntMember
+                case "MemberCreditSesameTaskList":
+                    if (jo.has("resultView")) {
+                        String resultView = jo.optString("resultView");
+                        if (resultView.contains("不是有效的入参")) {
+                            canAddBlackList = true;
+                        }
+                    }
+                    if (canAddBlackList) {
+                        MarkTaskBlackList("AntMember", listTitle, "会员芝麻信用任务芝麻粒", taskTitle);
+                    }
+                    break;
+
             }
         }
         catch (Throwable t) {
@@ -256,23 +293,23 @@ public class MessageUtil {
         }
     }
     
-    public static void MarkTaskBlackList(String ModelFieldsType,String listTitle, String TaskListName,String taskTitle) {
-            ConfigV2 config = ConfigV2.INSTANCE;
-            ModelFields TaskModelFields = config.getModelFieldsMap().get(ModelFieldsType);
-            SelectModelField TaskSelectModelField = (SelectModelField) TaskModelFields.get(listTitle);
-            if (TaskSelectModelField == null) {
-                Log.record("添加"+TaskListName+"黑名单失败：" + taskTitle);
-                return ;
-            }
-            if (!TaskSelectModelField.contains(taskTitle)) {
-                TaskSelectModelField.add(taskTitle, 0); // 数组类型忽略count，传0
-            }
-            if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
-                Log.record("添加"+TaskListName+"黑名单: " + TaskSelectModelField.getValue());
-            }
-            else {
-                Log.record("添加"+TaskListName+"黑名单失败：" + taskTitle);
-            }
+    public static void MarkTaskBlackList(String ModelFieldsType, String listTitle, String TaskListName, String taskTitle) {
+        ConfigV2 config = ConfigV2.INSTANCE;
+        ModelFields TaskModelFields = config.getModelFieldsMap().get(ModelFieldsType);
+        SelectModelField TaskSelectModelField = (SelectModelField) TaskModelFields.get(listTitle);
+        if (TaskSelectModelField == null) {
+            Log.record("添加" + TaskListName + "黑名单失败：" + taskTitle);
+            return;
+        }
+        if (!TaskSelectModelField.contains(taskTitle)) {
+            TaskSelectModelField.add(taskTitle, 0); // 数组类型忽略count，传0
+        }
+        if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
+            Log.record("添加" + TaskListName + "黑名单: " + TaskSelectModelField.getValue());
+        }
+        else {
+            Log.record("添加" + TaskListName + "黑名单失败：" + taskTitle);
+        }
     }
     
 }

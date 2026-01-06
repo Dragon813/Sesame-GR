@@ -286,8 +286,6 @@ public class FileUtil {
         return file;
     }
     
-
-    
     public static File getAntForestVitalityTaskListMapFile() {
         File file = new File(MAIN_DIRECTORY_FILE, "AntForestVitalityTask.json");
         if (file.exists() && file.isDirectory()) {
@@ -336,6 +334,22 @@ public class FileUtil {
     }
     public static File getAntStallTaskListMapFile() {
         File file = new File(MAIN_DIRECTORY_FILE, "AntStallTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+    
+    public static File getAntSportsTaskListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "AntSportsTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+    
+    public static File getAntMemberTaskListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "AntMemberTask.json");
         if (file.exists() && file.isDirectory()) {
             file.delete();
         }

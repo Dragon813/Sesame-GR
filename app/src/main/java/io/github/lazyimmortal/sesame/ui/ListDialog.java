@@ -24,8 +24,10 @@ import io.github.lazyimmortal.sesame.entity.AlipayAntFarmDoFarmTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntFarmDrawMachineTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntForestHuntTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntForestVitalityTaskList;
+import io.github.lazyimmortal.sesame.entity.AlipayAntMemberTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntOceanAntiepTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntOrchardTaskList;
+import io.github.lazyimmortal.sesame.entity.AlipayAntSportsTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntStallTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayBeach;
 import io.github.lazyimmortal.sesame.entity.AlipayMemberCreditSesameTaskList;
@@ -376,6 +378,16 @@ public class ListDialog {
                                 AlipayAntStallTaskList.remove(curIdAndName.id);
                                 AntStallTaskListMap.remove(curIdAndName.id);
                                 AntStallTaskListMap.save();
+                            }
+                            else if (curIdAndName instanceof AlipayAntSportsTaskList) {
+                                AlipayAntSportsTaskList.remove(curIdAndName.id);
+                                AntSportsTaskListMap.remove(curIdAndName.id);
+                                AntSportsTaskListMap.save();
+                            }
+                            else if (curIdAndName instanceof AlipayAntMemberTaskList) {
+                                AlipayAntMemberTaskList.remove(curIdAndName.id);
+                                AntMemberTaskListMap.remove(curIdAndName.id);
+                                AntMemberTaskListMap.save();
                             }
                             else if (curIdAndName instanceof WalkPath) {
                                 WalkPath.remove(curIdAndName.id);

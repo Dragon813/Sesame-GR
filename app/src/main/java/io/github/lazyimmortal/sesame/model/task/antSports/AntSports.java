@@ -4,12 +4,15 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
+import io.github.lazyimmortal.sesame.data.ConfigV2;
 import io.github.lazyimmortal.sesame.data.ModelFields;
 import io.github.lazyimmortal.sesame.data.ModelGroup;
 import io.github.lazyimmortal.sesame.data.TokenConfig;
@@ -18,18 +21,24 @@ import io.github.lazyimmortal.sesame.data.modelFieldExt.ChoiceModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.IntegerModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectModelField;
 import io.github.lazyimmortal.sesame.data.task.ModelTask;
+import io.github.lazyimmortal.sesame.entity.AlipayAntSportsTaskList;
+import io.github.lazyimmortal.sesame.entity.AlipayMemberCreditSesameTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayUser;
 import io.github.lazyimmortal.sesame.entity.WalkPath;
 import io.github.lazyimmortal.sesame.hook.ApplicationHook;
 import io.github.lazyimmortal.sesame.hook.Toast;
 import io.github.lazyimmortal.sesame.model.base.TaskCommon;
 import io.github.lazyimmortal.sesame.model.extensions.ExtensionsHandle;
+import io.github.lazyimmortal.sesame.model.task.antStall.AntStall;
+import io.github.lazyimmortal.sesame.model.task.antStall.AntStallRpcCall;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
 import io.github.lazyimmortal.sesame.util.RandomUtil;
 import io.github.lazyimmortal.sesame.util.Status;
 import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
+import io.github.lazyimmortal.sesame.util.idMap.AntSportsTaskListMap;
+import io.github.lazyimmortal.sesame.util.idMap.AntStallTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
 public class AntSports extends ModelTask {
@@ -53,7 +62,8 @@ public class AntSports extends ModelTask {
     private ChoiceModelField clubTradeMemberType;
     private SelectModelField clubTradeMemberList;
     private BooleanModelField sportsTasks;
-    
+    private BooleanModelField AutoAntSportsTaskList;
+    private SelectModelField AntSportsTaskList;
     private BooleanModelField neverLand;
     
     // 处理签到
@@ -100,6 +110,8 @@ public class AntSports extends ModelTask {
         modelFields.addField(walkPathTheme = new ChoiceModelField("walkPathTheme", "行走路线 | 路线主题", WalkPathTheme.DA_MEI_ZHONG_GUO, WalkPathTheme.nickNames));
         modelFields.addField(walkCustomPathIdList = new SelectModelField("walkCustomPathIdList", "行走路线 | 自定义路线列表", new LinkedHashSet<>(), WalkPath::getList, "请选择要行走的路线，选择多条则随机走其中一条"));
         modelFields.addField(sportsTasks = new BooleanModelField("sportsTasks", "运动任务", false));
+        modelFields.addField(AutoAntSportsTaskList = new BooleanModelField("AutoAntSportsTaskList", "运动任务 | 自动黑白名单", true));
+        modelFields.addField(AntSportsTaskList = new SelectModelField("AntSportsTaskList", "运动任务 | 黑名单任务列表", new LinkedHashSet<>(), AlipayAntSportsTaskList::getList));
         modelFields.addField(receiveCoinAsset = new BooleanModelField("receiveCoinAsset", "收运动币", false));
         modelFields.addField(donateCharityCoinType = new ChoiceModelField("donateCharityCoinType", "捐运动币 | 方式", DonateCharityCoinType.ZERO, DonateCharityCoinType.nickNames));
         modelFields.addField(donateCharityCoinAmount = new IntegerModelField("donateCharityCoinAmount", "捐运动币 | 数量" + "(每次)", 100));
@@ -192,6 +204,9 @@ public class AntSports extends ModelTask {
                 walk(syncStepCount.getValue());
             }
             
+            //初始任务列表
+            initAntSportsTaskListMap(AutoAntSportsTaskList.getValue());
+            
             if (donateCharityCoinType.getValue() != DonateCharityCoinType.ZERO) {
                 queryProjectList();
             }
@@ -252,6 +267,76 @@ public class AntSports extends ModelTask {
         return tmpStepCount;
     }
     
+    public static void initAntSportsTaskListMap(boolean AutoAntSportsTaskList) {
+        try {
+            //初始化AntSportsTaskListMap
+            AntSportsTaskListMap.load();
+            Set<String> blackList = new HashSet<>();
+            blackList.add("下载登录AI健康管家");
+            
+            Set<String> whiteList = new HashSet<>();// 从黑名单中移除该任务
+            //whiteList.add("逛一逛树");
+            for (String task : blackList) {
+                AntSportsTaskListMap.add(task, task);
+            }
+            JSONObject jo = new JSONObject(AntSportsRpcCall.queryCoinTaskPanel());
+            if (MessageUtil.checkSuccess(TAG, jo)) {
+                jo = jo.getJSONObject("data");
+                if (jo.has("taskList")) {
+                    JSONArray taskLists = jo.getJSONArray("taskList");
+                    for (int i = 0; i < taskLists.length(); i++) {
+                        JSONObject taskList = taskLists.getJSONObject(i);
+                        String taskName = taskList.getString("taskName");
+                        AntSportsTaskListMap.add(taskName, taskName);
+                    }
+                }
+            }
+            
+            //保存任务到配置文件
+            AntSportsTaskListMap.save();
+            Log.record("同步任务：运动任务列表");
+            
+            //自动按模块初始化设定调整黑名单和白名单
+            if (AutoAntSportsTaskList) {
+                // 初始化黑白名单（使用集合统一操作）
+                ConfigV2 config = ConfigV2.INSTANCE;
+                ModelFields AntSports = config.getModelFieldsMap().get("AntSports");
+                SelectModelField AntSportsTaskList = (SelectModelField) AntSports.get("AntSportsTaskList");
+                if (AntSportsTaskList == null) {
+                    return;
+                }
+                // 2. 批量添加黑名单任务（确保存在）
+                Set<String> currentValues = AntSportsTaskList.getValue();//该处直接返回列表地址
+                if (currentValues != null) {
+                    for (String task : blackList) {
+                        if (!currentValues.contains(task)) {
+                            AntSportsTaskList.add(task, 0);
+                        }
+                    }
+                }
+                currentValues = AntSportsTaskList.getValue();//该处直接返回列表地址
+                if (currentValues != null) {
+                    
+                    // 3. 批量移除白名单任务（从现有列表中删除）
+                    for (String task : whiteList) {
+                        currentValues.remove(task);
+                    }
+                }
+                // 4. 保存配置
+                if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
+                    Log.record("会员任务黑白名单自动设置: " + AntSportsTaskList.getValue());
+                }
+                else {
+                    Log.record("会员任务黑白名单设置失败");
+                }
+            }
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "initSportsTaskListMap err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
     // 运动
     private void sportsTasks() {
         try {
@@ -267,13 +352,16 @@ public class AntSports extends ModelTask {
             JSONArray taskList = jo.getJSONArray("taskList");
             for (int i = 0; i < taskList.length(); i++) {
                 jo = taskList.getJSONObject(i);
-                
+                String taskName = jo.getString("taskName");
+                //黑名单任务跳过
+                if (AntSportsTaskList.getValue().contains(taskName)) {
+                    continue;
+                }
                 String taskStatus = jo.getString("taskStatus");
                 if (TaskStatus.HAS_RECEIVED.name().equals(taskStatus)) {
                     return;
                 }
                 
-                String taskName = jo.getString("taskName");
                 if (TaskStatus.WAIT_RECEIVE.name().equals(taskStatus)) {
                     String assetId = jo.getString("assetId");
                     int prizeAmount = jo.getInt("prizeAmount");
@@ -329,6 +417,8 @@ public class AntSports extends ModelTask {
     private Boolean completeTask(String taskAction, String taskId, String taskName) {
         try {
             JSONObject jo = new JSONObject(AntSportsRpcCall.completeTask(taskAction, taskId));
+            //检查并标记黑名单任务
+            MessageUtil.checkResultCodeAndMarkTaskBlackList("AntSportsTaskList", taskName, jo);
             if (MessageUtil.checkSuccess(TAG, jo)) {
                 Log.other("运动任务🧾完成[得运动币:" + taskName + "]");
                 TimeUtil.sleep(1000);
@@ -505,7 +595,9 @@ public class AntSports extends ModelTask {
             MIN_STEP_FOR_TREASURE = walkcountmin;
         }
         try {
-            if(pathData==null||!pathData.has("path")){return false;}
+            if (pathData == null || !pathData.has("path")) {
+                return false;
+            }
             JSONObject path = pathData.getJSONObject("path");
             JSONObject userPathStep = pathData.getJSONObject("userPathStep");
             int minGoStepCount = path.getInt("minGoStepCount");
@@ -712,7 +804,9 @@ public class AntSports extends ModelTask {
             JSONArray cityList = theme.getJSONArray("cityList");
             for (int i = 0; i < cityList.length(); i++) {
                 String cityId = cityList.getJSONObject(i).getString("cityId");
-                if(cityId.equals("000000")||cityId.equals("232700")||cityId.equals("620900")||cityId.equals("653100")||cityId.equals("710100")){continue;}
+                if (cityId.equals("000000") || cityId.equals("232700") || cityId.equals("620900") || cityId.equals("653100") || cityId.equals("710100")) {
+                    continue;
+                }
                 JSONObject city = queryCityPath(cityId);
                 if (city == null) {
                     continue;
@@ -905,7 +999,7 @@ public class AntSports extends ModelTask {
             long produceQuantity = jo.getLong("stepLastTime");
             int hour = Integer.parseInt(Log.getFormatTime().split(":")[0]);
             
-            int stepCount= jo.optInt("stepCount");
+            int stepCount = jo.optInt("stepCount");
             //if (stepCount < minExchangeCount.getValue() && hour < latestExchangeTime.getValue()) {
             if (stepCount < minExchangeCount.getValue()) {
                 return;
@@ -1827,7 +1921,7 @@ public class AntSports extends ModelTask {
                             continue;
                         }
                         walkGridcount++;
-                        if (walkGridcount >= WALK_GRID_MAX.getValue() || queryUserEnergy() < 5||queryUserEnergy()<=WALK_GRID_LIMIT.getValue()) {
+                        if (walkGridcount >= WALK_GRID_MAX.getValue() || queryUserEnergy() < 5 || queryUserEnergy() <= WALK_GRID_LIMIT.getValue()) {
                             break;
                         }
                     }
@@ -1862,7 +1956,7 @@ public class AntSports extends ModelTask {
                         if (WALK_GRID_MAX.getValue() == 0) {
                             continue;
                         }
-                        if (buildcount >= WALK_GRID_MAX.getValue() || queryUserEnergy() < 5||queryUserEnergy()<=WALK_GRID_LIMIT.getValue()) {
+                        if (buildcount >= WALK_GRID_MAX.getValue() || queryUserEnergy() < 5 || queryUserEnergy() <= WALK_GRID_LIMIT.getValue()) {
                             break;
                         }
                     }
@@ -2119,14 +2213,14 @@ public class AntSports extends ModelTask {
                 if ("SIGNUP_COMPLETE".equals(status)) {
                     String taskType = task.getString("taskType");
                     if ("LIGHT_TASK".equals(taskType)) {
-                        if(task.has("logExtMap")){
-                        JSONObject logExtMap = task.getJSONObject("logExtMap");
-                        //if (TaskHelper.checkTaskCompleted(logExtMap.getString("taskType"), logExtMap.getString("bizId"))) {
-                        //
-                        //    TimeUtil.sleep(1000);
-                        //    needRetry = true;
-                        //}
-                            }
+                        if (task.has("logExtMap")) {
+                            JSONObject logExtMap = task.getJSONObject("logExtMap");
+                            //if (TaskHelper.checkTaskCompleted(logExtMap.getString("taskType"), logExtMap.getString("bizId"))) {
+                            //
+                            //    TimeUtil.sleep(1000);
+                            //    needRetry = true;
+                            //}
+                        }
                     }
                     else if ("PROMOKERNEL_TASK".equals(taskType)) {
                         if (completeTask(task)) {

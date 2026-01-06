@@ -43,7 +43,6 @@ import io.github.lazyimmortal.sesame.data.modelFieldExt.TextModelField;
 import io.github.lazyimmortal.sesame.data.task.ModelTask;
 import io.github.lazyimmortal.sesame.entity.AlipayAntForestHuntTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntForestVitalityTaskList;
-import io.github.lazyimmortal.sesame.entity.AlipayMemberCreditSesameTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayUser;
 import io.github.lazyimmortal.sesame.entity.CollectEnergyEntity;
 import io.github.lazyimmortal.sesame.entity.CustomOption;
@@ -58,7 +57,6 @@ import io.github.lazyimmortal.sesame.model.base.TaskCommon;
 import io.github.lazyimmortal.sesame.model.extensions.ExtensionsHandle;
 import io.github.lazyimmortal.sesame.model.normal.base.BaseModel;
 import io.github.lazyimmortal.sesame.model.task.antFarm.AntFarm.TaskStatus;
-import io.github.lazyimmortal.sesame.model.task.antMember.AntMemberRpcCall;
 import io.github.lazyimmortal.sesame.rpc.intervallimit.FixedOrRangeIntervalLimit;
 import io.github.lazyimmortal.sesame.rpc.intervallimit.RpcIntervalLimit;
 import io.github.lazyimmortal.sesame.ui.ObjReference;
@@ -73,10 +71,8 @@ import io.github.lazyimmortal.sesame.util.Statistics;
 import io.github.lazyimmortal.sesame.util.Status;
 import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
-import io.github.lazyimmortal.sesame.util.idMap.AntFarmDoFarmTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.AntForestHuntTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.AntForestVitalityTaskListMap;
-import io.github.lazyimmortal.sesame.util.idMap.MemberCreditSesameTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.VitalityBenefitIdMap;
 import lombok.Getter;
@@ -296,7 +292,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(loveteamWater = new BooleanModelField("loveteamWater", "真爱合种浇水", false));
         modelFields.addField(loveteamWaterNum = new IntegerModelField("loveteamWaterNum", "真爱合种浇水" + "(g)", 20, 20, 10000));
         modelFields.addField(ForestHunt = new BooleanModelField("ForestHunt", "森林寻宝", false));
-        modelFields.addField(AutoAntForestHuntTaskList = new BooleanModelField("AutoAntForestHuntTaskList", "寻宝抽抽乐 | 自动调整黑白名单", true));
+        modelFields.addField(AutoAntForestHuntTaskList = new BooleanModelField("AutoAntForestHuntTaskList", "寻宝抽抽乐 | 自动黑白名单", true));
         modelFields.addField(AntForestHuntTaskList = new SelectModelField("AntForestHuntTaskList", "寻宝抽抽乐 | 黑名单任务列表", new LinkedHashSet<>(), AlipayAntForestHuntTaskList::getList));
         modelFields.addField(ForestHuntDraw = new BooleanModelField("ForestHuntDraw", "森林寻宝抽奖", false));
         modelFields.addField(ForestHuntHelp = new BooleanModelField("ForestHuntHelp", "森林寻宝助力", false));
@@ -1546,7 +1542,7 @@ public class AntForestV2 extends ModelTask {
         }
     }
     
-    public static void initAntForestTaskListMap(boolean AutoAntForestVitalityTaskList, boolean AutoAntForestHuntTaskList) {
+    public void initAntForestTaskListMap(boolean AutoAntForestVitalityTaskList, boolean AutoAntForestHuntTaskList) {
         try {
             //初始化AntForestVitalityTaskListMap
             AntForestVitalityTaskListMap.load();
@@ -1899,7 +1895,7 @@ public class AntForestV2 extends ModelTask {
                         break label;
                     case "WATERING_USER_LIMIT":
                         Log.record("好友浇水🚿" + jo.getString("resultDesc"));
-                        isContinue = false;
+                        wateredTimes = 3;
                         break label;
                     default:
                         Log.record("好友浇水🚿" + jo.getString("resultDesc"));
@@ -2046,6 +2042,10 @@ public class AntForestV2 extends ModelTask {
                             }
                         }
                         else if (TaskStatus.TODO.name().equals(taskStatus)) {
+                            //黑名单任务跳过
+                            if (AntForestVitalityTaskList.getValue().contains(taskTitle)) {
+                                continue;
+                            }
                             if (bizInfo.optBoolean("autoCompleteTask", false) || AntForestTaskTypeSet.contains(taskType) || taskType.endsWith("_JIASUQI") || taskType.endsWith("_BAOHUDI") || taskType.startsWith("GYG")) {
                                 if (finishTask(sceneCode, taskType, taskTitle)) {
                                     doubleCheck = true;
@@ -2129,6 +2129,8 @@ public class AntForestV2 extends ModelTask {
     private Boolean finishTask(String sceneCode, String taskType, String taskTitle) {
         try {
             JSONObject jo = new JSONObject(AntForestRpcCall.finishTask(sceneCode, taskType));
+            //检查并标记黑名单任务
+            MessageUtil.checkResultCodeAndMarkTaskBlackList("AntForestVitalityTaskList", taskTitle,jo);
             TimeUtil.sleep(500);
             if (MessageUtil.checkSuccess(TAG, jo)) {
                 Log.forest("森林任务🧾️完成[" + taskTitle + "]");

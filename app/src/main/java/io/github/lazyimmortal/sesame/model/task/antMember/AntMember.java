@@ -6,16 +6,19 @@ import org.json.JSONObject;
 
 import io.github.lazyimmortal.sesame.data.ConfigV2;
 import io.github.lazyimmortal.sesame.data.ModelFields;
+
 import io.github.lazyimmortal.sesame.data.ModelGroup;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.BooleanModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectModelField;
 import io.github.lazyimmortal.sesame.data.task.ModelTask;
+import io.github.lazyimmortal.sesame.entity.AlipayAntMemberTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayMemberCreditSesameTaskList;
 import io.github.lazyimmortal.sesame.entity.MemberBenefit;
 import io.github.lazyimmortal.sesame.model.base.TaskCommon;
 import io.github.lazyimmortal.sesame.model.extensions.ExtensionsHandle;
 import io.github.lazyimmortal.sesame.util.*;
 import io.github.lazyimmortal.sesame.util.idMap.AntFarmDoFarmTaskListMap;
+import io.github.lazyimmortal.sesame.util.idMap.AntMemberTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.MemberBenefitIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.MemberCreditSesameTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.PromiseSimpleTemplateIdMap;
@@ -28,17 +31,19 @@ import java.util.Set;
 
 public class AntMember extends ModelTask {
     private static final String TAG = AntMember.class.getSimpleName();
-
+    
     @Override
     public String getName() {
         return "会员";
     }
-
+    
     @Override
     public ModelGroup getGroup() {
         return ModelGroup.MEMBER;
     }
-
+    
+    private BooleanModelField AutoAntMemberTaskList;
+    private SelectModelField AntMemberTaskList;
     private BooleanModelField memberSign;
     private BooleanModelField memberPointExchangeBenefit;
     private SelectModelField memberPointExchangeBenefitList;
@@ -46,52 +51,41 @@ public class AntMember extends ModelTask {
     private BooleanModelField collectSesame;
     private BooleanModelField AutoMemberCreditSesameTaskList;
     private SelectModelField MemberCreditSesameTaskList;
+    private BooleanModelField promise;
+    private SelectModelField promiseList;
     private BooleanModelField KuaiDiFuLiJia;
+    private BooleanModelField antInsurance;
+    private SelectModelField antInsuranceOptions;
     private BooleanModelField signinCalendar;
     private BooleanModelField enableGoldTicket;
-    private BooleanModelField enableGoldTicketConsume;
     private BooleanModelField enableGameCenter;
     private BooleanModelField merchantSignIn;
     private BooleanModelField merchantKMDK;
-
-    private BooleanModelField sesameAlchemyTask;
-    private BooleanModelField doSesameAlchemy;
-
-    private BooleanModelField sesameTreeTask;
-    private BooleanModelField purifySesameTree;
-
-    // 新增年度回顾字段
-    private BooleanModelField AnnualReview;
-
+    
     @Override
     public ModelFields getFields() {
         ModelFields modelFields = new ModelFields();
+        modelFields.addField(AutoAntMemberTaskList = new BooleanModelField("AutoAntMemberTaskList", "会员任务 | 自动黑白名单", true));
+        modelFields.addField(AntMemberTaskList = new SelectModelField("AntMemberTaskList", "会员任务 | 黑名单任务列表", new LinkedHashSet<>(), AlipayAntMemberTaskList::getList));
         modelFields.addField(memberSign = new BooleanModelField("memberSign", "会员签到", false));
         modelFields.addField(memberPointExchangeBenefit = new BooleanModelField("memberPointExchangeBenefit", "会员积分 | 兑换权益", false));
         modelFields.addField(memberPointExchangeBenefitList = new SelectModelField("memberPointExchangeBenefitList", "会员积分 | 权益列表", new LinkedHashSet<>(), MemberBenefit::getList));
         modelFields.addField(collectSesame = new BooleanModelField("collectSesame", "芝麻粒 | 领取", false));
         modelFields.addField(AutoMemberCreditSesameTaskList = new BooleanModelField("AutoMemberCreditSesameTaskList", "芝麻粒 | 自动黑白名单", true));
         modelFields.addField(MemberCreditSesameTaskList = new SelectModelField("MemberCreditSesameTaskList", "芝麻粒 | 黑名单任务列表", new LinkedHashSet<>(), AlipayMemberCreditSesameTaskList::getList));
+        //modelFields.addField(promise = new BooleanModelField("promise", "生活记录 | 坚持做", false));
+        //modelFields.addField(promiseList = new SelectModelField("promiseList", "生活记录 | 坚持做列表", new LinkedHashSet<>(), PromiseSimpleTemplate::getList));
         modelFields.addField(KuaiDiFuLiJia = new BooleanModelField("KuaiDiFuLiJia", "我的快递 | 福利加", false));
+        //modelFields.addField(antInsurance = new BooleanModelField("antInsurance", "蚂蚁保 | 开启", false));
+        //modelFields.addField(antInsuranceOptions = new SelectModelField("antInsuranceOptions", "蚂蚁保 | 选项", new LinkedHashSet<>(), CustomOption::getAntInsuranceOptions));
         modelFields.addField(signinCalendar = new BooleanModelField("signinCalendar", "消费金 | 签到", false));
         modelFields.addField(enableGoldTicket = new BooleanModelField("enableGoldTicket", "黄金票 | 签到", false));
-        modelFields.addField(enableGoldTicketConsume = new BooleanModelField("enableGoldTicketConsume", "黄金票 | 提取(兑换黄金)", false));
         modelFields.addField(enableGameCenter = new BooleanModelField("enableGameCenter", "游戏中心 | 签到", false));
         modelFields.addField(merchantSignIn = new BooleanModelField("merchantSignIn", "商家服务 | 签到", false));
         modelFields.addField(merchantKMDK = new BooleanModelField("merchantKMDK", "商家服务 | 开门打卡", false));
-
-        modelFields.addField(sesameAlchemyTask = new BooleanModelField("sesameAlchemyTask", "芝麻炼金 | 攒粒", false));
-        modelFields.addField(doSesameAlchemy = new BooleanModelField("doSesameAlchemy", "芝麻炼金 | 炼金", false));
-
-        modelFields.addField(sesameTreeTask = new BooleanModelField("sesameTreeTask", "芝麻树 | 攒净化值", false));
-        modelFields.addField(purifySesameTree = new BooleanModelField("purifySesameTree", "芝麻树 | 净化芝麻树", false));
-
-        // 新增年度回顾字段
-        modelFields.addField(AnnualReview = new BooleanModelField("AnnualReview", "年度回顾", false));
-
         return modelFields;
     }
-
+    
     @Override
     public Boolean check() {
         if (TaskCommon.IS_ENERGY_TIME) {
@@ -100,15 +94,17 @@ public class AntMember extends ModelTask {
         }
         return true;
     }
-
+    
     @Override
     public void run() {
         try {
-            initMemberTaskListMap(AutoMemberCreditSesameTaskList.getValue());
+            //初始任务列表
+            initMemberTaskListMap(AutoAntMemberTaskList.getValue(),AutoMemberCreditSesameTaskList.getValue());
+            
             if (memberSign.getValue()) {
                 memberSign();
             }
-
+            
             if (memberPointExchangeBenefit.getValue()) {
                 memberPointExchangeBenefit();
             }
@@ -116,40 +112,22 @@ public class AntMember extends ModelTask {
                 CheckInTaskRpcManager();
                 collectSesame();
             }
-
+            // 生活记录
+            //if (promise.getValue()) {
+            //    promise();
+            //}
+            // 我的快递任务
             if (KuaiDiFuLiJia.getValue()) {
                 RecommendTask();
                 OrdinaryTask();
             }
-
-            boolean shouldRunGoldTicket = (enableGoldTicket != null && enableGoldTicket.getValue()) ||
-                    (enableGoldTicketConsume != null && enableGoldTicketConsume.getValue());
-            if (shouldRunGoldTicket) {
-                Log.record("攒黄金票🎫执行黄金票任务");
-                doGoldTicketTask(enableGoldTicket.getValue(), enableGoldTicketConsume.getValue());
+            if (enableGoldTicket.getValue()) {
+                goldTicket();
             }
-
-            if (sesameAlchemyTask.getValue()) {
-                doSesameAlchemyTasks();
-                TimeUtil.sleep(500);
-                doSesameAlchemyNextDayGift();
-            }
-
-            if (doSesameAlchemy.getValue()) {
-                doSesameAlchemy();
-            }
-
-            if (sesameTreeTask.getValue() || purifySesameTree.getValue()) {
-                if (checkSesameCanRun()) {
-                    handleSesameTree();
-                }
-            }
-
-            // 新增年度回顾任务
-            if (AnnualReview.getValue()) {
-                doAnnualReview();
-            }
-
+            //if (antInsurance.getValue()) {
+            //    AntInsurance.executeTask(antInsuranceOptions.getValue());
+            //}
+            // 消费金签到
             if (signinCalendar.getValue()) {
                 signinCalendar();
             }
@@ -171,684 +149,98 @@ public class AntMember extends ModelTask {
             Log.printStackTrace(TAG, t);
         }
     }
-
-    /**
-     * 年度回顾任务（完整移植自附件）
-     */
-    private void doAnnualReview() {
+    
+    public static void initMemberTaskListMap(boolean AutoAntMemberTaskList,boolean AutoMemberCreditSesameTaskList) {
         try {
-            Log.record("年度回顾\uD83D\uDCC5[开始执行]");
-
-            String resp = AntMemberRpcCall.annualReviewQueryTasks();
-            if (resp == null || resp.isEmpty()) {
-                Log.record("年度回顾\uD83D\uDCC5[查询返回空]");
-                return;
-            }
-
-            JSONObject root = new JSONObject(resp);
-            if (!root.optBoolean("isSuccess", false)) {
-                Log.record("年度回顾\uD83D\uDCC5[查询失败]#" + resp);
-                return;
-            }
-
-            JSONObject components = root.optJSONObject("components");
-            if (components == null || components.length() == 0) {
-                Log.record("年度回顾\uD83D\uDCC5[components 为空]");
-                return;
-            }
-
-            String ANNUAL_REVIEW_QUERY_COMPONENT = "independent_component_task_reward_v2_02888775_independent_component_task_reward_query";
-            String ANNUAL_REVIEW_APPLY_COMPONENT = "independent_component_task_reward_v2_02888775_independent_component_task_reward_apply";
-            String ANNUAL_REVIEW_PROCESS_COMPONENT = "independent_component_task_reward_v2_02888775_independent_component_task_reward_process";
-            String ANNUAL_REVIEW_GET_REWARD_COMPONENT = "independent_component_task_reward_v2_02888775_independent_component_task_reward_get_reward";
-
-            JSONObject queryComp = components.optJSONObject(ANNUAL_REVIEW_QUERY_COMPONENT);
-            if (queryComp == null) {
-                // 兜底：取第一个组件
-                try {
-                    java.util.Iterator<String> it = components.keys();
-                    if (it.hasNext()) {
-                        queryComp = components.optJSONObject(it.next());
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-            if (queryComp == null) {
-                Log.record("年度回顾\uD83D\uDCC5[未找到查询组件]");
-                return;
-            }
-            if (!queryComp.optBoolean("isSuccess", true)) {
-                Log.record("年度回顾\uD83D\uDCC5[查询组件返回失败]");
-                return;
-            }
-
-            JSONObject content = queryComp.optJSONObject("content");
-            if (content == null) {
-                Log.record("年度回顾\uD83D\uDCC5[content 为空]");
-                return;
-            }
-
-            JSONArray taskList = content.optJSONArray("playTaskOrderInfoList");
-            if (taskList == null || taskList.length() == 0) {
-                Log.record("年度回顾\uD83D\uDCC5[当前无可处理任务]");
-                return;
-            }
-
-            int candidate = 0;
-            int applied = 0;
-            int processed = 0;
-            int failed = 0;
-
-            for (int i = 0; i < taskList.length(); i++) {
-                JSONObject task = taskList.optJSONObject(i);
-                if (task == null) {
-                    continue;
-                }
-
-                String taskStatus = task.optString("taskStatus", "");
-                if (!"init".equals(taskStatus)) {
-                    continue;
-                }
-                candidate++;
-
-                String code = task.optString("code", "");
-                if (code.isEmpty()) {
-                    JSONObject extInfo = task.optJSONObject("extInfo");
-                    if (extInfo != null) {
-                        code = extInfo.optString("taskId", "");
-                    }
-                }
-                if (code.isEmpty()) {
-                    failed++;
-                    continue;
-                }
-
-                String taskName = code;
-                JSONObject displayInfo = task.optJSONObject("displayInfo");
-                if (displayInfo != null) {
-                    String name = displayInfo.optString("taskName",
-                            displayInfo.optString("activityName", code));
-                    if (!name.isEmpty()) {
-                        taskName = name;
-                    }
-                }
-
-                // Step 1: 领取任务
-                String applyResp = AntMemberRpcCall.annualReviewApplyTask(code);
-                if (applyResp == null || applyResp.isEmpty()) {
-                    Log.record("年度回顾\uD83D\uDCC5[领任务失败]" + taskName + "#响应为空");
-                    failed++;
-                    continue;
-                }
-
-                JSONObject applyRoot = new JSONObject(applyResp);
-                if (!applyRoot.optBoolean("isSuccess", false)) {
-                    Log.record("年度回顾\uD83D\uDCC5[领任务失败]" + taskName + "#" + applyResp);
-                    failed++;
-                    continue;
-                }
-                JSONObject applyComps = applyRoot.optJSONObject("components");
-                if (applyComps == null) {
-                    failed++;
-                    continue;
-                }
-                JSONObject applyComp = applyComps.optJSONObject(ANNUAL_REVIEW_APPLY_COMPONENT);
-                if (applyComp == null) {
-                    try {
-                        java.util.Iterator<String> it2 = applyComps.keys();
-                        if (it2.hasNext()) {
-                            applyComp = applyComps.optJSONObject(it2.next());
-                        }
-                    } catch (Throwable ignored) {
-                    }
-                }
-                if (applyComp == null || !applyComp.optBoolean("isSuccess", true)) {
-                    failed++;
-                    continue;
-                }
-                JSONObject applyContent = applyComp.optJSONObject("content");
-                if (applyContent == null) {
-                    failed++;
-                    continue;
-                }
-                JSONObject claimedTask = applyContent.optJSONObject("claimedTask");
-                if (claimedTask == null) {
-                    failed++;
-                    continue;
-                }
-                String recordNo = claimedTask.optString("recordNo", "");
-                if (recordNo.isEmpty()) {
-                    failed++;
-                    continue;
-                }
-                applied++;
-
-                TimeUtil.sleep(500);
-
-                // Step 2: 提交任务完成
-                String processResp = AntMemberRpcCall.annualReviewProcessTask(code, recordNo);
-                if (processResp == null || processResp.isEmpty()) {
-                    Log.record("年度回顾\uD83D\uDCC5[提交任务失败]" + taskName + "#响应为空");
-                    failed++;
-                    continue;
-                }
-
-                JSONObject processRoot = new JSONObject(processResp);
-                if (!processRoot.optBoolean("isSuccess", false)) {
-                    Log.record("年度回顾\uD83D\uDCC5[提交任务失败]" + taskName + "#" + processResp);
-                    failed++;
-                    continue;
-                }
-                JSONObject processComps = processRoot.optJSONObject("components");
-                if (processComps == null) {
-                    failed++;
-                    continue;
-                }
-                JSONObject processComp = processComps.optJSONObject(ANNUAL_REVIEW_PROCESS_COMPONENT);
-                if (processComp == null) {
-                    try {
-                        java.util.Iterator<String> it3 = processComps.keys();
-                        if (it3.hasNext()) {
-                            processComp = processComps.optJSONObject(it3.next());
-                        }
-                    } catch (Throwable ignored) {
-                    }
-                }
-                if (processComp == null || !processComp.optBoolean("isSuccess", true)) {
-                    failed++;
-                    continue;
-                }
-                JSONObject processContent = processComp.optJSONObject("content");
-                if (processContent == null) {
-                    failed++;
-                    continue;
-                }
-                JSONObject processedTask = processContent.optJSONObject("processedTask");
-                if (processedTask == null) {
-                    failed++;
-                    continue;
-                }
-                String newStatus = processedTask.optString("taskStatus", "");
-                String rewardStatus = processedTask.optString("rewardStatus", "");
-
-                // Step 3: 如仍未发奖，则调用 get_reward 领取奖励
-                if (!"success".equalsIgnoreCase(rewardStatus)) {
-                    try {
-                        String rewardResp = AntMemberRpcCall.annualReviewGetReward(code, recordNo);
-                        if (rewardResp != null && !rewardResp.isEmpty()) {
-                            JSONObject rewardRoot = new JSONObject(rewardResp);
-                            if (rewardRoot.optBoolean("isSuccess", false)) {
-                                JSONObject rewardComps = rewardRoot.optJSONObject("components");
-                                if (rewardComps != null) {
-                                    JSONObject rewardComp = rewardComps.optJSONObject(ANNUAL_REVIEW_GET_REWARD_COMPONENT);
-                                    if (rewardComp == null) {
-                                        try {
-                                            java.util.Iterator<String> it4 = rewardComps.keys();
-                                            if (it4.hasNext()) {
-                                                rewardComp = rewardComps.optJSONObject(it4.next());
-                                            }
-                                        } catch (Throwable ignored) {
-                                        }
-                                    }
-                                    if (rewardComp != null && rewardComp.optBoolean("isSuccess", true)) {
-                                        JSONObject rewardContent = rewardComp.optJSONObject("content");
-                                        if (rewardContent != null) {
-                                            JSONObject rewardTask = rewardContent.optJSONObject("processedTask");
-                                            if (rewardTask == null) {
-                                                rewardTask = rewardContent.optJSONObject("claimedTask");
-                                            }
-                                            if (rewardTask != null) {
-                                                String rs = rewardTask.optString("rewardStatus", "");
-                                                if (!rs.isEmpty()) {
-                                                    rewardStatus = rs;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } catch (Throwable e) {
-                        Log.printStackTrace(TAG + ".doAnnualReview.getReward", e);
-                    }
-                }
-
-                processed++;
-                Log.other("年度回顾\uD83D\uDCC5[任务完成]" + taskName + "#状态=" + newStatus + " 奖励状态=" + rewardStatus);
-            }
-
-            Log.record("年度回顾\uD83D\uDCC5[执行结束] 待处理=" + candidate + " 已领取=" + applied + " 已提交=" + processed + " 失败=" + failed);
-        } catch (Throwable t) {
-            Log.printStackTrace(TAG + ".doAnnualReview", t);
-        }
-    }
-
-    /**
-     * 黄金票任务
-     */
-    private void doGoldTicketTask(boolean doSignIn, boolean doConsume) {
-        try {
-            if (doSignIn) {
-                String homeRes = AntMemberRpcCall.queryWelfareHome();
-                if (homeRes != null) {
-                    JSONObject homeJson = new JSONObject(homeRes);
-                    if (MessageUtil.checkSuccess(TAG, homeJson)) {
-                        JSONObject signObj = homeJson.optJSONObject("result").optJSONObject("sign");
-                        if (signObj != null && !signObj.optBoolean("todayHasSigned")) {
-                            String signRes = AntMemberRpcCall.welfareCenterTrigger("SIGN");
-                            JSONObject signJson = new JSONObject(signRes);
-                            if (MessageUtil.checkSuccess(TAG, signJson)) {
-                                String amount = signJson.optJSONObject("result").optJSONObject("prize").optString("amount");
-                                Log.other("攒黄金票🎫[签到成功]#获得: " + amount);
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (doConsume) {
-                String queryRes = AntMemberRpcCall.queryConsumeHome();
-                if (queryRes == null) return;
-                JSONObject queryJson = new JSONObject(queryRes);
-                if (!MessageUtil.checkSuccess(TAG, queryJson)) return;
-
-                JSONObject assetInfo = queryJson.optJSONObject("result").optJSONObject("assetInfo");
-                if (assetInfo == null) return;
-                int availableAmount = assetInfo.optInt("availableAmount", 0);
-                int extractAmount = (availableAmount / 100) * 100;
-                if (extractAmount < 100) return;
-
-                JSONObject result = queryJson.optJSONObject("result");
-                String productId = result.optJSONObject("product") != null ? result.optJSONObject("product").optString("productId") : "";
-                if (productId.isEmpty() && result.optJSONArray("productList") != null) {
-                    productId = result.optJSONArray("productList").optJSONObject(0).optString("productId");
-                }
-                int bonusAmount = result.optJSONObject("bonusInfo") != null ? result.optJSONObject("bonusInfo").optInt("bonusAmount", 0) : 0;
-
-                String submitRes = AntMemberRpcCall.submitConsume(extractAmount, productId, bonusAmount);
-                JSONObject submitJson = new JSONObject(submitRes);
-                if (MessageUtil.checkSuccess(TAG, submitJson)) {
-                    Log.other("攒黄金票🎫[提取成功]#消耗: " + extractAmount + " 份");
-                }
-            }
-        } catch (Throwable t) {
-            Log.printStackTrace(TAG + ".doGoldTicketTask", t);
-        }
-    }
-
-    /**
-     * 检查是否满足运行芝麻信用任务的条件
-     */
-    private static Boolean checkSesameCanRun() {
-        try {
-            String s = AntMemberRpcCall.queryHome();
-            JSONObject jo = new JSONObject(s);
-            if (!jo.optBoolean("success")) {
-                Log.other("芝麻信用💳[首页响应失败]#" + jo.optString("errorMsg"));
-                return false;
-            }
-            JSONObject entrance = jo.getJSONObject("entrance");
-            if (!entrance.optBoolean("openApp")) {
-                Log.other("芝麻信用💳[未开通芝麻信用]");
-                return false;
-            }
-            return true;
-        } catch (Throwable t) {
-            Log.printStackTrace(TAG + ".checkSesameCanRun", t);
-            return false;
-        }
-    }
-
-    /**
-     * 芝麻树主逻辑
-     */
-    private void handleSesameTree() {
-        if (sesameTreeTask != null && sesameTreeTask.getValue()) {
-            doSesameTreeTasks();
-        }
-        if (purifySesameTree != null && purifySesameTree.getValue()) {
-            purifySesameTree();
-        }
-    }
-
-    /**
-     * 执行芝麻树任务以获取净化值
-     */
-    private void doSesameTreeTasks() {
-        try {
-            Log.record("芝麻树🌳开始攒净化值任务");
-            String taskListStr = AntMemberRpcCall.getSesameTreeTaskList();
-            JSONObject taskListJo = new JSONObject(taskListStr);
-            if (!taskListJo.optBoolean("success") || !taskListJo.has("extInfo")) {
-                Log.record("获取芝麻树任务列表失败或结构不符: " + taskListJo.toString());
-                return;
-            }
-
-            JSONArray tasks = taskListJo.getJSONObject("extInfo").getJSONObject("taskDetailList").getJSONArray("taskDetailList");
-            Log.record("芝麻树🌳获取到[" + tasks.length() + "个]任务");
-            int unfinishedCount = 0;
-
-            for (int i = 0; i < tasks.length(); i++) {
-                JSONObject task = tasks.getJSONObject(i);
-                String taskProcessStatus = task.getString("taskProcessStatus");
-                if (!"NOT_DONE".equals(taskProcessStatus)) {
-                    continue;
-                }
-
-                JSONObject taskMaterial = task.getJSONObject("taskMaterial");
-                String title = taskMaterial.getString("title");
-                String innerTaskType = task.getJSONObject("taskExtProps").getString("TASK_TYPE");
-
-                if ("COMMON_COUNT_DOWN_VIEW".equals(innerTaskType)) {
-                    unfinishedCount++;
-                    Log.record("芝麻树🌳[发现可做任务: " + title + "]");
-                    String taskId = task.getString("taskId");
-
-                    String browseTimeStr = taskMaterial.optString("browseTime", "0");
-                    int browseTime = 0;
-                    if (!browseTimeStr.isEmpty()) {
-                        try {
-                            browseTime = Integer.parseInt(browseTimeStr);
-                        } catch (NumberFormatException e) { }
-                    }
-
-                    if (browseTime > 0) {
-                        Log.record("芝麻树🌳#模拟浏览 " + browseTime + " 秒...");
-                        TimeUtil.sleep(browseTime * 1000L);
-                    } else {
-                        Log.record("芝麻树🌳#模拟点击...");
-                        TimeUtil.sleep(2000);
-                    }
-
-                    String finishResultStr = AntMemberRpcCall.finishSesameTreeTask(taskId);
-                    JSONObject finishResultJo = new JSONObject(finishResultStr);
-                    if (finishResultJo.optBoolean("success")) {
-                        Log.record("任务'" + title + "'已完成, 准备领取奖励");
-                    } else {
-                        Log.record("完成芝麻树任务'" + title + "'失败: " + finishResultJo.toString());
-                    }
-                    TimeUtil.sleep(3000);
-                }
-            }
-
-            TimeUtil.sleep(3000);
-            taskListStr = AntMemberRpcCall.getSesameTreeTaskList();
-            taskListJo = new JSONObject(taskListStr);
-            if (!taskListJo.optBoolean("success") || !taskListJo.has("extInfo")) return;
-
-            tasks = taskListJo.getJSONObject("extInfo").getJSONObject("taskDetailList").getJSONArray("taskDetailList");
-            boolean hasUnclaimed = false;
-            for (int i = 0; i < tasks.length(); i++) {
-                JSONObject task = tasks.getJSONObject(i);
-                String taskProcessStatus = task.getString("taskProcessStatus");
-                if ("TO_RECEIVE".equals(taskProcessStatus)) {
-                    hasUnclaimed = true;
-                    String taskId = task.getString("taskId");
-                    String title = task.getJSONObject("taskMaterial").getString("title");
-                    String reward = task.getJSONObject("taskMaterial").optString("finishOneTaskGetPurificationValue", "未知");
-
-                    Log.record("芝麻树🌳[发现可领取奖励的任务: " + title + "]");
-                    String receiveResultStr = AntMemberRpcCall.receiveSesameTreeTaskReward(taskId);
-                    JSONObject receiveResultJo = new JSONObject(receiveResultStr);
-                    if (receiveResultJo.optBoolean("success")) {
-                        Log.other("芝麻树🌳[领取奖励: " + title + "]#获得净化值+" + reward);
-                    } else {
-                        Log.record("芝麻树🌳领取芝'" + title + "'失败: " + receiveResultJo.toString());
-                    }
-                    TimeUtil.sleep(2000);
-                }
-            }
-
-        } catch (Throwable t) {
-            Log.printStackTrace(TAG, t);
-        }
-    }
-
-    /**
-     * 净化芝麻树（根据剩余净化次数）
-     */
-    private void purifySesameTree() {
-        try {
-            Log.record("芝麻树🌳开始净化");
-            String s = AntMemberRpcCall.getSesameTreeHomePage();
-            JSONObject jo = new JSONObject(s);
-
-            if (!jo.optBoolean("success") || !jo.has("extInfo")) {
-                Log.record("获取芝麻树主页信息失败或结构不符：" + jo.toString());
-                return;
-            }
-
-            JSONObject result = jo.getJSONObject("extInfo").getJSONObject("zhimaTreeHomePageQueryResult");
-            JSONArray trees = result.optJSONArray("trees");
-            if (trees == null || trees.length() == 0) {
-                Log.record("芝麻树-未找到tree信息");
-                return;
-            }
-
-            JSONObject tree = trees.getJSONObject(0);
-            int remainClick = tree.optInt("remainPurificationClickNum", 0);
-
-            if (remainClick <= 0) {
-                Log.record("芝麻树🌳[今日净化次数已用完]");
-                return;
-            }
-
-            Log.record("芝麻树🌳剩余次数["+ remainClick +"]，开始净化");
-
-            for (int i = 0; i < remainClick; i++) {
-                String cleanResultStr = AntMemberRpcCall.cleanSesameTreeByClick();
-                TimeUtil.sleep(2000);
-                JSONObject cleanResultJo = new JSONObject(cleanResultStr);
-
-                if (cleanResultJo.optBoolean("success") && cleanResultJo.has("extInfo")) {
-                    JSONObject cleanResult = cleanResultJo.getJSONObject("extInfo")
-                            .getJSONObject("zhimaTreeCleanAndPushResult");
-                    int newScore = cleanResult.getJSONObject("currentTreeInfo").getInt("scoreSummary");
-                    int purificationScore = cleanResult.getInt("purificationScore");
-                    Log.other("净化芝麻树🗑️[成功净化1次]#剩余净化值" + purificationScore + ", 当前成长值:" + newScore);
-                } else {
-                    Log.record("净化失败: " + cleanResultJo.toString());
-                    break;
-                }
-            }
-
-        } catch (Throwable t) {
-            Log.printStackTrace(TAG, t);
-        }
-    }
-
-    /**
-     * 芝麻炼金 - 攒粒任务
-     */
-    private void doSesameAlchemyTasks() {
-        try {
-            Log.record("芝麻炼金🔮开始执行攒粒任务...");
-
-            String checkInListStr = AntMemberRpcCall.alchemyQueryCheckInTasks();
-            JSONObject checkInListJo = new JSONObject(checkInListStr);
-            if (checkInListJo.optBoolean("success")) {
-                JSONObject taskData = checkInListJo.getJSONObject("data");
-                if (taskData.has("currentDateCheckInTaskVO")) {
-                    JSONObject checkInTask = taskData.getJSONObject("currentDateCheckInTaskVO");
-                    if ("CAN_COMPLETE".equals(checkInTask.getString("status"))) {
-                        String currentDate = checkInTask.getString("checkInDate");
-                        String completeStr = AntMemberRpcCall.completeAlchemyCheckIn(currentDate);
-                        JSONObject completeJo = new JSONObject(completeStr);
-                        if (completeJo.optBoolean("success")) {
-                            String zmlNum = completeJo.getJSONObject("data").optString("zmlNum", "?");
-                            Log.other("芝麻炼金🔮攒粒✨[签到成功] #" + zmlNum + "粒");
-                        } else {
-                            Log.record("芝麻炼金🔮攒粒✨[签到失败]: " + completeJo.optString("resultView"));
-                        }
-                    } else {
-                        Log.record("芝麻炼金🔮攒粒✨[今日已签到]");
-                    }
-                }
-            }
-            TimeUtil.sleep(2000);
-
-            String timeLimitedTaskStr = AntMemberRpcCall.alchemyQueryTimeLimitedTask();
-            JSONObject timeLimitedJo = new JSONObject(timeLimitedTaskStr);
-            if (timeLimitedJo.optBoolean("success")) {
-                JSONObject taskVo = timeLimitedJo.getJSONObject("data").getJSONObject("timeLimitedTaskVO");
-                if (taskVo.getInt("state") == 1) {
-                    String templateId = taskVo.getString("templateId");
-                    String title = taskVo.getString("longTitle");
-                    String completeStr = AntMemberRpcCall.alchemyCompleteTimeLimitedTask(templateId);
-                    JSONObject completeJo = new JSONObject(completeStr);
-                    if (completeJo.optBoolean("success")) {
-                        String zmlNum = completeJo.getJSONObject("data").optString("zmlNum", "?");
-                        Log.other("芝麻炼金🔮攒粒✨[领取 " + title + " 成功] #" + zmlNum + "粒");
-                    } else {
-                        Log.record("芝麻炼金🔮攒粒✨[领取 " + title + " 失败]: " + completeJo.optString("resultView"));
-                    }
-                } else {
-                    String title = taskVo.getString("longTitle");
-                    Log.record("芝麻炼金🔮攒粒✨[" + title + " 不可领取]");
-                }
-            }
-            TimeUtil.sleep(2000);
-
-            Log.record("芝麻炼金🔮攒粒✨[开始处理其他日常任务]");
-            String s = AntMemberRpcCall.alchemyQueryTasks();
-            JSONObject jo = new JSONObject(s);
-            if (!jo.optBoolean("success")) {
-                Log.record("芝麻炼金🔮攒粒✨[查询日常任务失败]: " + jo.optString("resultView"));
-                return;
-            }
-            JSONArray toCompleteTasks = jo.getJSONObject("data").optJSONArray("toCompleteVOS");
-            if (toCompleteTasks == null || toCompleteTasks.length() == 0) {
-                Log.record("芝麻炼金🔮攒粒✨[没有可做的日常任务]");
-                return;
-            }
-
-            Log.record("芝麻炼金🔮攒粒✨[发现 " + toCompleteTasks.length() + " 个日常任务]");
-
-            for (int i = 0; i < toCompleteTasks.length(); i++) {
-                JSONObject task = toCompleteTasks.getJSONObject(i);
-                String taskTitle = task.optString("title", "未知任务");
-                boolean finishFlag = task.optBoolean("finishFlag", false);
-                String actionText = task.optString("actionText", "");
-
-                if (finishFlag || "已完成".equals(actionText)) {
-                    continue;
-                }
-
-                if (!task.has("templateId")) {
-                    continue;
-                }
-
-                String taskTemplateId = task.getString("templateId");
-                int needCompleteNum = task.has("needCompleteNum") ? task.getInt("needCompleteNum") : 1;
-                int completedNum = task.optInt("completedNum", 0);
-
-                Log.record("芝麻炼金🔮[处理任务: " + taskTitle + "]");
-            }
-
-            if (toCompleteTasks.length() > 0) {
-                TimeUtil.sleep(3000);
-                s = AntMemberRpcCall.alchemyQueryTasks();
-                jo = new JSONObject(s);
-                toCompleteTasks = jo.optJSONObject("data").optJSONArray("toCompleteVOS");
-            }
-        } catch (Throwable t) {
-            Log.printStackTrace(TAG, t);
-        }
-    }
-
-    /**
-     * 芝麻炼金 - 领取次日礼包
-     */
-    private void doSesameAlchemyNextDayGift() {
-        try {
-            Log.record("芝麻炼金🔮开始尝试领取次日礼包...");
-
-            Log.record("芝麻炼金🔮领取次日礼包✨");
-            String claimStr = AntMemberRpcCall.alchemyClaimAward();
-            JSONObject claimJo = new JSONObject(claimStr);
-
-            if (claimJo.optBoolean("success")) {
-                JSONObject data = claimJo.getJSONObject("data");
-                if (data != null) {
-                    JSONArray awards = data.optJSONArray("alchemyAwardSendResultVOS");
-                    if (awards != null && awards.length() > 0) {
-                        JSONObject firstAward = awards.getJSONObject(0);
-                        String pointNum = firstAward.optString("pointNum", "?");
-                        Log.other("芝麻炼金🔮领取次日礼包✨[领取成功] #获得" + pointNum + "芝麻粒");
-                    }
-                }
-            } else {
-                Log.record("芝麻炼金🔮领取次日礼包✨[领取失败]: " + claimJo.optString("resultView", "无详细错误信息"));
-            }
-        } catch (Throwable t) {
-            Log.printStackTrace(TAG, t);
-        }
-    }
-
-    /**
-     * 芝麻炼金 - 炼金
-     */
-    private void doSesameAlchemy() {
-        try {
-            Log.record("芝麻炼金-开始执行炼金...");
-            String homeStr = AntMemberRpcCall.alchemyQueryHome();
-            JSONObject homeJo = new JSONObject(homeStr);
-
-            if (!homeJo.optBoolean("success")) {
-                Log.record("芝麻炼金🔮[获取炼金主页信息失败]: " + homeJo.optString("resultView"));
-                return;
-            }
-
-            JSONObject data = homeJo.getJSONObject("data");
-            int zmlBalance = data.getInt("zmlBalance");
-            int alchemyCost = data.getInt("alchemyCostZml");
-            int dailyCap = data.getInt("alchemyDailyCap");
-            int finishedCount = data.getInt("finishAlchemyCount");
-
-            if (finishedCount >= dailyCap) {
-                Log.record("芝麻炼金🔮[今日炼金次数已达上限(" + finishedCount + "/" + dailyCap + ")]");
-                return;
-            }
-
-            if (zmlBalance < alchemyCost) {
-                Log.record("芝麻炼金🔮[芝麻粒不足]: 需要 " + alchemyCost + ", 当前 " + zmlBalance);
-                return;
-            }
-
-            int remainingAttempts = dailyCap - finishedCount;
-            Log.record("芝麻炼金🔮[开始炼金], 剩余次数: " + remainingAttempts);
-
-            for (int i = 0; i < remainingAttempts; i++) {
-                if (zmlBalance < alchemyCost) {
-                    Log.record("芝麻炼金🔮[芝麻粒不足]: 需要 " + alchemyCost + ", 当前 " + zmlBalance);
-                    break;
-                }
-
-                String alchemyResultStr = AntMemberRpcCall.doAlchemy();
-                JSONObject resultJo = new JSONObject(alchemyResultStr);
-
-                if (resultJo.optBoolean("success") && resultJo.getJSONObject("data").optBoolean("success")) {
-                    JSONObject resultData = resultJo.getJSONObject("data");
-                    String goldNum = resultData.optString("goldNum", "未知");
-                    zmlBalance -= alchemyCost;
-                    Log.other("芝麻炼金🔮[成功" + (finishedCount + i + 1) +"次]#消耗" + alchemyCost +" 粒, 获得黄金 " + goldNum);
-                } else {
-                    Log.record("芝麻炼金🔮[第 " + (finishedCount + i + 1) + " 次失败]: " + resultJo.optString("resultView"));
-                    break;
-                }
-                TimeUtil.sleep(3000);
-            }
-
-        } catch (Throwable t) {
-            Log.printStackTrace(TAG, t);
-        }
-    }
-
-    // 以下为原有代码，保持不变
-    public static void initMemberTaskListMap(boolean AutoMemberCreditSesameTaskList) {
-        try {
-            MemberCreditSesameTaskListMap.load();
+            //初始化AntMemberTaskListMap
+            AntMemberTaskListMap.load();
             Set<String> blackList = new HashSet<>();
+            //blackList.add("去淘金币逛一逛");
+            // 可继续添加更多黑名单任务
+            
+            Set<String> whiteList = new HashSet<>();// 从黑名单中移除该任务
+            //whiteList.add("逛一逛芝麻树");
+            // 可继续添加更多白名单任务
+            for (String task : blackList) {
+                AntMemberTaskListMap.add(task, task);
+            }
+            JSONObject jo;
+            boolean hasNextPage=true;
+            int page=1;
+            do{
+                jo = new JSONObject(AntMemberRpcCall.queryPointCert(page, 8));
+                TimeUtil.sleep(500);
+                if (!MessageUtil.checkResultCode(TAG, jo)) {
+                    return;
+                }
+                hasNextPage = jo.getBoolean("hasNextPage");
+                page++;
+                JSONArray jaCertList = jo.getJSONArray("certList");
+                for (int i = 0; i < jaCertList.length(); i++) {
+                    jo = jaCertList.getJSONObject(i);
+                    String bizTitle = jo.getString("bizTitle");
+                    AntMemberTaskListMap.add(bizTitle, bizTitle);
+                }
+            }
+            while (hasNextPage);
+            
+            jo = new JSONObject(AntMemberRpcCall.queryAllStatusTaskList());
+            if (MessageUtil.checkResultCode(TAG, jo)) {
+                JSONArray availableTaskList = jo.getJSONArray("availableTaskList");
+                for (int i = 0; i < availableTaskList.length(); i++) {
+                    JSONObject task = availableTaskList.getJSONObject(i);
+                    JSONObject taskConfigInfo = task.getJSONObject("taskConfigInfo");
+                    String name = taskConfigInfo.getString("name");
+                    AntMemberTaskListMap.add(name, name);
+                }
+                JSONArray taskHistoryList = jo.getJSONArray("taskHistoryList");
+                for (int i = 0; i < taskHistoryList.length(); i++) {
+                    JSONObject task = taskHistoryList.getJSONObject(i);
+                    JSONObject taskConfigInfo = task.getJSONObject("taskConfigInfo");
+                    String name = taskConfigInfo.getString("name");
+                    AntMemberTaskListMap.add(name, name);
+                }
+            }
+            
+            //保存任务到配置文件
+            AntMemberTaskListMap.save();
+            Log.record("同步任务：会员任务列表");
+            
+            //自动按模块初始化设定调整黑名单和白名单
+            if(AutoAntMemberTaskList){
+                // 初始化黑白名单（使用集合统一操作）
+                ConfigV2 config = ConfigV2.INSTANCE;
+                ModelFields antMember = config.getModelFieldsMap().get( "AntMember");
+                SelectModelField AntMemberTaskList = (SelectModelField) antMember.get("AntMemberTaskList");
+                if (AntMemberTaskList == null) {
+                    return;
+                }
+                
+                Set<String> currentValues = AntMemberTaskList.getValue();//该处直接返回列表地址
+                if (currentValues != null) {
+                    for (String task : blackList) {
+                        if (!currentValues.contains(task)) {
+                            AntMemberTaskList.add(task, 0);
+                        }
+                    }
+                    
+                    // 3. 批量移除白名单任务（从现有列表中删除）
+                    for (String task : whiteList) {
+                        currentValues.remove(task);
+                    }
+                }
+                // 4. 保存配置
+                if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
+                    Log.record("会员任务黑白名单自动设置: " + AntMemberTaskList.getValue());
+                }
+                else {
+                    Log.record("会员任务黑白名单设置失败");
+                }
+            }
+            
+            //初始化MemberCreditSesameTaskListMap
+            MemberCreditSesameTaskListMap.load();
+            blackList = new HashSet<>();
             blackList.add("去淘金币逛一逛");
             blackList.add("坚持逛裹酱领福利");
             blackList.add("坚持签到领奖励");
@@ -858,8 +250,9 @@ public class AntMember extends ModelTask {
             blackList.add("0.1元起租会员攒粒");
             blackList.add("每日施肥领水果");
             blackList.add("去玩小游戏");
-
-            Set<String> whiteList = new HashSet<>();
+            // 可继续添加更多黑名单任务
+            
+            whiteList = new HashSet<>();// 从黑名单中移除该任务
             whiteList.add("逛一逛芝麻树");
             whiteList.add("浏览15秒视频广告");
             whiteList.add("逛15秒商品橱窗");
@@ -870,10 +263,11 @@ public class AntMember extends ModelTask {
             whiteList.add("坚持攒保障金");
             whiteList.add("去领支付宝积分");
             whiteList.add("去浏览租赁大促会场");
+            // 可继续添加更多白名单任务
             for (String task : blackList) {
                 MemberCreditSesameTaskListMap.add(task, task);
             }
-            JSONObject jo = new JSONObject(AntMemberRpcCall.queryHome());
+            jo = new JSONObject(AntMemberRpcCall.queryHome());
             if (MessageUtil.checkResultCode(TAG, jo)) {
                 JSONObject entrance = jo.getJSONObject("entrance");
                 if (entrance.optBoolean("openApp")) {
@@ -908,29 +302,34 @@ public class AntMember extends ModelTask {
                     }
                 }
             }
+            //保存任务到配置文件
             MemberCreditSesameTaskListMap.save();
             Log.record("同步任务：会员芝麻信用芝麻粒任务列表");
 
+            //自动按模块初始化设定调整黑名单和白名单
             if(AutoMemberCreditSesameTaskList){
+                // 初始化黑白名单（使用集合统一操作）
                 ConfigV2 config = ConfigV2.INSTANCE;
                 ModelFields antMember = config.getModelFieldsMap().get( "AntMember");
                 SelectModelField MemberCreditSesameTaskList = (SelectModelField) antMember.get("MemberCreditSesameTaskList");
                 if (MemberCreditSesameTaskList == null) {
                     return;
                 }
-
-                Set<String> currentValues = MemberCreditSesameTaskList.getValue();
+                
+                Set<String> currentValues = MemberCreditSesameTaskList.getValue();//该处直接返回列表地址
                 if (currentValues != null) {
                     for (String task : blackList) {
                         if (!currentValues.contains(task)) {
                             MemberCreditSesameTaskList.add(task, 0);
                         }
                     }
-
+                    
+                    // 3. 批量移除白名单任务（从现有列表中删除）
                     for (String task : whiteList) {
                         currentValues.remove(task);
                     }
                 }
+                // 4. 保存配置
                 if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
                     Log.record("会员芝麻信用任务芝麻粒黑白名单自动设置: " + MemberCreditSesameTaskList.getValue());
                 }
@@ -944,7 +343,7 @@ public class AntMember extends ModelTask {
             Log.printStackTrace(TAG, t);
         }
     }
-
+    
     private void memberSign() {
         try {
             if (!Status.hasFlagToday("member::sign")) {
@@ -957,11 +356,11 @@ public class AntMember extends ModelTask {
                     Status.flagToday("member::sign");
                 }
             }
-
+            
             queryPointCert(1, 8);
-
+            
             signPageTaskList();
-
+            
             queryAllStatusTaskList();
         }
         catch (Throwable t) {
@@ -969,8 +368,8 @@ public class AntMember extends ModelTask {
             Log.printStackTrace(TAG, t);
         }
     }
-
-    private static void queryPointCert(int page, int pageSize) {
+    
+    private void queryPointCert(int page, int pageSize) {
         try {
             JSONObject jo = new JSONObject(AntMemberRpcCall.queryPointCert(page, pageSize));
             TimeUtil.sleep(500);
@@ -982,6 +381,10 @@ public class AntMember extends ModelTask {
             for (int i = 0; i < jaCertList.length(); i++) {
                 jo = jaCertList.getJSONObject(i);
                 String bizTitle = jo.getString("bizTitle");
+                //黑名单任务跳过
+                if (AntMemberTaskList.getValue().contains(bizTitle)) {
+                    continue;
+                }
                 String id = jo.getString("id");
                 int pointAmount = jo.getInt("pointAmount");
                 jo = new JSONObject(AntMemberRpcCall.receivePointByUser(id));
@@ -998,7 +401,10 @@ public class AntMember extends ModelTask {
             Log.printStackTrace(TAG, t);
         }
     }
-
+    
+    /**
+     * 做任务赚积分
+     */
     private void signPageTaskList() {
         try {
             do {
@@ -1035,7 +441,10 @@ public class AntMember extends ModelTask {
             Log.printStackTrace(TAG, t);
         }
     }
-
+    
+    /**
+     * 查询所有状态任务列表
+     */
     private void queryAllStatusTaskList() {
         try {
             JSONObject jo = new JSONObject(AntMemberRpcCall.queryAllStatusTaskList());
@@ -1053,8 +462,105 @@ public class AntMember extends ModelTask {
             Log.printStackTrace(TAG, t);
         }
     }
-
-    private static Boolean doBrowseTask(JSONArray taskList) {
+    
+    // 生活记录
+    private void promise() {
+        try {
+            JSONObject jo = new JSONObject(AntMemberRpcCall.promiseQueryHome());
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            jo = jo.getJSONObject("data");
+            JSONArray promiseSimpleTemplates = jo.getJSONArray("promiseSimpleTemplates");
+            for (int i = 0; i < promiseSimpleTemplates.length(); i++) {
+                jo = promiseSimpleTemplates.getJSONObject(i);
+                String templateId = jo.getString("templateId");
+                String promiseName = jo.getString("promiseName");
+                String status = jo.getString("status");
+                if ("un_join".equals(status) && promiseList.getValue().contains(templateId)) {
+                    promiseJoin(querySingleTemplate(templateId));
+                }
+                PromiseSimpleTemplateIdMap.add(templateId, promiseName);
+            }
+            PromiseSimpleTemplateIdMap.save(UserIdMap.getCurrentUid());
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "promise err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    private JSONObject querySingleTemplate(String templateId) {
+        try {
+            JSONObject jo = new JSONObject(AntMemberRpcCall.querySingleTemplate(templateId));
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return null;
+            }
+            jo = jo.getJSONObject("data");
+            JSONObject result = new JSONObject();
+            
+            result.put("joinFromOuter", false);
+            result.put("templateId", jo.getString("templateId"));
+            result.put("autoRenewStatus", Boolean.valueOf(jo.getString("autoRenewStatus")));
+            
+            JSONObject joinGuarantyRule = jo.getJSONObject("joinGuarantyRule");
+            joinGuarantyRule.put("selectValue", joinGuarantyRule.getJSONArray("canSelectValues").getString(0));
+            joinGuarantyRule.remove("canSelectValues");
+            result.put("joinGuarantyRule", joinGuarantyRule);
+            
+            JSONObject joinRule = jo.getJSONObject("joinRule");
+            joinRule.put("selectValue", joinRule.getJSONArray("canSelectValues").getString(0));
+            joinRule.remove("joinRule");
+            result.put("joinRule", joinRule);
+            
+            JSONObject periodTargetRule = jo.getJSONObject("periodTargetRule");
+            periodTargetRule.put("selectValue", periodTargetRule.getJSONArray("canSelectValues").getString(0));
+            periodTargetRule.remove("canSelectValues");
+            result.put("periodTargetRule", periodTargetRule);
+            
+            JSONObject dataSourceRule = jo.getJSONObject("dataSourceRule");
+            dataSourceRule.put("selectValue", dataSourceRule.getJSONArray("canSelectValues").getJSONObject(0).getString("merchantId"));
+            dataSourceRule.remove("canSelectValues");
+            result.put("dataSourceRule", dataSourceRule);
+            return result;
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "querySingleTemplate err:");
+            Log.printStackTrace(TAG, t);
+        }
+        return null;
+    }
+    
+    private void promiseJoin(JSONObject data) {
+        if (data == null) {
+            return;
+        }
+        try {
+            JSONObject jo = new JSONObject(AntMemberRpcCall.promiseJoin(data));
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            jo = jo.getJSONObject("data");
+            String promiseName = jo.getString("promiseName");
+            Log.other("生活记录📝加入[" + promiseName + "]");
+        }
+        catch (Throwable t) {
+            Log.i(TAG, "promiseJoin err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    // 查询持续做明细任务
+    private JSONObject promiseQueryDetail(String recordId) throws JSONException {
+        JSONObject jo = new JSONObject(AntMemberRpcCall.promiseQueryDetail(recordId));
+        if (!jo.optBoolean("success")) {
+            return null;
+        }
+        return jo;
+    }
+    
+    // 蚂蚁积分-做浏览任务
+    private Boolean doBrowseTask(JSONArray taskList) {
         boolean doubleCheck = false;
         try {
             for (int i = 0; i < taskList.length(); i++) {
@@ -1078,12 +584,16 @@ public class AntMember extends ModelTask {
         }
         return doubleCheck;
     }
-
-    private static Boolean doBrowseTask(JSONObject task, int left, int right) {
+    
+    private Boolean doBrowseTask(JSONObject task, int left, int right) {
         boolean doubleCheck = false;
         try {
             JSONObject taskConfigInfo = task.getJSONObject("taskConfigInfo");
             String name = taskConfigInfo.getString("name");
+            //黑名单任务跳过
+            if (AntMemberTaskList.getValue().contains(name)) {
+                return false;
+            }
             Long id = taskConfigInfo.getLong("id");
             String awardParamPoint = taskConfigInfo.getJSONObject("awardParam").getString("awardParamPoint");
             String targetBusiness = taskConfigInfo.getJSONArray("targetBusiness").getString(0);
@@ -1120,7 +630,48 @@ public class AntMember extends ModelTask {
         }
         return doubleCheck;
     }
-
+    
+    private void goldTicket() {
+        try {
+            // 签到
+            //已失效
+            //goldBillCollect("\"campId\":\"CP1417744\",\"directModeDisableCollect\":true,\"from\":\"antfarm\",");
+            // 收取其他
+            //goldBillCollect("");
+        }
+        catch (Throwable t) {
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    /**
+     * 收取黄金票
+     */
+    private void goldBillCollect(String signInfo) {
+        try {
+            String str = AntMemberRpcCall.goldBillCollect(signInfo);
+            JSONObject jsonObject = new JSONObject(str);
+            if (!jsonObject.optBoolean("success")) {
+                Log.i(TAG + ".goldBillCollect.goldBillCollect", jsonObject.optString("resultDesc"));
+                return;
+            }
+            JSONObject object = jsonObject.getJSONObject("result");
+            JSONArray jsonArray = object.getJSONArray("collectedList");
+            int length = jsonArray.length();
+            if (length == 0) {
+                return;
+            }
+            for (int i = 0; i < length; i++) {
+                Log.other("黄金票🙈[" + jsonArray.getString(i) + "]");
+            }
+            Log.other("黄金票🏦本次总共获得[" + JsonUtil.getValueByPath(object, "collectedCamp.amount") + "]");
+        }
+        catch (Throwable th) {
+            Log.i(TAG, "signIn err:");
+            Log.printStackTrace(TAG, th);
+        }
+    }
+    
     private void enableGameCenter() {
         try {
             try {
@@ -1177,7 +728,8 @@ public class AntMember extends ModelTask {
             Log.printStackTrace(TAG, t);
         }
     }
-
+    
+    // 会员积分兑换
     private void memberPointExchangeBenefit() {
         try {
             String userId = UserIdMap.getCurrentUid();
@@ -1216,7 +768,7 @@ public class AntMember extends ModelTask {
             Log.printStackTrace(TAG, t);
         }
     }
-
+    
     private Boolean exchangeBenefit(String benefitId, String itemId) {
         try {
             JSONObject jo = new JSONObject(AntMemberRpcCall.exchangeBenefit(benefitId, itemId));
@@ -1231,7 +783,7 @@ public class AntMember extends ModelTask {
         }
         return false;
     }
-
+    
     private void collectSesame() {
         try {
             JSONObject jo = new JSONObject(AntMemberRpcCall.queryHome());
@@ -1243,7 +795,7 @@ public class AntMember extends ModelTask {
                 Log.other("芝麻信用💌未开通");
                 return;
             }
-
+            
             jo = new JSONObject(AntMemberRpcCall.CreditAccumulateStrategyRpcManager());
             TimeUtil.sleep(300);
             if (!MessageUtil.checkResultCode(TAG, jo)) {
@@ -1260,29 +812,32 @@ public class AntMember extends ModelTask {
             for (int i = 0; i < toCompleteVOS.length(); i++) {
                 JSONObject toCompleteVO = toCompleteVOS.getJSONObject(i);
                 String taskTitle = toCompleteVO.has("title") ? toCompleteVO.getString("title") : "未知任务";
+                //黑名单任务跳过
                 if (MemberCreditSesameTaskList.getValue().contains(taskTitle)) {
                     continue;
                 }
-
+                
                 boolean finishFlag = toCompleteVO.optBoolean("finishFlag", false);
                 String actionText = toCompleteVO.optString("actionText", "");
 
+                // 检查任务是否已完成
                 if (finishFlag || "已完成".equals(actionText)) {
                     continue;
                 }
-
+                
                 if (!toCompleteVO.has("templateId")) {
                     continue;
                 }
-
+                
                 String taskTemplateId = toCompleteVO.getString("templateId");
                 int needCompleteNum = toCompleteVO.has("needCompleteNum") ? toCompleteVO.getInt("needCompleteNum") : 1;
                 int completedNum = toCompleteVO.optInt("completedNum", 0);
                 String s = null;
                 String recordId = null;
                 JSONObject responseObj = null;
-
+                
                 if (!toCompleteVO.has("todayFinish")) {
+                    // 领取任务
                     s = AntMemberRpcCall.joinSesameTask(taskTemplateId);
                     TimeUtil.sleep(200);
                     responseObj = new JSONObject(s);
@@ -1299,13 +854,15 @@ public class AntMember extends ModelTask {
                     }
                     recordId = toCompleteVO.getString("recordId");
                 }
-
+                
+                // 完成任务
                 for (int j = completedNum; j < needCompleteNum; j++) {
                     s = AntMemberRpcCall.finishSesameTask(recordId);
                     TimeUtil.sleep(2000);
                     responseObj = new JSONObject(s);
+                    //检查并标记黑名单任务
                     MessageUtil.checkResultCodeAndMarkTaskBlackList("MemberCreditSesameTaskList", taskTitle,responseObj);
-
+                    
                     if (MessageUtil.checkResultCode(TAG, responseObj)) {
                         Log.record("芝麻信用💳完成任务[" + taskTitle + "]#(" + (j + 1) + "/" + needCompleteNum + "天)");
                     }
@@ -1313,7 +870,7 @@ public class AntMember extends ModelTask {
                         Log.error("芝麻信用💳完成任务[" + taskTitle + "]失败#" + s);
                     }
                 }
-
+                
                 jo = new JSONObject(AntMemberRpcCall.queryCreditFeedback());
                 TimeUtil.sleep(300);
                 if (!MessageUtil.checkResultCode(TAG, jo)) {
@@ -1325,6 +882,7 @@ public class AntMember extends ModelTask {
                     if (!"UNCLAIMED".equals(jo.getString("status"))) {
                         continue;
                     }
+                    //String title = jo.getString("title");
                     String creditFeedbackId = jo.getString("creditFeedbackId");
                     String potentialSize = jo.getString("potentialSize");
                     jo = new JSONObject(AntMemberRpcCall.collectCreditFeedback(creditFeedbackId));
@@ -1347,19 +905,19 @@ public class AntMember extends ModelTask {
                     Log.other("收芝麻粒🙇🏻‍♂️[一键收取]" + resultCode);
                 }
             }
-
+            
         }
         catch (Throwable t) {
             Log.printStackTrace(TAG, t);
         }
     }
-
+    
     private void CheckInTaskRpcManager() {
         if (Status.hasFlagToday("AntMember::zmlCheckIn")) {
             return;
         }
         try {
-
+            
             String checkInRes = AntMemberRpcCall.alchemyQueryCheckIn("zml");
             JSONObject checkInJo = new JSONObject(checkInRes);
             if (MessageUtil.checkResultCode(TAG, checkInJo)) {
@@ -1398,28 +956,42 @@ public class AntMember extends ModelTask {
             Log.printStackTrace(TAG + ".doSesameZmlCheckIn", t);
         }
     }
-
+    
+    // 我的快递任务
     private void RecommendTask() {
         try {
+            // 调用 AntMemberRpcCall.queryRecommendTask() 获取 JSON 数据
             String response = AntMemberRpcCall.queryRecommendTask();
             JSONObject jsonResponse = new JSONObject(response);
+            // 获取 taskDetailList 数组
             JSONArray taskDetailList = jsonResponse.getJSONArray("taskDetailList");
+            // 遍历 taskDetailList
             for (int i = 0; i < taskDetailList.length(); i++) {
                 JSONObject taskDetail = taskDetailList.getJSONObject(i);
+                // 检查 "canAccess" 的值是否为 true
                 boolean canAccess = taskDetail.optBoolean("canAccess", false);
                 if (!canAccess) {
+                    // 如果 "canAccess" 不为 true，跳过
                     continue;
                 }
+                // 获取 taskMaterial 对象
                 JSONObject taskMaterial = taskDetail.optJSONObject("taskMaterial");
+                // 获取 taskBaseInfo 对象
                 JSONObject taskBaseInfo = taskDetail.optJSONObject("taskBaseInfo");
+                // 获取 taskCode
                 String taskCode = taskMaterial.optString("taskCode", "");
+                // 根据 taskCode 执行不同的操作
                 if ("WELFARE_PLUS_ANT_FOREST".equals(taskCode) || "WELFARE_PLUS_ANT_OCEAN".equals(taskCode)) {
                     if ("WELFARE_PLUS_ANT_FOREST".equals(taskCode)) {
+                        //String forestHomePageResponse = AntMemberRpcCall.queryforestHomePage();
+                        //TimeUtil.sleep(2000);
                         String forestTaskResponse = AntMemberRpcCall.forestTask();
                         TimeUtil.sleep(500);
                         String forestreceiveTaskAward = AntMemberRpcCall.forestreceiveTaskAward();
                     }
                     else if ("WELFARE_PLUS_ANT_OCEAN".equals(taskCode)) {
+                        //String oceanHomePageResponse = AntMemberRpcCall.queryoceanHomePage();
+                        //TimeUtil.sleep(2000);
                         String oceanTaskResponse = AntMemberRpcCall.oceanTask();
                         TimeUtil.sleep(500);
                         String oceanreceiveTaskAward = AntMemberRpcCall.oceanreceiveTaskAward();
@@ -1430,18 +1002,25 @@ public class AntMember extends ModelTask {
                     }
                 }
                 if (taskMaterial == null || !taskMaterial.has("taskId")) {
+                    // 如果 taskMaterial 为 null 或者不包含 taskId，跳过
                     continue;
                 }
+                // 获取 taskId
                 String taskId = taskMaterial.getString("taskId");
+                // 调用 trigger 方法
                 String triggerResponse = AntMemberRpcCall.trigger(taskId);
                 JSONObject triggerResult = new JSONObject(triggerResponse);
+                // 检查 success 字段
                 boolean success = triggerResult.getBoolean("success");
                 if (success) {
+                    // 从 triggerResponse 中获取 prizeSendInfo 数组
                     JSONArray prizeSendInfo = triggerResult.getJSONArray("prizeSendInfo");
                     if (prizeSendInfo.length() > 0) {
                         JSONObject prizeInfo = prizeSendInfo.getJSONObject(0);
                         JSONObject extInfo = prizeInfo.getJSONObject("extInfo");
+                        // 获取 promoCampName
                         String promoCampName = extInfo.optString("promoCampName", "Unknown Promo Campaign");
+                        // 输出日志信息
                         Log.other("我的快递💌完成[" + promoCampName + "]");
                     }
                 }
@@ -1452,24 +1031,37 @@ public class AntMember extends ModelTask {
             Log.printStackTrace(TAG, th);
         }
     }
-
+    
     private void OrdinaryTask() {
         try {
+            // 调用 AntMemberRpcCall.queryOrdinaryTask() 获取 JSON 数据
             String response = AntMemberRpcCall.queryOrdinaryTask();
             JSONObject jsonResponse = new JSONObject(response);
+            // 检查是否请求成功
             if (jsonResponse.getBoolean("success")) {
+                // 获取任务详细列表
                 JSONArray taskDetailList = jsonResponse.getJSONArray("taskDetailList");
+                // 遍历任务详细列表
                 for (int i = 0; i < taskDetailList.length(); i++) {
+                    // 获取当前任务对象
                     JSONObject task = taskDetailList.getJSONObject(i);
+                    // 提取任务 ID、处理状态和触发类型
                     String taskId = task.optString("taskId");
                     String taskProcessStatus = task.optString("taskProcessStatus");
                     String sendCampTriggerType = task.optString("sendCampTriggerType");
+                    // 检查任务状态和触发类型，执行触发操作
                     if (!"RECEIVE_SUCCESS".equals(taskProcessStatus) && !"EVENT_TRIGGER".equals(sendCampTriggerType)) {
+                        // 调用 signuptrigger 方法
                         String signuptriggerResponse = AntMemberRpcCall.signuptrigger(taskId);
+                        // 调用 sendtrigger 方法
                         String sendtriggerResponse = AntMemberRpcCall.sendtrigger(taskId);
+                        // 解析 sendtriggerResponse
                         JSONObject sendTriggerJson = new JSONObject(sendtriggerResponse);
+                        // 判断任务是否成功
                         if (sendTriggerJson.getBoolean("success")) {
+                            // 从 sendtriggerResponse 中获取 prizeSendInfo 数组
                             JSONArray prizeSendInfo = sendTriggerJson.getJSONArray("prizeSendInfo");
+                            // 获取 prizeName
                             String prizeName = prizeSendInfo.getJSONObject(0).getString("prizeName");
                             Log.other("我的快递💌完成[" + prizeName + "]");
                         }
@@ -1486,7 +1078,8 @@ public class AntMember extends ModelTask {
             Log.printStackTrace(TAG, th);
         }
     }
-
+    
+    // 消费金签到
     private void signinCalendar() {
         try {
             JSONObject jo = new JSONObject(AntMemberRpcCall.signinCalendar());

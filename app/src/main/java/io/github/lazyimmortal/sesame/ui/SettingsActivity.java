@@ -79,6 +79,8 @@ public class SettingsActivity extends BaseActivity {
         AntOceanAntiepTaskListMap.load();
         AntOrchardTaskListMap.load();
         AntStallTaskListMap.load();
+        AntSportsTaskListMap.load();
+        AntMemberTaskListMap.load();
         WalkPathIdMap.load();
         ConfigV2.load(userId);
         setContentView(R.layout.activity_settings);

@@ -95,8 +95,6 @@ public class AntStall extends ModelTask {
     @Override
     public ModelFields getFields() {
         ModelFields modelFields = new ModelFields();
-        modelFields.addField(AutoAntStallTaskList = new BooleanModelField("AutoAntStallTaskList", "新村任务 | 自动黑白名单", true));
-        modelFields.addField(AntStallTaskList = new SelectModelField("AntStallTaskList", "新村任务 | 黑名单任务列表", new LinkedHashSet<>(), AlipayAntStallTaskList::getList));
         modelFields.addField(openShopType = new ChoiceModelField("openShopType", "摆摊 | 动作", OpenShopType.NONE, OpenShopType.nickNames));
         modelFields.addField(openShopList = new SelectModelField("openShopList", "摆摊 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
         modelFields.addField(closeShop = new BooleanModelField("closeShop", "收摊 | 开启", false));
@@ -111,7 +109,9 @@ public class AntStall extends ModelTask {
         modelFields.addField(sendBackShopBlackList = new SelectModelField("sendBackShopBlackList", "请走小摊 | 黑名单(不超时也赶)", new LinkedHashSet<>(), AlipayUser::getList));
         modelFields.addField(inviteOpenShopType = new ChoiceModelField("inviteOpenShopType", "邀请摆摊 | 动作", InviteOpenShopType.NONE, InviteOpenShopType.nickNames));
         modelFields.addField(inviteOpenShopList = new SelectModelField("inviteOpenShopList", "邀请摆摊 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
-        modelFields.addField(taskList = new BooleanModelField("taskList", "加速产币", false));
+        modelFields.addField(taskList = new BooleanModelField("taskList", "新村任务 |加速产币", false));
+        modelFields.addField(AutoAntStallTaskList = new BooleanModelField("AutoAntStallTaskList", "新村任务 | 自动黑白名单", true));
+        modelFields.addField(AntStallTaskList = new SelectModelField("AntStallTaskList", "新村任务 | 黑名单任务列表", new LinkedHashSet<>(), AlipayAntStallTaskList::getList));
         modelFields.addField(donate = new BooleanModelField("donate", "助力就业岗位", false));
         modelFields.addField(nextVillage = new BooleanModelField("nextVillage", "解锁新村新店", false));
         modelFields.addField(inviteRegister = new BooleanModelField("inviteRegister", "邀请开通 | 开启", false));
@@ -288,7 +288,7 @@ public class AntStall extends ModelTask {
             }
         }
         catch (Throwable t) {
-            Log.i(TAG, "initMemberTaskListMap err:");
+            Log.i(TAG, "initAntStallTaskListMap err:");
             Log.printStackTrace(TAG, t);
         }
     }
