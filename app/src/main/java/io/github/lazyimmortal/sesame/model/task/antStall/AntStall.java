@@ -109,9 +109,9 @@ public class AntStall extends ModelTask {
         modelFields.addField(sendBackShopBlackList = new SelectModelField("sendBackShopBlackList", "请走小摊 | 黑名单(不超时也赶)", new LinkedHashSet<>(), AlipayUser::getList));
         modelFields.addField(inviteOpenShopType = new ChoiceModelField("inviteOpenShopType", "邀请摆摊 | 动作", InviteOpenShopType.NONE, InviteOpenShopType.nickNames));
         modelFields.addField(inviteOpenShopList = new SelectModelField("inviteOpenShopList", "邀请摆摊 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
-        modelFields.addField(taskList = new BooleanModelField("taskList", "新村任务 |加速产币", false));
+        modelFields.addField(taskList = new BooleanModelField("taskList", "新村任务 | 加速产币", false));
         modelFields.addField(AutoAntStallTaskList = new BooleanModelField("AutoAntStallTaskList", "新村任务 | 自动黑白名单", true));
-        modelFields.addField(AntStallTaskList = new SelectModelField("AntStallTaskList", "新村任务 | 黑名单任务列表", new LinkedHashSet<>(), AlipayAntStallTaskList::getList));
+        modelFields.addField(AntStallTaskList = new SelectModelField("AntStallTaskList", "新村任务 | 黑名单列表", new LinkedHashSet<>(), AlipayAntStallTaskList::getList));
         modelFields.addField(donate = new BooleanModelField("donate", "助力就业岗位", false));
         modelFields.addField(nextVillage = new BooleanModelField("nextVillage", "解锁新村新店", false));
         modelFields.addField(inviteRegister = new BooleanModelField("inviteRegister", "邀请开通 | 开启", false));
@@ -141,7 +141,7 @@ public class AntStall extends ModelTask {
             selfHomeHandler(selfHome);
             
             //初始任务列表
-            initAntStallTaskListMap(AutoAntStallTaskList.getValue());
+            initAntStallTaskListMap(AutoAntStallTaskList.getValue(), taskList.getValue());
             
             if (throwManureType.getValue() != ThrowManureType.NONE) {
                 throwManure();
@@ -227,7 +227,7 @@ public class AntStall extends ModelTask {
         }
     }
     
-    public static void initAntStallTaskListMap(boolean AutoAntStallTaskList) {
+    public static void initAntStallTaskListMap(boolean AutoAntStallTaskList, boolean taskList) {
         try {
             //初始化AntStallTaskListMap
             AntStallTaskListMap.load();
@@ -238,52 +238,55 @@ public class AntStall extends ModelTask {
             for (String task : blackList) {
                 AntStallTaskListMap.add(task, task);
             }
-            JSONObject jo = new JSONObject(AntStallRpcCall.taskList());
-            if (MessageUtil.checkResultCode(TAG, jo)) {
-                JSONArray taskModels = jo.getJSONArray("taskModels");
-                for (int i = 0; i < taskModels.length(); i++) {
-                    JSONObject task = taskModels.getJSONObject(i);
-                    JSONObject bizInfo = new JSONObject(task.getString("bizInfo"));
-                    String title = bizInfo.getString("title");
-                    AntStallTaskListMap.add(title, title);
-                }
-            }
-            //保存任务到配置文件
-            AntStallTaskListMap.save();
-            Log.record("同步任务：蚂蚁新村任务列表");
             
-            //自动按模块初始化设定调整黑名单和白名单
-            if (AutoAntStallTaskList) {
-                // 初始化黑白名单（使用集合统一操作）
-                ConfigV2 config = ConfigV2.INSTANCE;
-                ModelFields AntStall = config.getModelFieldsMap().get("AntStall");
-                SelectModelField AntStallTaskList = (SelectModelField) AntStall.get("AntStallTaskList");
-                if (AntStallTaskList == null) {
-                    return;
+            if (taskList) {
+                JSONObject jo = new JSONObject(AntStallRpcCall.taskList());
+                if (MessageUtil.checkResultCode(TAG, jo)) {
+                    JSONArray taskModels = jo.getJSONArray("taskModels");
+                    for (int i = 0; i < taskModels.length(); i++) {
+                        JSONObject task = taskModels.getJSONObject(i);
+                        JSONObject bizInfo = new JSONObject(task.getString("bizInfo"));
+                        String title = bizInfo.getString("title");
+                        AntStallTaskListMap.add(title, title);
+                    }
                 }
-                // 2. 批量添加黑名单任务（确保存在）
-                Set<String> currentValues = AntStallTaskList.getValue();//该处直接返回列表地址
-                if (currentValues != null) {
-                    for (String task : blackList) {
-                        if (!currentValues.contains(task)) {
-                            AntStallTaskList.add(task, 0);
+                //保存任务到配置文件
+                AntStallTaskListMap.save();
+                Log.record("同步任务🉑新村任务列表");
+                
+                //自动按模块初始化设定调整黑名单和白名单
+                if (AutoAntStallTaskList) {
+                    // 初始化黑白名单（使用集合统一操作）
+                    ConfigV2 config = ConfigV2.INSTANCE;
+                    ModelFields AntStall = config.getModelFieldsMap().get("AntStall");
+                    SelectModelField AntStallTaskList = (SelectModelField) AntStall.get("AntStallTaskList");
+                    if (AntStallTaskList == null) {
+                        return;
+                    }
+                    // 2. 批量添加黑名单任务（确保存在）
+                    Set<String> currentValues = AntStallTaskList.getValue();//该处直接返回列表地址
+                    if (currentValues != null) {
+                        for (String task : blackList) {
+                            if (!currentValues.contains(task)) {
+                                AntStallTaskList.add(task, 0);
+                            }
                         }
                     }
-                }
-                currentValues = AntStallTaskList.getValue();//该处直接返回列表地址
-                if (currentValues != null) {
-                    
-                    // 3. 批量移除白名单任务（从现有列表中删除）
-                    for (String task : whiteList) {
-                        currentValues.remove(task);
+                    currentValues = AntStallTaskList.getValue();//该处直接返回列表地址
+                    if (currentValues != null) {
+                        
+                        // 3. 批量移除白名单任务（从现有列表中删除）
+                        for (String task : whiteList) {
+                            currentValues.remove(task);
+                        }
                     }
-                }
-                // 4. 保存配置
-                if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
-                    Log.record("新村任务黑白名单自动设置: " + AntStallTaskList.getValue());
-                }
-                else {
-                    Log.record("新村任务黑白名单设置失败");
+                    // 4. 保存配置
+                    if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
+                        Log.record("黑白名单🈲新村任务自动设置: " + AntStallTaskList.getValue());
+                    }
+                    else {
+                        Log.record("新村任务黑白名单设置失败");
+                    }
                 }
             }
         }
@@ -658,7 +661,7 @@ public class AntStall extends ModelTask {
                 }
                 
                 if (Objects.equals(TaskStatus.TODO.name(), taskStatus)) {
-                    if (!doStallTask(task,title)) {
+                    if (!doStallTask(task, title)) {
                         continue;
                     }
                     Log.farm("新村任务🧾完成[" + title + "]");
@@ -673,12 +676,12 @@ public class AntStall extends ModelTask {
         }
     }
     
-    private Boolean doStallTask(JSONObject task,String title) {
+    private Boolean doStallTask(JSONObject task, String title) {
         try {
             String taskType = task.getString("taskType");
             JSONObject bizInfo = new JSONObject(task.getString("bizInfo"));
             if (Objects.equals("VISIT_AUTO_FINISH", bizInfo.getString("actionType")) || taskTypeList.contains(taskType)) {
-                return finishTask(taskType,title);
+                return finishTask(taskType, title);
             }
             switch (taskType) {
                 case "ANTSTALL_NORMAL_DAILY_QA":
@@ -790,7 +793,7 @@ public class AntStall extends ModelTask {
         try {
             JSONObject jo = new JSONObject(AntStallRpcCall.finishTask(taskType));
             //检查并标记黑名单任务
-            MessageUtil.checkResultCodeAndMarkTaskBlackList("AntStallTaskList", title,jo);
+            MessageUtil.checkResultCodeAndMarkTaskBlackList("AntStallTaskList", title, jo);
             return MessageUtil.checkSuccess(TAG, jo);
         }
         catch (Throwable t) {

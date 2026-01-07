@@ -47,7 +47,7 @@ public class AntMember extends ModelTask {
     private BooleanModelField memberSign;
     private BooleanModelField memberPointExchangeBenefit;
     private SelectModelField memberPointExchangeBenefitList;
-
+    
     private BooleanModelField collectSesame;
     private BooleanModelField AutoMemberCreditSesameTaskList;
     private SelectModelField MemberCreditSesameTaskList;
@@ -66,13 +66,13 @@ public class AntMember extends ModelTask {
     public ModelFields getFields() {
         ModelFields modelFields = new ModelFields();
         modelFields.addField(AutoAntMemberTaskList = new BooleanModelField("AutoAntMemberTaskList", "会员任务 | 自动黑白名单", true));
-        modelFields.addField(AntMemberTaskList = new SelectModelField("AntMemberTaskList", "会员任务 | 黑名单任务列表", new LinkedHashSet<>(), AlipayAntMemberTaskList::getList));
+        modelFields.addField(AntMemberTaskList = new SelectModelField("AntMemberTaskList", "会员任务 | 黑名单列表", new LinkedHashSet<>(), AlipayAntMemberTaskList::getList));
         modelFields.addField(memberSign = new BooleanModelField("memberSign", "会员签到", false));
         modelFields.addField(memberPointExchangeBenefit = new BooleanModelField("memberPointExchangeBenefit", "会员积分 | 兑换权益", false));
         modelFields.addField(memberPointExchangeBenefitList = new SelectModelField("memberPointExchangeBenefitList", "会员积分 | 权益列表", new LinkedHashSet<>(), MemberBenefit::getList));
         modelFields.addField(collectSesame = new BooleanModelField("collectSesame", "芝麻粒 | 领取", false));
-        modelFields.addField(AutoMemberCreditSesameTaskList = new BooleanModelField("AutoMemberCreditSesameTaskList", "芝麻粒 | 自动黑白名单", true));
-        modelFields.addField(MemberCreditSesameTaskList = new SelectModelField("MemberCreditSesameTaskList", "芝麻粒 | 黑名单任务列表", new LinkedHashSet<>(), AlipayMemberCreditSesameTaskList::getList));
+        modelFields.addField(AutoMemberCreditSesameTaskList = new BooleanModelField("AutoMemberCreditSesameTaskList", "芝麻粒任务 | 自动黑白名单", true));
+        modelFields.addField(MemberCreditSesameTaskList = new SelectModelField("MemberCreditSesameTaskList", "芝麻粒任务 | 黑名单列表", new LinkedHashSet<>(), AlipayMemberCreditSesameTaskList::getList));
         //modelFields.addField(promise = new BooleanModelField("promise", "生活记录 | 坚持做", false));
         //modelFields.addField(promiseList = new SelectModelField("promiseList", "生活记录 | 坚持做列表", new LinkedHashSet<>(), PromiseSimpleTemplate::getList));
         modelFields.addField(KuaiDiFuLiJia = new BooleanModelField("KuaiDiFuLiJia", "我的快递 | 福利加", false));
@@ -99,7 +99,7 @@ public class AntMember extends ModelTask {
     public void run() {
         try {
             //初始任务列表
-            initMemberTaskListMap(AutoAntMemberTaskList.getValue(),AutoMemberCreditSesameTaskList.getValue());
+            initMemberTaskListMap(AutoAntMemberTaskList.getValue(), AutoMemberCreditSesameTaskList.getValue(), collectSesame.getValue());
             
             if (memberSign.getValue()) {
                 memberSign();
@@ -150,7 +150,7 @@ public class AntMember extends ModelTask {
         }
     }
     
-    public static void initMemberTaskListMap(boolean AutoAntMemberTaskList,boolean AutoMemberCreditSesameTaskList) {
+    public static void initMemberTaskListMap(boolean AutoAntMemberTaskList, boolean AutoMemberCreditSesameTaskList, boolean collectSesame) {
         try {
             //初始化AntMemberTaskListMap
             AntMemberTaskListMap.load();
@@ -165,13 +165,13 @@ public class AntMember extends ModelTask {
                 AntMemberTaskListMap.add(task, task);
             }
             JSONObject jo;
-            boolean hasNextPage=true;
-            int page=1;
-            do{
+            boolean hasNextPage = true;
+            int page = 1;
+            do {
                 jo = new JSONObject(AntMemberRpcCall.queryPointCert(page, 8));
                 TimeUtil.sleep(500);
                 if (!MessageUtil.checkResultCode(TAG, jo)) {
-                    return;
+                    break;
                 }
                 hasNextPage = jo.getBoolean("hasNextPage");
                 page++;
@@ -204,13 +204,13 @@ public class AntMember extends ModelTask {
             
             //保存任务到配置文件
             AntMemberTaskListMap.save();
-            Log.record("同步任务：会员任务列表");
+            Log.record("同步任务🉑会员任务列表");
             
             //自动按模块初始化设定调整黑名单和白名单
-            if(AutoAntMemberTaskList){
+            if (AutoAntMemberTaskList) {
                 // 初始化黑白名单（使用集合统一操作）
                 ConfigV2 config = ConfigV2.INSTANCE;
-                ModelFields antMember = config.getModelFieldsMap().get( "AntMember");
+                ModelFields antMember = config.getModelFieldsMap().get("AntMember");
                 SelectModelField AntMemberTaskList = (SelectModelField) antMember.get("AntMemberTaskList");
                 if (AntMemberTaskList == null) {
                     return;
@@ -231,7 +231,7 @@ public class AntMember extends ModelTask {
                 }
                 // 4. 保存配置
                 if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
-                    Log.record("会员任务黑白名单自动设置: " + AntMemberTaskList.getValue());
+                    Log.record("黑白名单🈲会员任务自动设置: " + AntMemberTaskList.getValue());
                 }
                 else {
                     Log.record("会员任务黑白名单设置失败");
@@ -267,74 +267,77 @@ public class AntMember extends ModelTask {
             for (String task : blackList) {
                 MemberCreditSesameTaskListMap.add(task, task);
             }
-            jo = new JSONObject(AntMemberRpcCall.queryHome());
-            if (MessageUtil.checkResultCode(TAG, jo)) {
-                JSONObject entrance = jo.getJSONObject("entrance");
-                if (entrance.optBoolean("openApp")) {
-                    jo = new JSONObject(AntMemberRpcCall.CreditAccumulateStrategyRpcManager());
-                    TimeUtil.sleep(300);
-                    if (MessageUtil.checkResultCode(TAG, jo)) {
-                        if (jo.has("data")) {
-                            JSONObject data = jo.getJSONObject("data");
-                            if (data.has("completeVOS")) {
-                                JSONArray completeVOS = data.getJSONArray("completeVOS");
-                                for (int i = 0; i < completeVOS.length(); i++) {
-                                    JSONObject toCompleteVO = completeVOS.getJSONObject(i);
-                                    String title = toCompleteVO.optString("title");
-                                    if (title.isEmpty()) {
-                                        continue;
+            
+            if (collectSesame) {
+                jo = new JSONObject(AntMemberRpcCall.queryHome());
+                if (MessageUtil.checkResultCode(TAG, jo)) {
+                    JSONObject entrance = jo.getJSONObject("entrance");
+                    if (entrance.optBoolean("openApp")) {
+                        jo = new JSONObject(AntMemberRpcCall.CreditAccumulateStrategyRpcManager());
+                        TimeUtil.sleep(300);
+                        if (MessageUtil.checkResultCode(TAG, jo)) {
+                            if (jo.has("data")) {
+                                JSONObject data = jo.getJSONObject("data");
+                                if (data.has("completeVOS")) {
+                                    JSONArray completeVOS = data.getJSONArray("completeVOS");
+                                    for (int i = 0; i < completeVOS.length(); i++) {
+                                        JSONObject toCompleteVO = completeVOS.getJSONObject(i);
+                                        String title = toCompleteVO.optString("title");
+                                        if (title.isEmpty()) {
+                                            continue;
+                                        }
+                                        MemberCreditSesameTaskListMap.add(title, title);
                                     }
-                                    MemberCreditSesameTaskListMap.add(title, title);
                                 }
-                            }
-                            if (data.has("toCompleteVOS")) {
-                                JSONArray toCompleteVOS = data.getJSONArray("toCompleteVOS");
-                                for (int i = 0; i < toCompleteVOS.length(); i++) {
-                                    JSONObject toCompleteVO = toCompleteVOS.getJSONObject(i);
-                                    String title = toCompleteVO.optString("title");
-                                    if (title.isEmpty()) {
-                                        continue;
+                                if (data.has("toCompleteVOS")) {
+                                    JSONArray toCompleteVOS = data.getJSONArray("toCompleteVOS");
+                                    for (int i = 0; i < toCompleteVOS.length(); i++) {
+                                        JSONObject toCompleteVO = toCompleteVOS.getJSONObject(i);
+                                        String title = toCompleteVO.optString("title");
+                                        if (title.isEmpty()) {
+                                            continue;
+                                        }
+                                        MemberCreditSesameTaskListMap.add(title, title);
                                     }
-                                    MemberCreditSesameTaskListMap.add(title, title);
                                 }
                             }
                         }
                     }
                 }
-            }
-            //保存任务到配置文件
-            MemberCreditSesameTaskListMap.save();
-            Log.record("同步任务：会员芝麻信用芝麻粒任务列表");
-
-            //自动按模块初始化设定调整黑名单和白名单
-            if(AutoMemberCreditSesameTaskList){
-                // 初始化黑白名单（使用集合统一操作）
-                ConfigV2 config = ConfigV2.INSTANCE;
-                ModelFields antMember = config.getModelFieldsMap().get( "AntMember");
-                SelectModelField MemberCreditSesameTaskList = (SelectModelField) antMember.get("MemberCreditSesameTaskList");
-                if (MemberCreditSesameTaskList == null) {
-                    return;
-                }
+                //保存任务到配置文件
+                MemberCreditSesameTaskListMap.save();
+                Log.record("同步任务🉑会员芝麻信用任务芝麻粒列表");
                 
-                Set<String> currentValues = MemberCreditSesameTaskList.getValue();//该处直接返回列表地址
-                if (currentValues != null) {
-                    for (String task : blackList) {
-                        if (!currentValues.contains(task)) {
-                            MemberCreditSesameTaskList.add(task, 0);
-                        }
+                //自动按模块初始化设定调整黑名单和白名单
+                if (AutoMemberCreditSesameTaskList) {
+                    // 初始化黑白名单（使用集合统一操作）
+                    ConfigV2 config = ConfigV2.INSTANCE;
+                    ModelFields antMember = config.getModelFieldsMap().get("AntMember");
+                    SelectModelField MemberCreditSesameTaskList = (SelectModelField) antMember.get("MemberCreditSesameTaskList");
+                    if (MemberCreditSesameTaskList == null) {
+                        return;
                     }
                     
-                    // 3. 批量移除白名单任务（从现有列表中删除）
-                    for (String task : whiteList) {
-                        currentValues.remove(task);
+                    Set<String> currentValues = MemberCreditSesameTaskList.getValue();//该处直接返回列表地址
+                    if (currentValues != null) {
+                        for (String task : blackList) {
+                            if (!currentValues.contains(task)) {
+                                MemberCreditSesameTaskList.add(task, 0);
+                            }
+                        }
+                        
+                        // 3. 批量移除白名单任务（从现有列表中删除）
+                        for (String task : whiteList) {
+                            currentValues.remove(task);
+                        }
                     }
-                }
-                // 4. 保存配置
-                if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
-                    Log.record("会员芝麻信用任务芝麻粒黑白名单自动设置: " + MemberCreditSesameTaskList.getValue());
-                }
-                else {
-                    Log.record("会员芝麻信用任务芝麻粒黑白名单设置失败");
+                    // 4. 保存配置
+                    if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
+                        Log.record("黑白名单🈲会员芝麻信用任务芝麻粒自动设置: " + MemberCreditSesameTaskList.getValue());
+                    }
+                    else {
+                        Log.record("会员芝麻信用任务芝麻粒黑白名单设置失败");
+                    }
                 }
             }
         }
@@ -819,7 +822,7 @@ public class AntMember extends ModelTask {
                 
                 boolean finishFlag = toCompleteVO.optBoolean("finishFlag", false);
                 String actionText = toCompleteVO.optString("actionText", "");
-
+                
                 // 检查任务是否已完成
                 if (finishFlag || "已完成".equals(actionText)) {
                     continue;
@@ -861,7 +864,7 @@ public class AntMember extends ModelTask {
                     TimeUtil.sleep(2000);
                     responseObj = new JSONObject(s);
                     //检查并标记黑名单任务
-                    MessageUtil.checkResultCodeAndMarkTaskBlackList("MemberCreditSesameTaskList", taskTitle,responseObj);
+                    MessageUtil.checkResultCodeAndMarkTaskBlackList("MemberCreditSesameTaskList", taskTitle, responseObj);
                     
                     if (MessageUtil.checkResultCode(TAG, responseObj)) {
                         Log.record("芝麻信用💳完成任务[" + taskTitle + "]#(" + (j + 1) + "/" + needCompleteNum + "天)");

@@ -111,7 +111,7 @@ public class AntSports extends ModelTask {
         modelFields.addField(walkCustomPathIdList = new SelectModelField("walkCustomPathIdList", "行走路线 | 自定义路线列表", new LinkedHashSet<>(), WalkPath::getList, "请选择要行走的路线，选择多条则随机走其中一条"));
         modelFields.addField(sportsTasks = new BooleanModelField("sportsTasks", "运动任务", false));
         modelFields.addField(AutoAntSportsTaskList = new BooleanModelField("AutoAntSportsTaskList", "运动任务 | 自动黑白名单", true));
-        modelFields.addField(AntSportsTaskList = new SelectModelField("AntSportsTaskList", "运动任务 | 黑名单任务列表", new LinkedHashSet<>(), AlipayAntSportsTaskList::getList));
+        modelFields.addField(AntSportsTaskList = new SelectModelField("AntSportsTaskList", "运动任务 | 黑名单列表", new LinkedHashSet<>(), AlipayAntSportsTaskList::getList));
         modelFields.addField(receiveCoinAsset = new BooleanModelField("receiveCoinAsset", "收运动币", false));
         modelFields.addField(donateCharityCoinType = new ChoiceModelField("donateCharityCoinType", "捐运动币 | 方式", DonateCharityCoinType.ZERO, DonateCharityCoinType.nickNames));
         modelFields.addField(donateCharityCoinAmount = new IntegerModelField("donateCharityCoinAmount", "捐运动币 | 数量" + "(每次)", 100));
@@ -205,7 +205,7 @@ public class AntSports extends ModelTask {
             }
             
             //初始任务列表
-            initAntSportsTaskListMap(AutoAntSportsTaskList.getValue());
+            initAntSportsTaskListMap(AutoAntSportsTaskList.getValue(), sportsTasks.getValue());
             
             if (donateCharityCoinType.getValue() != DonateCharityCoinType.ZERO) {
                 queryProjectList();
@@ -267,7 +267,7 @@ public class AntSports extends ModelTask {
         return tmpStepCount;
     }
     
-    public static void initAntSportsTaskListMap(boolean AutoAntSportsTaskList) {
+    public static void initAntSportsTaskListMap(boolean AutoAntSportsTaskList, boolean sportsTasks) {
         try {
             //初始化AntSportsTaskListMap
             AntSportsTaskListMap.load();
@@ -279,55 +279,58 @@ public class AntSports extends ModelTask {
             for (String task : blackList) {
                 AntSportsTaskListMap.add(task, task);
             }
-            JSONObject jo = new JSONObject(AntSportsRpcCall.queryCoinTaskPanel());
-            if (MessageUtil.checkSuccess(TAG, jo)) {
-                jo = jo.getJSONObject("data");
-                if (jo.has("taskList")) {
-                    JSONArray taskLists = jo.getJSONArray("taskList");
-                    for (int i = 0; i < taskLists.length(); i++) {
-                        JSONObject taskList = taskLists.getJSONObject(i);
-                        String taskName = taskList.getString("taskName");
-                        AntSportsTaskListMap.add(taskName, taskName);
-                    }
-                }
-            }
             
-            //保存任务到配置文件
-            AntSportsTaskListMap.save();
-            Log.record("同步任务：运动任务列表");
-            
-            //自动按模块初始化设定调整黑名单和白名单
-            if (AutoAntSportsTaskList) {
-                // 初始化黑白名单（使用集合统一操作）
-                ConfigV2 config = ConfigV2.INSTANCE;
-                ModelFields AntSports = config.getModelFieldsMap().get("AntSports");
-                SelectModelField AntSportsTaskList = (SelectModelField) AntSports.get("AntSportsTaskList");
-                if (AntSportsTaskList == null) {
-                    return;
-                }
-                // 2. 批量添加黑名单任务（确保存在）
-                Set<String> currentValues = AntSportsTaskList.getValue();//该处直接返回列表地址
-                if (currentValues != null) {
-                    for (String task : blackList) {
-                        if (!currentValues.contains(task)) {
-                            AntSportsTaskList.add(task, 0);
+            if (sportsTasks) {
+                JSONObject jo = new JSONObject(AntSportsRpcCall.queryCoinTaskPanel());
+                if (MessageUtil.checkSuccess(TAG, jo)) {
+                    jo = jo.getJSONObject("data");
+                    if (jo.has("taskList")) {
+                        JSONArray taskLists = jo.getJSONArray("taskList");
+                        for (int i = 0; i < taskLists.length(); i++) {
+                            JSONObject taskList = taskLists.getJSONObject(i);
+                            String taskName = taskList.getString("taskName");
+                            AntSportsTaskListMap.add(taskName, taskName);
                         }
                     }
                 }
-                currentValues = AntSportsTaskList.getValue();//该处直接返回列表地址
-                if (currentValues != null) {
-                    
-                    // 3. 批量移除白名单任务（从现有列表中删除）
-                    for (String task : whiteList) {
-                        currentValues.remove(task);
+                
+                //保存任务到配置文件
+                AntSportsTaskListMap.save();
+                Log.record("同步任务🉑运动任务列表");
+                
+                //自动按模块初始化设定调整黑名单和白名单
+                if (AutoAntSportsTaskList) {
+                    // 初始化黑白名单（使用集合统一操作）
+                    ConfigV2 config = ConfigV2.INSTANCE;
+                    ModelFields AntSports = config.getModelFieldsMap().get("AntSports");
+                    SelectModelField AntSportsTaskList = (SelectModelField) AntSports.get("AntSportsTaskList");
+                    if (AntSportsTaskList == null) {
+                        return;
                     }
-                }
-                // 4. 保存配置
-                if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
-                    Log.record("会员任务黑白名单自动设置: " + AntSportsTaskList.getValue());
-                }
-                else {
-                    Log.record("会员任务黑白名单设置失败");
+                    // 2. 批量添加黑名单任务（确保存在）
+                    Set<String> currentValues = AntSportsTaskList.getValue();//该处直接返回列表地址
+                    if (currentValues != null) {
+                        for (String task : blackList) {
+                            if (!currentValues.contains(task)) {
+                                AntSportsTaskList.add(task, 0);
+                            }
+                        }
+                    }
+                    currentValues = AntSportsTaskList.getValue();//该处直接返回列表地址
+                    if (currentValues != null) {
+                        
+                        // 3. 批量移除白名单任务（从现有列表中删除）
+                        for (String task : whiteList) {
+                            currentValues.remove(task);
+                        }
+                    }
+                    // 4. 保存配置
+                    if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
+                        Log.record("黑白名单🈲运动任务自动设置: " + AntSportsTaskList.getValue());
+                    }
+                    else {
+                        Log.record("运动任务黑白名单设置失败");
+                    }
                 }
             }
         }

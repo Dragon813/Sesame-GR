@@ -136,7 +136,7 @@ public class AntOrchard extends ModelTask {
             }
             
             //初始任务列表
-            initAntOrchardTaskListMap(AutoAntOrchardTaskList.getValue());
+            initAntOrchardTaskListMap(AutoAntOrchardTaskList.getValue(), orchardListTask.getValue());
             
             // 额外信息获取（每日肥料包）
             extraInfoGet();
@@ -215,8 +215,8 @@ public class AntOrchard extends ModelTask {
             return false;
         }
     }
-   
-    public static void initAntOrchardTaskListMap(boolean AutoAntOrchardTaskList) {
+    
+    public static void initAntOrchardTaskListMap(boolean AutoAntOrchardTaskList, boolean orchardListTask) {
         try {
             //初始化AntOrchardTaskListMap
             AntOrchardTaskListMap.load();
@@ -239,53 +239,56 @@ public class AntOrchard extends ModelTask {
             for (String task : blackList) {
                 AntOrchardTaskListMap.add(task, task);
             }
-            String result = AntOrchardRpcCall.orchardListTask();
-            JSONObject jo = new JSONObject(result);
-            if (MessageUtil.checkResultCode(TAG, jo)) {
-                JSONArray taskArray = jo.getJSONArray("taskList");
-                for (int i = 0; i < taskArray.length(); i++) {
-                    jo = taskArray.getJSONObject(i);
-                    JSONObject displayConfig = jo.optJSONObject("taskDisplayConfig");
-                    if (displayConfig.has("title")) {
-                        String title = displayConfig.optString("title");
-                        AntOrchardTaskListMap.add(title, title);
-                    }
-                }
-            }
-            //保存任务到配置文件
-            AntOrchardTaskListMap.save();
-            Log.record("同步任务：芭芭农场肥料任务列表");
             
-            //自动按模块初始化设定调整黑名单和白名单
-            if (AutoAntOrchardTaskList) {
-                // 初始化黑白名单（使用集合统一操作）
-                ConfigV2 config = ConfigV2.INSTANCE;
-                ModelFields AntOrchard = config.getModelFieldsMap().get( "AntForestV2");
-                SelectModelField AntOrchardTaskList = (SelectModelField) AntOrchard.get("AntOrchardTaskList");
-                if (AntOrchardTaskList == null) {
-                    return;
-                }
-                
-                // 2. 批量添加黑名单任务（确保存在）
-                Set<String> currentValues = AntOrchardTaskList.getValue();//该处直接返回列表地址
-                if (currentValues != null) {
-                    for (String task : blackList) {
-                        if (!currentValues.contains(task)) {
-                            AntOrchardTaskList.add(task, 0);
+            if (orchardListTask) {
+                String result = AntOrchardRpcCall.orchardListTask();
+                JSONObject jo = new JSONObject(result);
+                if (MessageUtil.checkResultCode(TAG, jo)) {
+                    JSONArray taskArray = jo.getJSONArray("taskList");
+                    for (int i = 0; i < taskArray.length(); i++) {
+                        jo = taskArray.getJSONObject(i);
+                        JSONObject displayConfig = jo.optJSONObject("taskDisplayConfig");
+                        if (displayConfig.has("title")) {
+                            String title = displayConfig.optString("title");
+                            AntOrchardTaskListMap.add(title, title);
                         }
                     }
-                    
-                    // 3. 批量移除白名单任务（从现有列表中删除）
-                    for (String task : whiteList) {
-                        currentValues.remove(task);
+                }
+                //保存任务到配置文件
+                AntOrchardTaskListMap.save();
+                Log.record("同步任务🉑农芭芭场肥料任务列表");
+                
+                //自动按模块初始化设定调整黑名单和白名单
+                if (AutoAntOrchardTaskList) {
+                    // 初始化黑白名单（使用集合统一操作）
+                    ConfigV2 config = ConfigV2.INSTANCE;
+                    ModelFields AntOrchard = config.getModelFieldsMap().get("AntOrchard");
+                    SelectModelField AntOrchardTaskList = (SelectModelField) AntOrchard.get("AntOrchardTaskList");
+                    if (AntOrchardTaskList == null) {
+                        return;
                     }
-                }
-                // 4. 保存配置
-                if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
-                    Log.record("农场肥料任务黑白名单自动设置: " + AntOrchardTaskList.getValue());
-                }
-                else {
-                    Log.record("农场肥料任务黑白名单设置失败");
+                    
+                    // 2. 批量添加黑名单任务（确保存在）
+                    Set<String> currentValues = AntOrchardTaskList.getValue();//该处直接返回列表地址
+                    if (currentValues != null) {
+                        for (String task : blackList) {
+                            if (!currentValues.contains(task)) {
+                                AntOrchardTaskList.add(task, 0);
+                            }
+                        }
+                        
+                        // 3. 批量移除白名单任务（从现有列表中删除）
+                        for (String task : whiteList) {
+                            currentValues.remove(task);
+                        }
+                    }
+                    // 4. 保存配置
+                    if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
+                        Log.record("黑白名单🈲芭芭农场肥料任务自动设置: " + AntOrchardTaskList.getValue());
+                    }
+                    else {
+                        Log.record("农场肥料任务黑白名单设置失败");
+                    }
                 }
             }
         }
@@ -721,7 +724,7 @@ public class AntOrchard extends ModelTask {
                     String result = AntOrchardRpcCall.finishTask(sceneCode, taskId);
                     JSONObject finishResponse = new JSONObject(result);
                     //检查并标记黑名单任务
-                    MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOrchardTaskList", title,finishResponse);
+                    MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOrchardTaskList", title, finishResponse);
                     if (MessageUtil.checkResultCode(TAG, finishResponse)) {
                         Log.farm("农场任务🧾完成任务[" + title + "]第" + (rightsTimes + cnt + 1) + "次");
                     }
@@ -740,7 +743,7 @@ public class AntOrchard extends ModelTask {
                 String result = AntOrchardRpcCall.finishTask(sceneCode, taskId);
                 JSONObject finishResponse = new JSONObject(result);
                 //检查并标记黑名单任务
-                MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOrchardTaskList", title,finishResponse);
+                MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOrchardTaskList", title, finishResponse);
                 if (MessageUtil.checkResultCode(TAG, finishResponse)) {
                     Log.farm("农场任务🧾完成任务[" + title + "]");
                 }
@@ -785,7 +788,7 @@ public class AntOrchard extends ModelTask {
                     String triggerResponse = AntOrchardRpcCall.triggerTbTask(taskId, taskPlantType);
                     JSONObject triggerJo = new JSONObject(triggerResponse);
                     //检查并标记黑名单任务
-                    MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOrchardTaskList", title,triggerJo);
+                    MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOrchardTaskList", title, triggerJo);
                     if (MessageUtil.checkResultCode(TAG, triggerJo)) {
                         Log.farm("领取奖励🎖️[" + title + "]#" + awardCount + "g肥料");
                     }

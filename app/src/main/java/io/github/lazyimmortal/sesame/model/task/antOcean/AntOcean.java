@@ -95,8 +95,9 @@ public class AntOcean extends ModelTask {
             if (!queryOceanStatus()) {
                 return;
             }
+            
             //初始任务列表
-            initAntOceanAntiepTaskListMap(AutoAntOceanAntiepTaskList.getValue());
+            initAntOceanAntiepTaskListMap(AutoAntOceanAntiepTaskList.getValue(), queryTaskList.getValue());
             
             queryHomePage();
             
@@ -149,7 +150,7 @@ public class AntOcean extends ModelTask {
         return false;
     }
     
-    public static void initAntOceanAntiepTaskListMap(boolean AutoAntOceanAntiepTaskList) {
+    public static void initAntOceanAntiepTaskListMap(boolean AutoAntOceanAntiepTaskList, boolean queryTaskList) {
         try {
             //初始化AntOceanAntiepTaskListMap
             AntOceanAntiepTaskListMap.load();
@@ -164,51 +165,54 @@ public class AntOcean extends ModelTask {
             for (String task : blackList) {
                 AntOceanAntiepTaskListMap.add(task, task);
             }
-            JSONObject jo = new JSONObject(AntOceanRpcCall.queryTaskList());
-            if (MessageUtil.checkResultCode(TAG, jo)) {
-                
-                JSONArray ja = jo.getJSONArray("antOceanTaskVOList");
-                for (int i = 0; i < ja.length(); i++) {
-                    jo = ja.getJSONObject(i);
-                    JSONObject bizInfo = new JSONObject(jo.getString("bizInfo"));
-                    String taskTitle = bizInfo.optString("taskTitle");
-                    AntOceanAntiepTaskListMap.add(taskTitle, taskTitle);
-                }
-            }
-            //保存任务到配置文件
-            AntOceanAntiepTaskListMap.save();
-            Log.record("同步任务：神奇海洋普通任务列表");
             
-            //自动按模块初始化设定调整黑名单和白名单
-            if (AutoAntOceanAntiepTaskList) {
-                // 初始化黑白名单（使用集合统一操作）
-                ConfigV2 config = ConfigV2.INSTANCE;
-                ModelFields AntOcean = config.getModelFieldsMap().get( "AntForestV2");
-                SelectModelField AntOceanAntiepTaskList = (SelectModelField) AntOcean.get("AntOceanAntiepTaskList");
-                if (AntOceanAntiepTaskList == null) {
-                    return;
+            if (queryTaskList) {
+                JSONObject jo = new JSONObject(AntOceanRpcCall.queryTaskList());
+                if (MessageUtil.checkResultCode(TAG, jo)) {
+                    
+                    JSONArray ja = jo.getJSONArray("antOceanTaskVOList");
+                    for (int i = 0; i < ja.length(); i++) {
+                        jo = ja.getJSONObject(i);
+                        JSONObject bizInfo = new JSONObject(jo.getString("bizInfo"));
+                        String taskTitle = bizInfo.optString("taskTitle");
+                        AntOceanAntiepTaskListMap.add(taskTitle, taskTitle);
+                    }
                 }
+                //保存任务到配置文件
+                AntOceanAntiepTaskListMap.save();
+                Log.record("同步任务🉑海洋普通任务列表");
                 
-                // 2. 批量添加黑名单任务（确保存在）
-                Set<String> currentValues = AntOceanAntiepTaskList.getValue();//该处直接返回列表地址
-                if (currentValues != null) {
-                    for (String task : blackList) {
-                        if (!currentValues.contains(task)) {
-                            AntOceanAntiepTaskList.add(task, 0);
-                        }
+                //自动按模块初始化设定调整黑名单和白名单
+                if (AutoAntOceanAntiepTaskList) {
+                    // 初始化黑白名单（使用集合统一操作）
+                    ConfigV2 config = ConfigV2.INSTANCE;
+                    ModelFields AntOcean = config.getModelFieldsMap().get("AntOcean");
+                    SelectModelField AntOceanAntiepTaskList = (SelectModelField) AntOcean.get("AntOceanAntiepTaskList");
+                    if (AntOceanAntiepTaskList == null) {
+                        return;
                     }
                     
-                    // 3. 批量移除白名单任务（从现有列表中删除）
-                    for (String task : whiteList) {
-                        currentValues.remove(task);
+                    // 2. 批量添加黑名单任务（确保存在）
+                    Set<String> currentValues = AntOceanAntiepTaskList.getValue();//该处直接返回列表地址
+                    if (currentValues != null) {
+                        for (String task : blackList) {
+                            if (!currentValues.contains(task)) {
+                                AntOceanAntiepTaskList.add(task, 0);
+                            }
+                        }
+                        
+                        // 3. 批量移除白名单任务（从现有列表中删除）
+                        for (String task : whiteList) {
+                            currentValues.remove(task);
+                        }
                     }
-                }
-                // 4. 保存配置
-                if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
-                    Log.record("神奇海洋普通任务黑白名单自动设置: " + AntOceanAntiepTaskList.getValue());
-                }
-                else {
-                    Log.record("神奇海洋普通任务黑白名单设置失败");
+                    // 4. 保存配置
+                    if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
+                        Log.record("黑白名单🈲海洋普通任务自动设置: " + AntOceanAntiepTaskList.getValue());
+                    }
+                    else {
+                        Log.record("神奇海洋普通任务黑白名单设置失败");
+                    }
                 }
             }
         }
@@ -822,7 +826,7 @@ public class AntOcean extends ModelTask {
                     continue;
                 }
                 TimeUtil.sleep(500);
-
+                
                 receiveTaskAward(sceneCode, taskType, taskTitle);
             }
         }
@@ -838,7 +842,7 @@ public class AntOcean extends ModelTask {
             JSONObject jo = new JSONObject(AntOceanRpcCall.receiveTaskAward(sceneCode, taskType));
             TimeUtil.sleep(500);
             //检查并标记黑名单任务
-            MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOceanAntiepTaskList", taskTitle,jo);
+            MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOceanAntiepTaskList", taskTitle, jo);
             if (MessageUtil.checkSuccess(TAG, jo)) {
                 String awardCount = jo.optString("incAwardCount");
                 Log.forest("海洋任务🎖️领取[" + taskTitle + "]奖励#获得[" + awardCount + "块拼图]");
@@ -875,7 +879,7 @@ public class AntOcean extends ModelTask {
                 String taskType = task.getString("taskType");
                 JSONObject jo = new JSONObject(AntOceanRpcCall.finishTask(sceneCode, taskType));
                 //检查并标记黑名单任务
-                MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOceanAntiepTaskList", taskTitle,jo);
+                MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOceanAntiepTaskList", taskTitle, jo);
                 if (MessageUtil.checkSuccess(TAG, jo)) {
                     Log.forest("海洋任务🧾完成[" + taskTitle + "]");
                     return true;
