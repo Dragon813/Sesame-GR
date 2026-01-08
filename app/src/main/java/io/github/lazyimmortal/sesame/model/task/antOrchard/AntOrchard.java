@@ -373,7 +373,9 @@ public class AntOrchard extends ModelTask {
                 Toast.show("芭芭农场果树似乎可以兑换了！");
             }
             // 更新施肥进度
-            fertilizerProgress = seedStage.getInt("totalValue");
+            if (seedStage.has("totalValue")) {
+                fertilizerProgress = seedStage.getInt("totalValue");
+            }
         }
         catch (Throwable t) {
             Log.i(TAG, "handleTaoBaoData err:");

@@ -108,7 +108,7 @@ public class AntSportsRpcCall {
         String args = "[{\"appId\":\"healthstep\",\"bizId\":\"donation\",\"chInfo\":\"h5_donation_healthstep\",\"timeZone\":\"Asia/Shanghai\"}]";
         return ApplicationHook.requestString("alipay.antsports.steps.query", args);
     }
-
+    
     public static String walkDonateSignInfo(int count) {
         return ApplicationHook.requestString("alipay.charity.mobile.donate.walk.walkDonateSignInfo", "[{\"needDonateAction\":false,\"source\":\"walkDonateHome\",\"steps\":" + count + ",\"timezoneId" + "\":\"" + timeZone + "\"}]");
     }
@@ -122,7 +122,6 @@ public class AntSportsRpcCall {
         String args = "[{\"page\":1,\"pageSize\":10}]";
         return ApplicationHook.requestString("alipay.charity.mobile.donate.exchange.record", args);
     }
-    
     
     //{"actId":"20160524001110000000000000001002","count":100000,"donateToken":"2088002795595507_1766240522284","timezoneId":"Asia/Shanghai","ver":"0"}]}
     public static String donateWalkExchange(String actId, int count, String donateToken) {
@@ -157,7 +156,10 @@ public class AntSportsRpcCall {
     
     // 查询路线
     public static String queryPath(String date, String pathId) {
-        String args = "[{\"date\":\"" + date + "\",\"pathId\":\"" + pathId + "\"}]";
+        //String args = "[{\"date\":\"" + date + "\",\"pathId\":\"" + pathId + "\"}]";
+        String args =
+                "[{\"apiVersion\":\"energy\",\"chInfo\":\"medical_health\",\"clientOS\":\"android\",\"date\":\"" + date + "\",\"enableNewVersion\":true,\"features\":[\"DAILY_STEPS_RANK_V2\",\"STEP_BATTLE\",\"CLUB_HOME_CARD\",\"NEW_HOME_PAGE_STATIC\",\"CLOUD_SDK_AUTH\",\"STAY_ON_COMPLETE\"," +
+                "\"EXTRA_TREASURE_BOX\",\"NEW_HOME_PAGE_STATIC\",\"SUPPORT_AI\",\"SUPPORT_TAB3\",\"SUPPORT_FLYRABBIT\",\"SUPPORT_NEW_MATCH\",\"EXTERNAL_ADVERTISEMENT_TASK\",\"PROP\",\"PROPV2\",\"ASIAN_GAMES\"],\"pathId\":\"" + pathId + "\",\"timezoneId\":\"" + timeZone + "\"}]";
         return ApplicationHook.requestString("com.alipay.sportsplay.biz.rpc.walk.queryPath", args);
     }
     
@@ -443,26 +445,26 @@ public class AntSportsRpcCall {
     }
     
     //{"branchId":"MASTER","mapId":"MM120","source":"jkdsportcard"}
-    public static String mapChooseFree(String branchId,String mapId) {
-        String arg = "[{\"branchId\":\""+branchId+"\",\"mapId\":\""+mapId+"\",\"source\":\"jkdsportcard\"}]";
+    public static String mapChooseFree(String branchId, String mapId) {
+        String arg = "[{\"branchId\":\"" + branchId + "\",\"mapId\":\"" + mapId + "\",\"source\":\"jkdsportcard\"}]";
         return ApplicationHook.requestString("com.alipay.neverland.biz.rpc.mapChooseFree", arg);
     }
     
     //{"branchId":"MASTER","mapId":"MM125","multiNum":10,"source":"jkdsportcard"}
-    public static String build(String branchId,String mapId,int multiNum) {
-        String arg = "[{\"branchId\":\""+branchId+"\",\"mapId\":\""+mapId+"\",\"multiNum\":"+multiNum+",\"source\":\"jkdsportcard\"}]";
+    public static String build(String branchId, String mapId, int multiNum) {
+        String arg = "[{\"branchId\":\"" + branchId + "\",\"mapId\":\"" + mapId + "\",\"multiNum\":" + multiNum + ",\"source\":\"jkdsportcard\"}]";
         return ApplicationHook.requestString("com.alipay.neverland.biz.rpc.build", arg);
     }
     
     //{"branchId":"MASTER","mapId":"MM125","multiNum":10,"source":"jkdsportcard"}
     public static String queryMapDetail(String mapId) {
-        String arg = "[{\"mapId\":\""+mapId+"\",\"source\":\"jkdsportcard\"}]";
+        String arg = "[{\"mapId\":\"" + mapId + "\",\"source\":\"jkdsportcard\"}]";
         return ApplicationHook.requestString("com.alipay.neverland.biz.rpc.queryMapDetail", arg);
     }
     
     //{"branchId":"MASTER","channel":"jkdsportcard","mapId":"MM125","rewardId":"GAME_BUILD_MM125_3_3_1","source":"jkdsportcard"}
-    public static String mapChooseReward(String branchId,String mapId,String rewardId) {
-        String arg = "[{\"branchId\":\""+branchId+"\",\"channel\":\"jkdsportcard\",\"mapId\":\""+mapId+"\",\"rewardId\":\""+rewardId+"\",\"source\":\"jkdsportcard\"}]";
+    public static String mapChooseReward(String branchId, String mapId, String rewardId) {
+        String arg = "[{\"branchId\":\"" + branchId + "\",\"channel\":\"jkdsportcard\",\"mapId\":\"" + mapId + "\",\"rewardId\":\"" + rewardId + "\",\"source\":\"jkdsportcard\"}]";
         return ApplicationHook.requestString("com.alipay.neverland.biz.rpc.mapChooseReward", arg);
     }
 }

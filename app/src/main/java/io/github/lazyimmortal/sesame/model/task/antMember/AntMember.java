@@ -42,6 +42,7 @@ public class AntMember extends ModelTask {
         return ModelGroup.MEMBER;
     }
     
+    private BooleanModelField AntMemberTask;
     private BooleanModelField AutoAntMemberTaskList;
     private SelectModelField AntMemberTaskList;
     private BooleanModelField memberSign;
@@ -65,6 +66,7 @@ public class AntMember extends ModelTask {
     @Override
     public ModelFields getFields() {
         ModelFields modelFields = new ModelFields();
+        modelFields.addField(AntMemberTask = new BooleanModelField("AntMemberTask", "会员任务", false));
         modelFields.addField(AutoAntMemberTaskList = new BooleanModelField("AutoAntMemberTaskList", "会员任务 | 自动黑白名单", true));
         modelFields.addField(AntMemberTaskList = new SelectModelField("AntMemberTaskList", "会员任务 | 黑名单列表", new LinkedHashSet<>(), AlipayAntMemberTaskList::getList));
         modelFields.addField(memberSign = new BooleanModelField("memberSign", "会员签到", false));
@@ -99,10 +101,16 @@ public class AntMember extends ModelTask {
     public void run() {
         try {
             //初始任务列表
-            initMemberTaskListMap(AutoAntMemberTaskList.getValue(), AutoMemberCreditSesameTaskList.getValue(), collectSesame.getValue());
+            initMemberTaskListMap(AutoAntMemberTaskList.getValue(), AutoMemberCreditSesameTaskList.getValue(), AntMemberTask.getValue(), collectSesame.getValue());
             
             if (memberSign.getValue()) {
                 memberSign();
+            }
+            
+            if(AntMemberTask.getValue()){
+                queryPointCert(1, 8);
+                //signPageTaskList();
+                queryAllStatusTaskList();
             }
             
             if (memberPointExchangeBenefit.getValue()) {
@@ -150,7 +158,7 @@ public class AntMember extends ModelTask {
         }
     }
     
-    public static void initMemberTaskListMap(boolean AutoAntMemberTaskList, boolean AutoMemberCreditSesameTaskList, boolean collectSesame) {
+    public static void initMemberTaskListMap(boolean AutoAntMemberTaskList, boolean AutoMemberCreditSesameTaskList, boolean AntMemberTask,boolean  collectSesame) {
         try {
             //初始化AntMemberTaskListMap
             AntMemberTaskListMap.load();
@@ -164,80 +172,82 @@ public class AntMember extends ModelTask {
             for (String task : blackList) {
                 AntMemberTaskListMap.add(task, task);
             }
+            
             JSONObject jo;
-            boolean hasNextPage = true;
-            int page = 1;
-            do {
-                jo = new JSONObject(AntMemberRpcCall.queryPointCert(page, 8));
-                TimeUtil.sleep(500);
-                if (!MessageUtil.checkResultCode(TAG, jo)) {
-                    break;
+            if (AntMemberTask) {
+                boolean hasNextPage = true;
+                int page = 1;
+                do {
+                    jo = new JSONObject(AntMemberRpcCall.queryPointCert(page, 8));
+                    TimeUtil.sleep(500);
+                    if (!MessageUtil.checkResultCode(TAG, jo)) {
+                        break;
+                    }
+                    hasNextPage = jo.getBoolean("hasNextPage");
+                    page++;
+                    JSONArray jaCertList = jo.getJSONArray("certList");
+                    for (int i = 0; i < jaCertList.length(); i++) {
+                        jo = jaCertList.getJSONObject(i);
+                        String bizTitle = jo.getString("bizTitle");
+                        AntMemberTaskListMap.add(bizTitle, bizTitle);
+                    }
                 }
-                hasNextPage = jo.getBoolean("hasNextPage");
-                page++;
-                JSONArray jaCertList = jo.getJSONArray("certList");
-                for (int i = 0; i < jaCertList.length(); i++) {
-                    jo = jaCertList.getJSONObject(i);
-                    String bizTitle = jo.getString("bizTitle");
-                    AntMemberTaskListMap.add(bizTitle, bizTitle);
-                }
-            }
-            while (hasNextPage);
-            
-            jo = new JSONObject(AntMemberRpcCall.queryAllStatusTaskList());
-            if (MessageUtil.checkResultCode(TAG, jo)) {
-                JSONArray availableTaskList = jo.getJSONArray("availableTaskList");
-                for (int i = 0; i < availableTaskList.length(); i++) {
-                    JSONObject task = availableTaskList.getJSONObject(i);
-                    JSONObject taskConfigInfo = task.getJSONObject("taskConfigInfo");
-                    String name = taskConfigInfo.getString("name");
-                    AntMemberTaskListMap.add(name, name);
-                }
-                JSONArray taskHistoryList = jo.getJSONArray("taskHistoryList");
-                for (int i = 0; i < taskHistoryList.length(); i++) {
-                    JSONObject task = taskHistoryList.getJSONObject(i);
-                    JSONObject taskConfigInfo = task.getJSONObject("taskConfigInfo");
-                    String name = taskConfigInfo.getString("name");
-                    AntMemberTaskListMap.add(name, name);
-                }
-            }
-            
-            //保存任务到配置文件
-            AntMemberTaskListMap.save();
-            Log.record("同步任务🉑会员任务列表");
-            
-            //自动按模块初始化设定调整黑名单和白名单
-            if (AutoAntMemberTaskList) {
-                // 初始化黑白名单（使用集合统一操作）
-                ConfigV2 config = ConfigV2.INSTANCE;
-                ModelFields antMember = config.getModelFieldsMap().get("AntMember");
-                SelectModelField AntMemberTaskList = (SelectModelField) antMember.get("AntMemberTaskList");
-                if (AntMemberTaskList == null) {
-                    return;
+                while (hasNextPage);
+                
+                jo = new JSONObject(AntMemberRpcCall.queryAllStatusTaskList());
+                if (MessageUtil.checkResultCode(TAG, jo)) {
+                    JSONArray availableTaskList = jo.getJSONArray("availableTaskList");
+                    for (int i = 0; i < availableTaskList.length(); i++) {
+                        JSONObject task = availableTaskList.getJSONObject(i);
+                        JSONObject taskConfigInfo = task.getJSONObject("taskConfigInfo");
+                        String name = taskConfigInfo.getString("name");
+                        AntMemberTaskListMap.add(name, name);
+                    }
+                    JSONArray taskHistoryList = jo.getJSONArray("taskHistoryList");
+                    for (int i = 0; i < taskHistoryList.length(); i++) {
+                        JSONObject task = taskHistoryList.getJSONObject(i);
+                        JSONObject taskConfigInfo = task.getJSONObject("taskConfigInfo");
+                        String name = taskConfigInfo.getString("name");
+                        AntMemberTaskListMap.add(name, name);
+                    }
                 }
                 
-                Set<String> currentValues = AntMemberTaskList.getValue();//该处直接返回列表地址
-                if (currentValues != null) {
-                    for (String task : blackList) {
-                        if (!currentValues.contains(task)) {
-                            AntMemberTaskList.add(task, 0);
-                        }
+                //保存任务到配置文件
+                AntMemberTaskListMap.save();
+                Log.record("同步任务🉑会员任务列表");
+                
+                //自动按模块初始化设定调整黑名单和白名单
+                if (AutoAntMemberTaskList) {
+                    // 初始化黑白名单（使用集合统一操作）
+                    ConfigV2 config = ConfigV2.INSTANCE;
+                    ModelFields antMember = config.getModelFieldsMap().get("AntMember");
+                    SelectModelField AntMemberTaskList = (SelectModelField) antMember.get("AntMemberTaskList");
+                    if (AntMemberTaskList == null) {
+                        return;
                     }
                     
-                    // 3. 批量移除白名单任务（从现有列表中删除）
-                    for (String task : whiteList) {
-                        currentValues.remove(task);
+                    Set<String> currentValues = AntMemberTaskList.getValue();//该处直接返回列表地址
+                    if (currentValues != null) {
+                        for (String task : blackList) {
+                            if (!currentValues.contains(task)) {
+                                AntMemberTaskList.add(task, 0);
+                            }
+                        }
+                        
+                        // 3. 批量移除白名单任务（从现有列表中删除）
+                        for (String task : whiteList) {
+                            currentValues.remove(task);
+                        }
+                    }
+                    // 4. 保存配置
+                    if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
+                        Log.record("黑白名单🈲会员任务自动设置: " + AntMemberTaskList.getValue());
+                    }
+                    else {
+                        Log.record("会员任务黑白名单设置失败");
                     }
                 }
-                // 4. 保存配置
-                if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
-                    Log.record("黑白名单🈲会员任务自动设置: " + AntMemberTaskList.getValue());
-                }
-                else {
-                    Log.record("会员任务黑白名单设置失败");
-                }
             }
-            
             //初始化MemberCreditSesameTaskListMap
             MemberCreditSesameTaskListMap.load();
             blackList = new HashSet<>();
@@ -359,12 +369,6 @@ public class AntMember extends ModelTask {
                     Status.flagToday("member::sign");
                 }
             }
-            
-            queryPointCert(1, 8);
-            
-            signPageTaskList();
-            
-            queryAllStatusTaskList();
         }
         catch (Throwable t) {
             Log.i(TAG, "memberSign err:");

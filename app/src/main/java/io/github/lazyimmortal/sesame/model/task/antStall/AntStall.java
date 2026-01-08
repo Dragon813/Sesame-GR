@@ -84,6 +84,8 @@ public class AntStall extends ModelTask {
     private SelectModelField pasteTicketList;
     private ChoiceModelField throwManureType;
     private SelectModelField throwManureList;
+    
+    private BooleanModelField manualCollectManure;
     private BooleanModelField taskList;
     private BooleanModelField donate;
     private BooleanModelField nextVillage;
@@ -103,6 +105,7 @@ public class AntStall extends ModelTask {
         modelFields.addField(pasteTicketList = new SelectModelField("pasteTicketList", "贴罚单 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
         modelFields.addField(throwManureType = new ChoiceModelField("throwManureType", "丢肥料 | 动作", ThrowManureType.NONE, ThrowManureType.nickNames));
         modelFields.addField(throwManureList = new SelectModelField("throwManureList", "丢肥料 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
+        modelFields.addField(manualCollectManure = new BooleanModelField("manualCollectManure", "收肥料 | 手动收取", false));
         modelFields.addField(sendBackShop = new BooleanModelField("sendBackShop", "请走小摊 | 开启", false));
         modelFields.addField(sendBackShopTime = new IntegerModelField("sendBackShopTime", "请走小摊 | 允许摆摊时长(分钟)", 121));
         modelFields.addField(sendBackShopWhiteList = new SelectModelField("sendBackShopWhiteList", "请走小摊 | 白名单(超时也不赶)", new LinkedHashSet<>(), AlipayUser::getList));
@@ -146,7 +149,9 @@ public class AntStall extends ModelTask {
             if (throwManureType.getValue() != ThrowManureType.NONE) {
                 throwManure();
             }
-            collectManure();
+            if(!manualCollectManure.getValue()){
+                collectManure();
+            }
             
             if (closeShop.getValue()) {
                 closeShop();

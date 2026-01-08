@@ -556,7 +556,7 @@ public class AntDodo extends ModelTask {
                         }
                     }
                     else if (medalGenerationStatus == MedalGenerationStatus.CAN_NOT_GENERATE) {
-                        if (bookMedalOptions.getValue().contains("collectHistoryAnimal") && Objects.equals("END", jo.optString("bookStatus"))) {
+                        if (bookMedalOptions.getValue().contains("collectHistoryAnimal") && Objects.equals("END", jo.optString("bookStatus"))&&usePropList.getValue().contains("COLLECT_HISTORY_ANIMAL_7_DAYS")) {
                             if (Status.canVitalityExchangeBenefitToday("SK20230518000062", 1)) {
                                 AntForestV2.exchangeBenefit("SP20230518000022", "SK20230518000062", "神奇物种抽历史卡机会");
                             }
