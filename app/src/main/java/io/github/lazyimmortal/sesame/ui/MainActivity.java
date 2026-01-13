@@ -246,20 +246,20 @@ public class MainActivity extends BaseActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         int state = getPackageManager()
                 .getComponentEnabledSetting(new ComponentName(this, getClass().getCanonicalName() + "Alias"));
-        menu.add(0, 1, 1, R.string.hide_the_application_icon)
-                .setCheckable(true)
-                .setChecked(state > PackageManager.COMPONENT_ENABLED_STATE_ENABLED);
-        menu.add(0, 2, 2, R.string.language_simplified_chinese)
-                .setCheckable(true)
-                .setChecked(AppConfig.INSTANCE.getLanguageSimplifiedChinese());
+        menu.add(0, 1, 1, R.string.view_record_file);
+        menu.add(0, 2, 2, R.string.view_debug_file);
         menu.add(0, 3, 3, R.string.view_error_log_file);
         menu.add(0, 4, 4, R.string.export_error_log_file);
         menu.add(0, 5, 5, R.string.view_runtime_log_file);
         menu.add(0, 6, 6, R.string.export_runtime_log_file);
         menu.add(0, 7, 7, R.string.export_the_statistic_file);
         menu.add(0, 8, 8, R.string.import_the_statistic_file);
-        menu.add(0, 9, 9, R.string.view_debug_file);
-        menu.add(0, 10, 10, R.string.view_record_file);
+        menu.add(0, 9, 9, R.string.hide_the_application_icon)
+                .setCheckable(true)
+                .setChecked(state > PackageManager.COMPONENT_ENABLED_STATE_ENABLED);
+        menu.add(0, 10, 10, R.string.language_simplified_chinese)
+                .setCheckable(true)
+                .setChecked(AppConfig.INSTANCE.getLanguageSimplifiedChinese());
         menu.add(0, 11, 11, R.string.extensions);
         menu.add(0, 12, 12, R.string.settings);
         return super.onCreateOptionsMenu(menu);
@@ -269,20 +269,20 @@ public class MainActivity extends BaseActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case 1:
-                int state = item.isChecked() ? PackageManager.COMPONENT_ENABLED_STATE_DEFAULT : PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
-                getPackageManager()
-                        .setComponentEnabledSetting(new ComponentName(this, getClass().getCanonicalName() + "Alias"), state, PackageManager.DONT_KILL_APP);
-                item.setChecked(!item.isChecked());
+                String recordData = "file://";
+                recordData += FileUtil.getRecordLogFile().getAbsolutePath();
+                Intent recordIt = new Intent(this, HtmlViewerActivity.class);
+                recordIt.setData(Uri.parse(recordData));
+                recordIt.putExtra("canClear", true);
+                startActivity(recordIt);
                 break;
-
             case 2:
-                AppConfig appConfig = AppConfig.INSTANCE;
-                appConfig.setLanguageSimplifiedChinese(!appConfig.getLanguageSimplifiedChinese());
-                if (AppConfig.save()) {
-                    item.setChecked(!item.isChecked());
-                    LanguageUtil.setLocal(this);
-                    recreate();
-                }
+                String debugData = "file://";
+                debugData += FileUtil.getDebugLogFile().getAbsolutePath();
+                Intent debugIt = new Intent(this, HtmlViewerActivity.class);
+                debugIt.setData(Uri.parse(debugData));
+                debugIt.putExtra("canClear", true);
+                startActivity(debugIt);
                 break;
 
             case 3:
@@ -332,23 +332,22 @@ public class MainActivity extends BaseActivity {
                     ToastUtil.show(this, "导入成功！");
                 }
                 break;
-
+                
             case 9:
-                String debugData = "file://";
-                debugData += FileUtil.getDebugLogFile().getAbsolutePath();
-                Intent debugIt = new Intent(this, HtmlViewerActivity.class);
-                debugIt.setData(Uri.parse(debugData));
-                debugIt.putExtra("canClear", true);
-                startActivity(debugIt);
+                int state = item.isChecked() ? PackageManager.COMPONENT_ENABLED_STATE_DEFAULT : PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
+                getPackageManager()
+                        .setComponentEnabledSetting(new ComponentName(this, getClass().getCanonicalName() + "Alias"), state, PackageManager.DONT_KILL_APP);
+                item.setChecked(!item.isChecked());
                 break;
-
+            
             case 10:
-                String recordData = "file://";
-                recordData += FileUtil.getRecordLogFile().getAbsolutePath();
-                Intent recordIt = new Intent(this, HtmlViewerActivity.class);
-                recordIt.setData(Uri.parse(recordData));
-                recordIt.putExtra("canClear", true);
-                startActivity(recordIt);
+                AppConfig appConfig = AppConfig.INSTANCE;
+                appConfig.setLanguageSimplifiedChinese(!appConfig.getLanguageSimplifiedChinese());
+                if (AppConfig.save()) {
+                    item.setChecked(!item.isChecked());
+                    LanguageUtil.setLocal(this);
+                    recreate();
+                }
                 break;
 
             case 11:

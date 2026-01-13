@@ -184,7 +184,7 @@ public class MessageUtil {
                 return;
             }
             //标记是否加黑
-            Boolean canAddBlackList = false;
+            boolean canAddBlackList = false;
             
             //共性返回失败关键字
             if (jo.has("desc")) {

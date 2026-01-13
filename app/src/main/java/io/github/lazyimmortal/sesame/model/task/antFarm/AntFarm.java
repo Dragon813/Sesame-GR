@@ -277,7 +277,13 @@ public class AntFarm extends ModelTask {
             if (kitchen.getValue()) {
                 collectDailyFoodMaterial(ownerUserId);
                 collectDailyLimitedFoodMaterial();
-                cook(ownerUserId);
+                // 新增：判断小鸡是否在睡觉，如果在睡觉则跳过厨房操作
+                if (AnimalFeedStatus.SLEEPY.name().equals(ownerAnimal.animalFeedStatus)) {
+                    Log.record("小鸡正在睡觉🛌，跳过小鸡厨房👨🏻‍🍳制作");
+                }
+                else {
+                    cook(ownerUserId);
+                }
             }
             
             if (chickenDiary.getValue()) {
@@ -2184,7 +2190,7 @@ public class AntFarm extends ModelTask {
                         for (int j = 0; j < (rightsTimesLimit - rightsTimes); j++) {
                             JSONObject jodoFarmTask = new JSONObject(AntFarmRpcCall.doFarmTask(jo.optString("bizKey"), taskSceneCode));
                             //检查并标记黑名单任务
-                            MessageUtil.checkResultCodeAndMarkTaskBlackList("MemberCreditSesameTaskList", title, jodoFarmTask);
+                            MessageUtil.checkResultCodeAndMarkTaskBlackList("AntFarmDrawMachineTaskList", title, jodoFarmTask);
                         }
                         TimeUtil.sleep(1000);
                     }
@@ -2192,7 +2198,7 @@ public class AntFarm extends ModelTask {
                         for (int j = 0; j < (rightsTimesLimit - rightsTimes); j++) {
                             JSONObject jofinishTask = new JSONObject(AntFarmRpcCall.finishTask(jo.optString("taskId"), taskSceneCode));
                             //检查并标记黑名单任务
-                            MessageUtil.checkResultCodeAndMarkTaskBlackList("MemberCreditSesameTaskList", title, jofinishTask);
+                            MessageUtil.checkResultCodeAndMarkTaskBlackList("AntFarmDrawMachineTaskList", title, jofinishTask);
                         }
                         TimeUtil.sleep(2000);
                     }

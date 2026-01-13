@@ -397,13 +397,16 @@ video {
 
 .dialog-list .van-checkbox__label {
   width: calc(100% - 10px) !important;
+  font-size: 14px !important; /* 减小复选框标签字体 */
 }
 
 .dialog-list .checked-label {
   color: #216eee !important;
+  font-size: 14px !important; /* 减小选中标签字体 */
 }
 .dialog-list .list-label {
   width: calc(100% - 40px) !important;
+  font-size: 14px !important; /* 减小列表标签字体（核心修改） */
 }
 
 .dialog-list .van-checkbox__label--disabled {
@@ -412,13 +415,15 @@ video {
 
 .dialog-list .van-cell {
   padding-right: 5px !important;
+  font-size: 14px !important; /* 减小单元格整体字体 */
 }
 
 .check-all {
   padding-left: 12px;
+  font-size: 14px !important; /* 减小全选文字字体 */
 }
 .dialog-desc {
-  font-size: 14px;
+  font-size: 12px !important; /* 减小描述文字字体（比正文更小） */
   color: #9b9c9c;
 }
 
@@ -429,15 +434,20 @@ video {
   border-radius: 4px;
   line-height: 30px !important;
 }
+.dialog-list .van-field__control {
+  font-size: 14px !important; /* 减小输入框内文字字体 */
+}
 
 .dialog-list {
   padding:0 20px 0 12px;
   position: relative;
   border-top: 1px solid #f6f6f6;
+  font-size: 14px !important; /* 统一对话框列表基础字体 */
 }
 
 .dialog-list .dialog-list-item {
   padding: 5px 0;
+  font-size: 14px !important; /* 减小列表项每行字体 */
   }
 
   .dialog-list-item  .van-checkbox {
@@ -454,6 +464,7 @@ video {
   overflow-y: scroll;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* Internet Explorer 10+ */
+  font-size: 14px !important; /* 减小滚动列表内容字体 */
 }
 .output-content-container {
   max-height: 70vh;

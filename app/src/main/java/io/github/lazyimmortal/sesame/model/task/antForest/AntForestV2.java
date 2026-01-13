@@ -301,9 +301,9 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(NORMALForestHuntHelp = new BooleanModelField("NORMALForestHuntHelp", "普通场景强制助力" + "(助力任务不在列表中时使用，如果日志显示失效请关闭)", false));
         modelFields.addField(ACTIVITYForestHuntHelp = new BooleanModelField("ACTIVITYForestHuntHelp", "活动场景强制助力" + "(同上)", false));
         modelFields.addField(ForestHuntHelpList = new SelectModelField("ForestHuntHelpList", "点击配置寻宝助力列表" + "(填写shareId中开头的22-24位字符在\"4O7FEYDgn\"前的)", new LinkedHashSet<>(), AlipayForestHunt::getList));
-        //modelFields.addField(dress = new BooleanModelField("dress", "装扮保护 | 开启", false));
-        //modelFields.addField(dressDetailList = new TextModelField("dressDetailList", "装扮保护 | " + "装扮信息", ""));
-        //modelFields.addField(new EmptyModelField("dressDetailListClear", "装扮保护 | 装扮信息清除", () -> dressDetailList.reset()));
+        modelFields.addField(dress = new BooleanModelField("dress", "装扮保护 | 开启", false));
+        modelFields.addField(dressDetailList = new TextModelField("dressDetailList", "装扮保护 | " + "装扮信息", ""));
+        modelFields.addField(new EmptyModelField("dressDetailListClear", "装扮保护 | 装扮信息清除", () -> dressDetailList.reset()));
         return modelFields;
     }
     
@@ -487,12 +487,13 @@ public class AntForestV2 extends ModelTask {
                     }
                 }
                 while (hasMore);
-                JSONArray usingUserProps = selfHomeObject.has("usingUserProps") ? selfHomeObject.getJSONArray("usingUserProps") : new JSONArray();
+                //JSONArray usingUserProps = selfHomeObject.has("usingUserProps") ? selfHomeObject.getJSONArray("usingUserProps") : new JSONArray();
+                JSONArray usingUserProps = selfHomeObject.has("usingUserPropsNew") ? selfHomeObject.getJSONArray("usingUserPropsNew") : new JSONArray();
                 boolean canConsumeAnimalProp = true;
                 if (usingUserProps.length() > 0) {
                     for (int i = 0; i < usingUserProps.length(); i++) {
                         JSONObject jo = usingUserProps.getJSONObject(i);
-                        if (!Objects.equals("animal", jo.getString("type"))) {
+                        if (!Objects.equals("animal", jo.optString("propGroup"))) {
                             continue;
                         }
                         else {
@@ -504,9 +505,10 @@ public class AntForestV2 extends ModelTask {
                             String propId = jo.getString("propSeq");
                             String propType = jo.getString("propType");
                             String shortDay = extInfo.getString("shortDay");
+                            String animalName = extInfo.getJSONObject("animal").getString("name");
                             jo = new JSONObject(AntForestRpcCall.collectAnimalRobEnergy(propId, propType, shortDay));
                             if (MessageUtil.checkResultCode(TAG, jo)) {
-                                Log.forest("动物能量🦩[" + energy + "g]");
+                                Log.forest("动物能量🦩派遣"+animalName+"收取能量[" + energy + "g]");
                             }
                             TimeUtil.sleep(500);
                             break;
@@ -602,9 +604,9 @@ public class AntForestV2 extends ModelTask {
                     // 医疗健康 电子小票 4g*10能量
                     queryForestEnergy("BILL");
                 }
-                //if (dress.getValue()) {
-                //    dress();
-                //}
+                if (dress.getValue()) {
+                    dress();
+                }
                 if (!closeWhackMole.getValue()) {
                     whackMole();
                 }
@@ -1937,6 +1939,7 @@ public class AntForestV2 extends ModelTask {
                     case "SUCCESS":
                         int currentEnergy = jo.getJSONObject("userBaseInfo").getInt("currentEnergy");
                         Log.forest("好友浇水🚿给[" + UserIdMap.getShowName(userId) + "]浇" + waterEnergy + "g#剩余能量[" + currentEnergy + "g]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                        Toast.show("好友浇水🚿给[" + UserIdMap.getShowName(userId) + "]浇" + waterEnergy + "g");
                         wateredTimes++;
                         Statistics.addData(Statistics.DataType.WATERED, waterEnergy);
                         break;
@@ -2254,9 +2257,10 @@ public class AntForestV2 extends ModelTask {
         try {
             // 商店兑换 限时能量雨卡
             exchangeBenefit("SK20250117005985");
+            TimeUtil.sleep(2000);
             JSONObject jo;
             do {
-                TimeUtil.sleep(500);
+                TimeUtil.sleep(1000);
                 // 背包查找 能量雨卡
                 jo = null;
                 List<JSONObject> list = getPropGroup(getForestPropVOList(), PropGroup.energyRain.name());
@@ -2271,7 +2275,7 @@ public class AntForestV2 extends ModelTask {
             while (consumeProp(jo));
         }
         catch (Throwable th) {
-            Log.i(TAG, "useDoubleCard err:");
+            Log.i(TAG, "useEnergyRainCard err:");
             Log.printStackTrace(TAG, th);
         }
     }
@@ -3424,6 +3428,7 @@ public class AntForestV2 extends ModelTask {
             JSONObject waterJo = new JSONObject(waterStr);
             if (MessageUtil.checkResultCode(TAG, waterJo)) {
                 Log.forest("组队合种🚿给合种浇水" + finalWaterAmount + "g#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                Toast.show("组队合种🚿给合种浇水" + finalWaterAmount + "g");
                 Status.forestHuntHelpToday("FLAG_TEAM_WATER_DAILY_COUNT", todayUsed + finalWaterAmount, UserIdMap.getCurrentUid());
                 Log.record("组队合种今日浇水累计: " + (todayUsed + finalWaterAmount) + "g / " + userDailyTarget + "g");
             }
@@ -3491,6 +3496,7 @@ public class AntForestV2 extends ModelTask {
             JSONObject jo = new JSONObject(AntForestRpcCall.loveteamWater(loveteamWater, loveteamWaterNum));
             if (MessageUtil.checkSuccess(TAG, jo)) {
                 Log.forest("真爱浇水🚿给[" + loveteamWater + "]合种浇水" + loveteamWaterNum + "g#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                Toast.show("真爱浇水🚿给[" + loveteamWater + "]合种浇水" + loveteamWaterNum + "g");
                 Status.flagToday("Forest::loveteamWater");
             }
         }

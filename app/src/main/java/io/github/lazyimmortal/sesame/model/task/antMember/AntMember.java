@@ -16,6 +16,7 @@ import io.github.lazyimmortal.sesame.entity.AlipayMemberCreditSesameTaskList;
 import io.github.lazyimmortal.sesame.entity.MemberBenefit;
 import io.github.lazyimmortal.sesame.model.base.TaskCommon;
 import io.github.lazyimmortal.sesame.model.extensions.ExtensionsHandle;
+import io.github.lazyimmortal.sesame.model.task.antOrchard.AntOrchardRpcCall;
 import io.github.lazyimmortal.sesame.util.*;
 import io.github.lazyimmortal.sesame.util.idMap.AntFarmDoFarmTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.AntMemberTaskListMap;
@@ -52,6 +53,7 @@ public class AntMember extends ModelTask {
     private BooleanModelField collectSesame;
     private BooleanModelField AutoMemberCreditSesameTaskList;
     private SelectModelField MemberCreditSesameTaskList;
+    private BooleanModelField SesameGrowthBehavior;
     private BooleanModelField promise;
     private SelectModelField promiseList;
     private BooleanModelField KuaiDiFuLiJia;
@@ -75,6 +77,8 @@ public class AntMember extends ModelTask {
         modelFields.addField(collectSesame = new BooleanModelField("collectSesame", "芝麻粒 | 领取", false));
         modelFields.addField(AutoMemberCreditSesameTaskList = new BooleanModelField("AutoMemberCreditSesameTaskList", "芝麻粒任务 | 自动黑白名单", true));
         modelFields.addField(MemberCreditSesameTaskList = new SelectModelField("MemberCreditSesameTaskList", "芝麻粒任务 | 黑名单列表", new LinkedHashSet<>(), AlipayMemberCreditSesameTaskList::getList));
+        modelFields.addField(SesameGrowthBehavior = new BooleanModelField("SesameGrowthBehavior", "攒芝麻分进度", false));
+        
         //modelFields.addField(promise = new BooleanModelField("promise", "生活记录 | 坚持做", false));
         //modelFields.addField(promiseList = new SelectModelField("promiseList", "生活记录 | 坚持做列表", new LinkedHashSet<>(), PromiseSimpleTemplate::getList));
         modelFields.addField(KuaiDiFuLiJia = new BooleanModelField("KuaiDiFuLiJia", "我的快递 | 福利加", false));
@@ -107,7 +111,7 @@ public class AntMember extends ModelTask {
                 memberSign();
             }
             
-            if(AntMemberTask.getValue()){
+            if (AntMemberTask.getValue()) {
                 queryPointCert(1, 8);
                 //signPageTaskList();
                 queryAllStatusTaskList();
@@ -119,6 +123,18 @@ public class AntMember extends ModelTask {
             if (collectSesame.getValue()) {
                 CheckInTaskRpcManager();
                 collectSesame();
+            }
+            
+            //芝麻积攒进度
+            if (SesameGrowthBehavior.getValue()) {
+               // if (!Status.hasFlagToday("AntMember::SesameGrowthBehavior")) {
+                    //完成攒进度任务
+                    handleGrowthGuideTasks();
+                    //领取进度球
+                    queryAndCollect();
+                //    Status.flagToday("AntMember::SesameGrowthBehavior");
+                //}
+                
             }
             // 生活记录
             //if (promise.getValue()) {
@@ -158,7 +174,7 @@ public class AntMember extends ModelTask {
         }
     }
     
-    public static void initMemberTaskListMap(boolean AutoAntMemberTaskList, boolean AutoMemberCreditSesameTaskList, boolean AntMemberTask,boolean  collectSesame) {
+    public static void initMemberTaskListMap(boolean AutoAntMemberTaskList, boolean AutoMemberCreditSesameTaskList, boolean AntMemberTask, boolean collectSesame) {
         try {
             //初始化AntMemberTaskListMap
             AntMemberTaskListMap.load();
@@ -648,6 +664,218 @@ public class AntMember extends ModelTask {
         }
         catch (Throwable t) {
             Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    /**
+     * 芝麻分任务处理（每日问答、公益任务、芭芭农场施肥等）
+     */
+    private void handleGrowthGuideTasks() {
+        try {
+            JSONObject jo = new JSONObject(AntMemberRpcCall.queryHome());
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            JSONObject root = new JSONObject(AntMemberRpcCall.queryGrowthBehaviorToDoList());
+            if (!MessageUtil.checkResultCode(TAG, root)) {
+                return;
+            }
+            
+            // 待处理任务列表
+            JSONArray toDoList = root.optJSONArray("toDoList");
+            int toDoCount = toDoList == null ? 0 : toDoList.length();
+            if (toDoList == null || toDoCount == 0) {
+                return;
+            }
+            
+            for (int i = 0; i < toDoList.length(); i++) {
+                JSONObject task = toDoList.optJSONObject(i);
+                if (task == null) {
+                    continue;
+                }
+                
+                String behaviorId = task.optString("behaviorId", "");
+                String title = task.optString("title", "");
+                String status = task.optString("status", "");
+                String subTitle = task.optString("subTitle", "");
+                
+                // 公益类任务（待领取）
+                if ("wait_receive".equals(status)) {
+                    String openResp= AntMemberRpcCall.openBehaviorCollect(behaviorId);
+                    JSONObject openJo = new JSONObject(openResp);
+                    if (MessageUtil.checkResultCode(TAG, openJo)) {
+                        Log.other("攒芝麻分🧾任务领取：" + title);
+                    }
+                    continue;
+                }
+                
+                // 每日问答
+                if ("meiriwenda".equals(behaviorId) && "wait_doing".equals(status)) {
+                    if (subTitle.contains("今日已参与")) {
+                        Log.other("攒芝麻分🧾[每日问答] " + subTitle + "（跳过答题）");
+                        continue;
+                    }
+                    
+                    // 查询题目
+                    JSONObject quizJo= new JSONObject(AntMemberRpcCall.queryDailyQuiz(behaviorId));
+                    if (!MessageUtil.checkSuccess(TAG, quizJo)) {
+                        continue;
+                    }
+                    JSONObject data = quizJo.optJSONObject("data");
+                    if (data == null) {
+                        continue;
+                    }
+                    
+                    JSONObject qVo = data.optJSONObject("questionVo");
+                    if (qVo == null) {
+                        continue;
+                    }
+                    
+                    JSONObject rightAnswer = qVo.optJSONObject("rightAnswer");
+                    if (rightAnswer == null) {
+                        continue;
+                    }
+                    
+                    long bizDate = data.optLong("bizDate", 0L);
+                    String questionId = qVo.optString("questionId", "");
+                    String questionContent = qVo.optString("questionContent", "");
+                    String answerId = rightAnswer.optString("answerId", "");
+                    String answerContent = rightAnswer.optString("answerContent", "");
+                    
+                    if (bizDate <= 0 || questionId.isEmpty() || answerId.isEmpty()) {
+                        continue;
+                    }
+                    
+                    // 提交答案
+                    JSONObject pushJo= new JSONObject(AntMemberRpcCall.pushDailyQuizAnswer(behaviorId, bizDate, answerId, questionId, "RIGHT"));
+                    if (MessageUtil.checkResultCode(TAG, pushJo)) {
+                        Log.other("攒芝麻分🎖️[每日答题成功] " + questionContent + " | 答案=" + answerContent + "(" + answerId + ")" + (subTitle.isEmpty() ? "" : " | " + subTitle));
+                    }
+                }
+                
+                // 视频问答
+                if ("shipingwenda".equals(behaviorId) && "wait_doing".equals(status)) {
+                    long bizDate = System.currentTimeMillis();
+                    String questionId = "question3";
+                    String answerId = "A";
+                    String answerType = "RIGHT";
+                    
+                    jo= new JSONObject(AntMemberRpcCall.pushDailyQuizAnswer(behaviorId, bizDate, answerId, questionId, answerType));
+                    
+                    if (MessageUtil.checkResultCode(TAG, jo)) {
+                        Log.other("攒芝麻分🎖️[视频问答提交成功]");
+                    }
+                }
+                
+                // 芭芭农场施肥
+                if ("babanongchang_7d".equals(behaviorId) && "wait_doing".equals(status)) {
+                    
+                    // 获取WUA
+                    String wua = getWuaByReflection();
+                    String source = "DNHZ_NC_zhimajingnangSF";
+                    
+                    JSONObject spreadManureData= new JSONObject(AntOrchardRpcCall.orchardSpreadManure(false, wua));
+                    
+                    if (!"100".equals(spreadManureData.optString("resultCode"))) {
+                        continue;
+                    }
+                    
+                    String taobaoDataStr = spreadManureData.optString("taobaoData", "");
+                    if (taobaoDataStr.isEmpty()) {
+                        continue;
+                    }
+                    
+                    JSONObject spreadTaobaoData= new JSONObject(taobaoDataStr);
+                    
+                    JSONObject currentStage = spreadTaobaoData.optJSONObject("currentStage");
+                    if (currentStage == null) {
+                        Log.error(TAG + "GrowthGuideTasks" + "芭芭农场[缺少currentStage]");
+                        continue;
+                    }
+                    
+                    String stageText = currentStage.optString("stageText", "");
+                    JSONObject statistics = spreadTaobaoData.optJSONObject("statistics");
+                    int dailyAppWateringCount = statistics == null ? 0 : statistics.optInt("dailyAppWateringCount", 0);
+                    
+                    Log.farm("芭芭农场🌳施肥" + dailyAppWateringCount + " 次[" + stageText + "]");
+                    Log.other("攒芝麻分🎖️芭芭农场施肥[" + title + "]已施肥" + dailyAppWateringCount + "次");
+                    
+                }
+            }
+        }
+        catch (Throwable e) {
+            Log.printStackTrace(TAG + ".handleGrowthGuideTasks", e);
+        }
+    }
+    
+    // 在antMember任意类中添加反射调用方法
+    private String getWuaByReflection() {
+        try {
+            // 1. 获取AntOrchard类
+            Class<?> antOrchardClass = Class.forName("io.github.lazyimmortal.sesame.model.task.antOrchard.AntOrchard");
+            // 2. 实例化类（若方法是静态的，无需实例化）
+            Object antOrchardInstance = antOrchardClass.newInstance();
+            // 3. 获取私有方法getWua()
+            java.lang.reflect.Method getWuaMethod = antOrchardClass.getDeclaredMethod("getWua");
+            // 4. 取消访问检查
+            getWuaMethod.setAccessible(true);
+            // 5. 调用方法并返回结果
+            return (String) getWuaMethod.invoke(antOrchardInstance);
+        }
+        catch (ClassNotFoundException e) {
+            Log.error("未找到AntOrchard类" + e);
+        }
+        catch (NoSuchMethodException e) {
+            Log.error("未找到getWua方法" + e);
+        }
+        catch (IllegalAccessException | InstantiationException | java.lang.reflect.InvocationTargetException e) {
+            Log.error("调用getWua方法失败" + e);
+        }
+        return "";
+    }
+    
+    public static void queryAndCollect() {
+        try {
+            // 1. 查询进度球状态
+            String queryResp = AntMemberRpcCall.queryScoreProgress();
+            if (queryResp == null || queryResp.isEmpty()) {
+                return;
+            }
+            
+            JSONObject json = new JSONObject(queryResp);
+            
+            // 检查 success
+            if (!MessageUtil.checkSuccess(TAG, json)) {
+                return;
+            }
+            
+            JSONObject totalWait = json.optJSONObject("totalWaitProcessVO");
+            if (totalWait == null) {
+                return;
+            }
+            
+            JSONArray idList = totalWait.optJSONArray("totalProgressIdList");
+            if (idList == null || idList.length() == 0) {
+                return;
+            }
+            
+            // 直接传 JSONArray
+            String collectResp = AntMemberRpcCall.collectProgressBall(idList);
+            if (collectResp == null) {
+                return;
+            }
+            
+            JSONObject collectJson = new JSONObject(collectResp);
+            int collectedAccelerateProgress = collectJson.optInt("collectedAccelerateProgress", -1);
+            int currentAccelerateValue = collectJson.optInt("currentAccelerateValue", 0);
+            int totalAccelerateProgress = collectJson.optInt("totalAccelerateProgress", 0);
+            Log.other("攒芝麻分🎁领取完成,本次加速进度:" + collectedAccelerateProgress+"(总"+totalAccelerateProgress+"%),加速倍率:"+currentAccelerateValue);
+        }
+        catch (JSONException e) {
+            Log.printStackTrace(TAG + "queryAndCollect JSON err", e);
+        }
+        catch (Exception e) {
+            Log.printStackTrace(TAG + "queryAndCollect err", e);
         }
     }
     

@@ -214,8 +214,8 @@ public class AntForestRpcCall {
     
     public static String consumeProp(String propGroup, String propId, String propType) {
         String sToken = System.currentTimeMillis() + "_" + getRandomString(8);
-        return ApplicationHook.requestString("alipay.antforest.forest.h5.consumeProp", "[{\"propGroup\":\"" + propGroup + "\",\"propId\":\"" + propId + "\",\"propType\":\"" + propType + "\",\"sToken\":\"" + sToken + "\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\"," + "\"timezoneId\":\"Asia" +
-                                                                                       "/Shanghai\",\"version\":\"" + VERSION + "\"}]");
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.consumeProp",
+                "[{\"propGroup\":\"" + propGroup + "\",\"propId\":\"" + propId + "\",\"propType\":\"" + propType + "\",\"sToken\":\"" + sToken + "\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\"," + "\"timezoneId\":\"Asia" + "/Shanghai\",\"version\":\"" + VERSION + "\"}]");
         
         //return ApplicationHook.requestString("alipay.antforest.forest.h5.consumeProp", "[{\"propId\":\"" + propId + "\",\"propType\":\"" + propType + "\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\"," + "\"timezoneId\":\"Asia/Shanghai\",\"version\":\"" + VERSION + "\"}]");
     }
@@ -306,7 +306,7 @@ public class AntForestRpcCall {
     }
     
     public static String collectAnimalRobEnergy(String propId, String propType, String shortDay) {
-        return ApplicationHook.requestString("alipay.antforest.forest.h5.collectAnimalRobEnergy", "[{\"propId\":\"" + propId + "\",\"propType\":\"" + propType + "\",\"shortDay\":\"" + shortDay + "\"," + "\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]");
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.collectAnimalRobEnergy", "[{\"propId\":\"" + propId + "\",\"propType\":\"" + propType + "\",\"shortDay\":\"" + shortDay + "\"," + "\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"version\":\"" + VERSION + "\"}]");
     }
     
     /* 复活能量 */
@@ -720,7 +720,7 @@ public class AntForestRpcCall {
      */
     public static String queryMiscInfo(String queryBizType, String teamId) {
         // 构造 H5 RPC 参数
-        String args = "[{\"queryBizType\":\"" + queryBizType + "\",\"source\":\"SELF_HOME\",\"targetUserId\":\"" + teamId + "\",\"version\":\""+VERSION+"\"}]";
+        String args = "[{\"queryBizType\":\"" + queryBizType + "\",\"source\":\"SELF_HOME\",\"targetUserId\":\"" + teamId + "\",\"version\":\"" + VERSION + "\"}]";
         return ApplicationHook.requestString("alipay.antforest.forest.h5.queryMiscInfo", args);
     }
 }

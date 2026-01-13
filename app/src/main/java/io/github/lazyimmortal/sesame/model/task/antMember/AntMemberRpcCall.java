@@ -210,7 +210,7 @@ public class AntMemberRpcCall {
      * @return RPC响应
      */
     public static String queryGrowthBehaviorToDoList() {
-        String requestData = "[{\"guideBehaviorId\":\"\",\"invokeVersion\":\"1.0.2025.10.27\",\"switchNewPage\":true}]";
+        String requestData = "[{\"guideBehaviorId\":\"yuebao_7d\",\"invokeVersion\":\"1.0.2025.10.27\",\"switchNewPage\":true}]";
         return ApplicationHook.requestString("com.antgroup.zmxy.zmcustprod.biz.rpc.growthbehavior.apiGrowthBehaviorRpcManager.queryToDoList", requestData);
     }
 
@@ -228,8 +228,8 @@ public class AntMemberRpcCall {
      * 查询视频答题的题目信息
      * @return RPC响应
      */
-    public static String queryDailyQuiz() {
-        String requestData = "[{\"behaviorId\":\"shipingwenda\"}]";
+    public static String queryDailyQuiz(String behaviorId) {
+        String requestData = "[{\"behaviorId\":\""+behaviorId+"\"}]";
         return ApplicationHook.requestString("com.antgroup.zmxy.zmcustprod.biz.rpc.growthtask.api.GrowthTaskRpcManager.queryDailyQuiz", requestData);
     }
 
@@ -240,9 +240,9 @@ public class AntMemberRpcCall {
      * @param answerId 选择的答案ID
      * @return RPC响应
      */
-    public static String pushDailyQuizAnswer(long bizDate, String questionId, String answerId) {
-        String extInfo = "{\"answerId\":\"" + answerId + "\",\"answerStatus\":\"RIGHT\",\"questionId\":\"" + questionId + "\"}";
-        String requestData = "[{\"behaviorId\":\"shipingwenda\",\"bizDate\":" + bizDate + ",\"extInfo\":" + extInfo + "}]";
+    public static String pushDailyQuizAnswer(String behaviorId,long bizDate,String answerId, String questionId, String answerStatus) {
+        String extInfo = "{\"answerId\":\"" + answerId + "\",\"answerStatus\":\""+answerStatus+"\",\"questionId\":\"" + questionId + "\"}";
+        String requestData = "[{\"behaviorId\":\""+behaviorId+"\",\"bizDate\":" + bizDate + ",\"extInfo\":" + extInfo + "}]";
         return ApplicationHook.requestString("com.antgroup.zmxy.zmcustprod.biz.rpc.growthtask.api.GrowthTaskRpcManager.pushDailyTask", requestData);
     }
 
