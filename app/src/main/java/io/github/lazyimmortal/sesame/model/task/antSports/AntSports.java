@@ -998,11 +998,13 @@ public class AntSports extends ModelTask {
                 return;
             }
             //jo = jo.getJSONObject("dailyStepModel");
-            long produceQuantity = jo.getLong("stepLastTime");
+            long stepLastTime = jo.getLong("stepLastTime");
             int hour = Integer.parseInt(Log.getFormatTime().split(":")[0]);
             
             int stepCount = jo.optInt("stepCount");
             if (stepCount < minExchangeCount.getValue() && hour < latestExchangeTime.getValue()) {
+                return;
+            }
                 AntSportsRpcCall.walkDonateSignInfo(stepCount);
                 jo = new JSONObject(AntSportsRpcCall.donateWalkHome(stepCount));
                 if (!MessageUtil.checkResultCode(TAG, jo)) {
@@ -1028,7 +1030,7 @@ public class AntSports extends ModelTask {
                 String donateTitle = donateExchangeResultModel.getString("donateTitle");
                 Log.other("公益捐赠❤️[捐步做公益:" + donateTitle + "]捐赠" + userCount + "步,兑换" + amount + "元公益金");
                 Status.flagToday("sport::donateWalk");
-            }
+            
         }
         catch (Throwable t) {
             Log.i(TAG, "queryWalkStep err:");

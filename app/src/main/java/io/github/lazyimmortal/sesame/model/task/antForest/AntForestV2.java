@@ -502,7 +502,7 @@ public class AntForestV2 extends ModelTask {
                         JSONObject extInfo = new JSONObject(jo.getString("extInfo"));
                         int energy = extInfo.optInt("energy", 0);
                         if (energy > 0 && !extInfo.optBoolean("isCollected")) {
-                            String propId = jo.getString("propSeq");
+                            String propId = jo.getString("propId");
                             String propType = jo.getString("propType");
                             String shortDay = extInfo.getString("shortDay");
                             String animalName = extInfo.getJSONObject("animal").getString("name");

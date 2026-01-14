@@ -459,6 +459,8 @@ public class AntFarm extends ModelTask {
             blackList = new HashSet<>();
             blackList.add("【限时】玩游戏得新机会");
             blackList.add("伸出援手，点亮希望");
+            blackList.add("限时玩游戏得新机会");
+ 
             whiteList = new HashSet<>();// 从黑名单中移除该任务
             //whiteList.add("逛一逛树");
             for (String task : blackList) {
