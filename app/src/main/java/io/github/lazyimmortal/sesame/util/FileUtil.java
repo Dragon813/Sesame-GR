@@ -168,6 +168,14 @@ public class FileUtil {
         }
         return file;
     }
+    
+    public static File getGameCenterMallItemMap(String userId) {
+        File file = new File(CONFIG_DIRECTORY_FILE + "/" + userId, "gameCenterMallItem.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
 
     public static File getFarmOrnamentsIdMapFile(String userId) {
         File file = new File(CONFIG_DIRECTORY_FILE + "/" + userId, "farmOrnaments.json");

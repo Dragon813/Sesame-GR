@@ -32,6 +32,7 @@ public class Status {
     // farm
     private final Map<String, Integer> feedFriendLogList = new HashMap<>();
     private final Map<String, Integer> visitFriendLogList = new HashMap<>();
+    private final Map<String, Integer> gameCenterBuyMallItemList = new HashMap<>();
     private int useAccelerateToolCount = 0;
     private int useSpecialFoodCount = 0;
     
@@ -139,6 +140,26 @@ public class Status {
         INSTANCE.vitality_ExchangeBenefitLogList.put(skuId, count);
         save();
     }
+    
+    public static int getGameCenterBuyMallItemCountToday(String skuId) {
+        Integer buyedCount = INSTANCE.gameCenterBuyMallItemList.get(skuId);
+        if (buyedCount == null) {
+            buyedCount = 0;
+        }
+        return buyedCount;
+    }
+    
+    public static Boolean canGameCenterBuyMallItemToday(String skuId, int count) {
+        return !hasFlagToday("farm::buyLimit::" + skuId)
+               && getGameCenterBuyMallItemCountToday(skuId) < count;
+    }
+    
+    public static void gameCenterBuyMallItemToday(String skuId) {
+        int count = getGameCenterBuyMallItemCountToday(skuId) + 1;
+        INSTANCE.gameCenterBuyMallItemList.put(skuId, count);
+        save();
+    }
+    
     
     public static int getExchangeReserveCountToday(int id) {
         Integer count = INSTANCE.exchangeReserveLogList.get(id);

@@ -60,6 +60,7 @@ public class SettingsActivity extends BaseActivity {
         UserIdMap.load(userId);
         CooperationIdMap.load(userId);
         VitalityBenefitIdMap.load(userId);
+        GameCenterMallItemMap.load(userId);
         FarmOrnamentsIdMap.load(userId);
         MemberBenefitIdMap.load(userId);
         PromiseSimpleTemplateIdMap.load(userId);

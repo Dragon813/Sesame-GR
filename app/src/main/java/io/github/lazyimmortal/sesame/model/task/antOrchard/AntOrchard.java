@@ -279,7 +279,9 @@ public class AntOrchard extends ModelTask {
                         
                         // 3. 批量移除白名单任务（从现有列表中删除）
                         for (String task : whiteList) {
-                            currentValues.remove(task);
+                            if (currentValues.contains(task)) {
+                                currentValues.remove(task);
+                            }
                         }
                     }
                     // 4. 保存配置
@@ -728,7 +730,7 @@ public class AntOrchard extends ModelTask {
                     //检查并标记黑名单任务
                     MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOrchardTaskList", title, finishResponse);
                     if (MessageUtil.checkResultCode(TAG, finishResponse)) {
-                        Log.farm("农场任务🧾完成任务[" + title + "]第" + (rightsTimes + cnt + 1) + "次");
+                        Log.farm("肥料任务🧾完成[" + title + "]第" + (rightsTimes + cnt + 1) + "次");
                     }
                     else {
                         Log.record("失败：芭芭农场广告任务📺[" + title + "] " + finishResponse.optString("desc"));
@@ -747,7 +749,7 @@ public class AntOrchard extends ModelTask {
                 //检查并标记黑名单任务
                 MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOrchardTaskList", title, finishResponse);
                 if (MessageUtil.checkResultCode(TAG, finishResponse)) {
-                    Log.farm("农场任务🧾完成任务[" + title + "]");
+                    Log.farm("肥料任务🧾完成[" + title + "]");
                 }
                 return true;
             }
@@ -792,7 +794,7 @@ public class AntOrchard extends ModelTask {
                     //检查并标记黑名单任务
                     MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOrchardTaskList", title, triggerJo);
                     if (MessageUtil.checkResultCode(TAG, triggerJo)) {
-                        Log.farm("领取奖励🎖️[" + title + "]#" + awardCount + "g肥料");
+                        Log.farm("肥料领取🎖️任务[" + title + "]奖励#获得[" + awardCount + "g]");
                     }
                     else {
                         Log.record("领取奖励失败: " + triggerJo.toString());

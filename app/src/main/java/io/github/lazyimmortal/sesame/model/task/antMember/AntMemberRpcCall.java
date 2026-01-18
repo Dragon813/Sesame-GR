@@ -169,7 +169,7 @@ public class AntMemberRpcCall {
      * 游戏中心签到
      */
     public static String continueSignIn() {
-        return ApplicationHook.requestString("com.alipay.gamecenteruprod.biz.rpc.continueSignIn", "[{\"sceneId\":\"GAME_CENTER\",\"signType\":\"NORMAL_SIGN\",\"source\":\"ch_appcenter__chsub_9patch\"}]");
+        return ApplicationHook.requestString("com.alipay.gamecenteruprod.biz.rpc.continueSignIn", "[{\"sceneId\":\"GAME_CENTER\",\"signType\":\"NORMAL_SIGN\"}]");
     }
 
     /**
@@ -185,7 +185,23 @@ public class AntMemberRpcCall {
     public static String batchReceivePointBall() {
         return ApplicationHook.requestString("com.alipay.gamecenteruprod.biz.rpc.v3.batchReceivePointBall", "[{}]");
     }
-
+    
+    public static String doTaskSignup(String taskId) {
+        return ApplicationHook.requestString("com.alipay.gamecenteruprod.biz.rpc.v3.doTaskSignup", "[{\"taskId\":\"" + taskId + "\"}]");
+    }
+    
+    public static String doTaskSend(String taskId) {
+        return ApplicationHook.requestString("com.alipay.gamecenteruprod.biz.rpc.v3.doTaskSend", "[{\"taskId\":\"" + taskId + "\"}]");
+    }
+    
+    public static String queryModularTaskList() {
+        return ApplicationHook.requestString("com.alipay.gamecenteruprod.biz.rpc.v3.queryModularTaskList", "[{\"deviceLevel\":\"high\",\"source\":\"ch_appcollect__chsub_my-recentlyUsed\",\"sourceTab\":\"luckydraw\",\"unityDeviceLevel\":\"high\"}]");
+    }
+    
+    public static String queryTaskList() {
+        return ApplicationHook.requestString("com.alipay.gamecenteruprod.biz.rpc.v4.queryTaskList", "[{\"__git\":\"52f2c9969ae\",\"source\":\"ch_alipaysearch__chsub_normal\"}]");
+    }
+    
     /**
      * 查询可收取的芝麻粒
      *

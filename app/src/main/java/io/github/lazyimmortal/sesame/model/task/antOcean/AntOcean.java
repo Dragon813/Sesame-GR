@@ -203,7 +203,9 @@ public class AntOcean extends ModelTask {
                         
                         // 3. 批量移除白名单任务（从现有列表中删除）
                         for (String task : whiteList) {
-                            currentValues.remove(task);
+                            if (currentValues.contains(task)) {
+                                currentValues.remove(task);
+                            }
                         }
                     }
                     // 4. 保存配置

@@ -64,6 +64,7 @@ import io.github.lazyimmortal.sesame.util.idMap.AntOrchardTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.AntSportsTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.AntStallTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.BeachIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.GameCenterMallItemMap;
 import io.github.lazyimmortal.sesame.util.idMap.MemberCreditSesameTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.PlantSceneIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.ForestHuntIdMap;
@@ -117,6 +118,7 @@ public class NewSettingsActivity extends BaseActivity {
         UserIdMap.load(userId);
         CooperationIdMap.load(userId);
         VitalityBenefitIdMap.load(userId);
+        GameCenterMallItemMap.load(userId);
         FarmOrnamentsIdMap.load(userId);
         MemberBenefitIdMap.load(userId);
         PromiseSimpleTemplateIdMap.load(userId);
