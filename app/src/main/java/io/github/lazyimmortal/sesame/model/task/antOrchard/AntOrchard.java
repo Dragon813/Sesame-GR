@@ -15,6 +15,7 @@ import io.github.lazyimmortal.sesame.data.modelFieldExt.ChoiceModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.IntegerModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectAndCountModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectModelField;
+import io.github.lazyimmortal.sesame.model.task.antGame.GameTask;
 import io.github.lazyimmortal.sesame.model.task.antMember.AntMemberRpcCall;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
@@ -75,6 +76,7 @@ public class AntOrchard extends ModelTask {
     private BooleanModelField orchardSpreadManure;
     private BooleanModelField useBatchSpread;
     private SelectAndCountModelField orchardSpreadManureSceneList;
+    private BooleanModelField drawGameCenterAward;
     private ChoiceModelField driveAnimalType;
     private SelectModelField driveAnimalList;
     private BooleanModelField batchHireAnimal;
@@ -105,6 +107,7 @@ public class AntOrchard extends ModelTask {
         modelFields.addField(orchardSpreadManure = new BooleanModelField("orchardSpreadManure", "农场施肥 | 开启", false));
         modelFields.addField(useBatchSpread = new BooleanModelField("useBatchSpread", "一键施肥5次", false));
         modelFields.addField(orchardSpreadManureSceneList = new SelectAndCountModelField("orchardSpreadManureSceneList", "农场施肥 | 场景列表", new LinkedHashMap<>(), AlipayPlantScene::getList, "请填写每日施肥次数"));
+        modelFields.addField(drawGameCenterAward = new BooleanModelField("drawGameCenterAward", "农场乐园 | 游戏宝箱", true));
         //modelFields.addField(driveAnimalType = new ChoiceModelField("driveAnimalType", "驱赶小鸡 | 动作", DriveAnimalType.NONE, DriveAnimalType.nickNames));
         //modelFields.addField(driveAnimalList = new SelectModelField("driveAnimalList", "驱赶小鸡 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
         //modelFields.addField(batchHireAnimal = new BooleanModelField("batchHireAnimal", "捉鸡除草 | 开启", false));
@@ -194,14 +197,25 @@ public class AntOrchard extends ModelTask {
             handleTaobaoData(jo.getString("taobaoData"));
             
             // 处理金蛋
-            JSONObject goldenEggInfo = jo.optJSONObject("goldenEggInfo");
-            if (goldenEggInfo != null) {
-                int unsmashedGoldenEggs = goldenEggInfo.optInt("unsmashedGoldenEggs");
-                if (unsmashedGoldenEggs > 0) {
-                    smashedGoldenEgg(unsmashedGoldenEggs);
+            if (drawGameCenterAward.getValue()) {
+                JSONObject goldenEggInfo = jo.optJSONObject("goldenEggInfo");
+                if (goldenEggInfo != null) {
+                    int unsmashedGoldenEggs = goldenEggInfo.optInt("unsmashedGoldenEggs");
+                    int limit = goldenEggInfo.optInt("goldenEggLimit");
+                    int smashed = goldenEggInfo.optInt("smashedGoldenEggs");
+                    
+                    if (unsmashedGoldenEggs > 0) {
+                        // 现成的蛋先砸了
+                        smashedGoldenEgg(unsmashedGoldenEggs);
+                    }
+                    else {
+                        int remain = limit - smashed;
+                        if (remain > 0) {
+                            GameTask.Orchard_ncscc.report("农场", remain);
+                        }
+                    }
                 }
             }
-            
             // 处理返访奖励
             //if (!Status.hasFlagToday("orchardWidgetDailyAward")) {
             //    receiveOrchardVisitAward();
@@ -1088,6 +1102,9 @@ public class AntOrchard extends ModelTask {
                 JSONObject jo = new JSONObject(response);
                 
                 if (MessageUtil.checkResultCode(TAG, jo)) {
+                    
+                    JSONObject goldenEggInfoVO = jo.optJSONObject("goldenEggInfoVO");
+                    int unsmashedGoldenEggsNow = goldenEggInfoVO != null ? goldenEggInfoVO.optInt("unsmashedGoldenEggs") : 0;
                     JSONArray batchSmashedList = jo.optJSONArray("batchSmashedList");
                     if (batchSmashedList != null && batchSmashedList.length() > 0) {
                         for (int j = 0; j < batchSmashedList.length(); j++) {
@@ -1095,11 +1112,17 @@ public class AntOrchard extends ModelTask {
                             if (smashedItem != null) {
                                 int manureCount = smashedItem.optInt("manureCount", 0);
                                 boolean jackpot = smashedItem.optBoolean("jackpot", false);
+                                String unsmashedGoldenEggsString = "";
+                                if (unsmashedGoldenEggsNow >= 0) {
+                                    unsmashedGoldenEggsString = "[剩蛋" + unsmashedGoldenEggsNow + "个]";
+                                }
+                                
                                 String jackpotMessage = jackpot ? "（触发大奖）" : "";
-                                Log.farm("砸出肥料 🎖️: " + manureCount + " g" + jackpotMessage);
+                                Log.farm("砸出肥料🎖️" + manureCount + " g" + unsmashedGoldenEggsString + jackpotMessage+"#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                             }
                         }
                     }
+                    
                 }
                 else {
                     Log.record("砸金蛋失败: " + jo.optString("resultDesc", "未知错误"));

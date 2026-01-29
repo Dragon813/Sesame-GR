@@ -445,11 +445,11 @@ public class AntFarmRpcCall {
     public static String drawGameCenterAward() {
         return ApplicationHook.requestString("com.alipay.antfarm.drawGameCenterAward", "[{\"requestType\":\"NORMAL\"," + "\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"version\":\"" + VERSION + "\"}]");
     }
-    
+    /*
     public static String queryGameList() {
         return ApplicationHook.requestString("com.alipay.antfarm.queryGameList",
                 "[{\"commonDegradeResult" + "\":{\"deviceLevel\":\"high\",\"resultReason\":0,\"resultType\":0},\"platform\":\"Android\"," + "\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"version\":\"" + VERSION + "\"}]");
-    }
+    }*/
     
     // 小鸡换装
     public static String listOrnaments() {
@@ -580,5 +580,46 @@ public class AntFarmRpcCall {
     public static String clickForGiftV2(String foodType, int giftIndex) {
         String args = "[{\"foodType\":\"" + foodType + "\",\"giftIndex\":" + giftIndex + ",\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"version\":\"" + VERSION + "\"}]";
         return ApplicationHook.requestString("com.alipay.antfarm.clickForGiftV2", args);
+    }
+    
+    
+    /**
+     * 领取蚂蚁庄园游戏中心奖励 (开宝箱)
+     * @param drawTimes 开启次数
+     */
+    public static String drawGameCenterAward(int drawTimes) {
+        return ApplicationHook.requestString("com.alipay.antfarm.drawGameCenterAward",
+                "[{" +
+                "  \"drawTimes\": " + drawTimes + "," +
+                "  \"requestType\": \"NORMAL\"," +
+                "  \"sceneCode\": \"ANTFARM\"," +
+                "  \"source\": \"H5\"," +
+                "  \"version\": \"" + VERSION + "\"" +
+                "}]");
+    }
+    
+    
+    /**
+     * 查询游戏列表 (如：蚂蚁农场、庄园等)
+     * 对应 methodName: com.alipay.charitygamecenter.queryGameList
+     */
+    public static String queryGameList() {
+        // 按照你提供的 JSON 结构进行字符串拼接
+        // 注意：requestData 是一个数组，内部包含一个对象
+        String data = "[{" +
+                      "\"bizType\":\"ANTFARM\"," +
+                      "\"commonDegradeFilterRequest\":{" +
+                      "\"deviceLevel\":\"high\"," +
+                      "\"platform\":\"Android\"," +
+                      "\"unityDeviceLevel\":\"high\"" +
+                      "}," +
+                      "\"recentAppRecordList\":[]," +
+                      "\"requestType\":\"NORMAL\"," +
+                      "\"sceneCode\":\"ANTFARM\"," +
+                      "\"source\":\"H5\"," +
+                      "\"version\":\"" + VERSION + "\"" +
+                      "}]";
+        
+        return ApplicationHook.requestString("com.alipay.charitygamecenter.queryGameList", data);
     }
 }

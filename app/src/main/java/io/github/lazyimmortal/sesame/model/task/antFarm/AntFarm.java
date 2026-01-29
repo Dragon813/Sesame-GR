@@ -3,6 +3,7 @@ package io.github.lazyimmortal.sesame.model.task.antFarm;
 import io.github.lazyimmortal.sesame.entity.AlipayAntFarmDoFarmTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntFarmDrawMachineTaskList;
 import io.github.lazyimmortal.sesame.entity.GameCenterMallItem;
+import io.github.lazyimmortal.sesame.model.task.antGame.GameTask;
 import io.github.lazyimmortal.sesame.util.idMap.AntFarmDoFarmTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.AntFarmDrawMachineTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.GameCenterMallItemMap;
@@ -152,7 +153,7 @@ public class AntFarm extends ModelTask {
         List<String> farmGameTimeList = new ArrayList<>();
         farmGameTimeList.add("2200-2400");
         modelFields.addField(farmGameTime = new ListModelField.ListJoinCommaToStringModelField("farmGameTime", "小鸡乐园 " + "| 游戏时间(范围)", farmGameTimeList));
-        modelFields.addField(drawGameCenterAward = new BooleanModelField("drawGameCenterAward", "小鸡乐园 | 开宝箱", false));
+        modelFields.addField(drawGameCenterAward = new BooleanModelField("drawGameCenterAward", "小鸡乐园 | 游戏宝箱", false));
         modelFields.addField(gameCenterBuyMallItem = new BooleanModelField("gameCenterBuyMallItem", "小鸡乐园 | 乐园集市", false));
         modelFields.addField(gameCenterBuyMallItemList = new SelectAndCountModelField("gameCenterBuyMallItemList", "小鸡乐园 | 兑奖", new LinkedHashMap<>(), GameCenterMallItem::getList, "请填写兑奖次数(每日)"));
         modelFields.addField(kitchen = new BooleanModelField("kitchen", "小鸡厨房", false));
@@ -631,9 +632,11 @@ public class AntFarm extends ModelTask {
             }
             
             if (useSpecialFood.getValue()) {
-                JSONArray cuisineList = jo.getJSONArray("cuisineList");
-                if (AnimalInteractStatus.HOME.name().equals(ownerAnimal.animalInteractStatus) && !AnimalFeedStatus.SLEEPY.name().equals(ownerAnimal.animalFeedStatus) && Status.canUseSpecialFoodToday()) {
-                    useFarmFood(cuisineList);
+                if (jo.has("cuisineList")) {
+                    JSONArray cuisineList = jo.getJSONArray("cuisineList");
+                    if (AnimalInteractStatus.HOME.name().equals(ownerAnimal.animalInteractStatus) && !AnimalFeedStatus.SLEEPY.name().equals(ownerAnimal.animalFeedStatus) && Status.canUseSpecialFoodToday()) {
+                        useFarmFood(cuisineList);
+                    }
                 }
             }
             
@@ -2554,6 +2557,64 @@ public class AntFarm extends ModelTask {
         try {
             JSONObject jo = new JSONObject(AntFarmRpcCall.queryGameList());
             if (jo.optBoolean("success")) {
+                // 2. 获取宝箱领取权限数据
+                JSONObject drawRights = jo.optJSONObject("gameCenterDrawRights");
+                if (drawRights != null) {
+                    // 3. 处理当前可开启的宝箱
+                    int quotaCanUse = drawRights.optInt("quotaCanUse"); // 当前可开宝箱数
+                    if (quotaCanUse > 0) {
+                        Log.record("当前有 " + quotaCanUse + " 个宝箱待开启...");
+                        
+                        while (quotaCanUse > 0) {
+                            // 调用开启宝箱接口
+                            String drawResStr = AntFarmRpcCall.drawGameCenterAward(1);
+                            JSONObject drawRes = new JSONObject(drawResStr);
+                            
+                            if (drawRes.optBoolean("success")) {
+                                // 更新剩余可开启次数
+                                JSONObject nextRights = drawRes.optJSONObject("gameCenterDrawRights");
+                                quotaCanUse = (nextRights != null) ? nextRights.optInt("quotaCanUse") : (quotaCanUse - 1);
+                                
+                                // 解析奖励列表并拼接日志
+                                JSONArray awardList = drawRes.optJSONArray("gameCenterDrawAwardList");
+                                List<String> awardStrings = new ArrayList<>();
+                                if (awardList != null) {
+                                    for (int i = 0; i < awardList.length(); i++) {
+                                        JSONObject item = awardList.getJSONObject(i);
+                                        String awardName = item.optString("awardName");
+                                        int awardCount = item.optInt("awardCount");
+                                        awardStrings.add(awardName + "*" + awardCount);
+                                    }
+                                }
+                                String awardLog = String.join(",", awardStrings);
+                                Log.farm("小鸡乐园🎁开宝箱得[" + awardLog + "]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                                TimeUtil.sleep(3000);
+                            }
+                            else {
+                                Log.record("小鸡乐园开启宝箱失败: " + drawRes.optString("desc"));
+                                break; // 开启失败则退出循环
+                            }
+                        }
+                    }
+                    
+                    // 4. 处理剩余任务（判断是否需要刷任务）
+                    int limit = drawRights.optInt("quotaLimit"); // 每日上限
+                    int used = drawRights.optInt("usedQuota");   // 今日已开数量
+                    int remainToTask = limit - used;
+                    // 已开数量 < 上限 且 无可用次数 → 触发任务刷取
+                    if (remainToTask > 0 && quotaCanUse == 0) {
+                        GameTask.Farm_ddply.report("庄园",remainToTask);
+                    }
+                    else if (remainToTask <= 0) {
+                        Log.record("今日 " + limit + " 个金蛋任务已全部满额");
+                    }
+                }
+                
+                // 异步任务完成
+                TimeUtil.sleep(3000);
+                
+                
+                /*
                 JSONObject gameDrawAwardActivity = jo.getJSONObject("gameDrawAwardActivity");
                 int canUseTimes = gameDrawAwardActivity.getInt("canUseTimes");
                 while (canUseTimes > 0) {
@@ -2581,7 +2642,7 @@ public class AntFarm extends ModelTask {
                     finally {
                         TimeUtil.sleep(3000);
                     }
-                }
+                }*/
             }
             else {
                 Log.i(TAG, "queryGameList falsed result: " + jo.toString());

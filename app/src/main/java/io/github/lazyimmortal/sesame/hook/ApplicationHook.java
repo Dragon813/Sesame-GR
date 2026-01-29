@@ -1,7 +1,6 @@
 package io.github.lazyimmortal.sesame.hook;
 
 
-
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlarmManager;
@@ -100,9 +99,13 @@ public class ApplicationHook implements IXposedHookLoadPackage {
     @Getter
     private static Object microApplicationContextObject = null;
     
+    // 新增：全局静态变量，存储当前进程名
+    public static String processName; // 供其他方法（如 startIfNeeded）调用
+    
     @Getter
+    private static Context context = null; // 全局上下文，对应 Kotlin 的 appContext
     @SuppressLint("StaticFieldLeak")
-    private static Context context = null;
+    private static Service service; // 目标 Service 实例，也是 Context 子类
     
     @Getter
     private static AlipayVersion alipayVersion = new AlipayVersion("");
@@ -119,10 +122,7 @@ public class ApplicationHook implements IXposedHookLoadPackage {
     
     @Getter
     private static final AtomicInteger reLoginCount = new AtomicInteger(0);
-    
-    @SuppressLint("StaticFieldLeak")
-    private static Service service;
-    
+
     @Getter
     private static Handler mainHandler;
     
@@ -147,6 +147,8 @@ public class ApplicationHook implements IXposedHookLoadPackage {
     
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) {
+        // 先提取进程名并赋值给全局变量
+        processName = lpparam.processName; // 新增：将 Xposed 提供的进程名赋值给全局变量
         // Hook验证码关闭功能
         /*
         try {
@@ -181,6 +183,9 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                     context = (Context) param.args[0];
                     try {
                         alipayVersion = new AlipayVersion(context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionName);
+                        AlipayMiniMarkHelper.init(classLoader);
+                        AuthCodeHelper.init(classLoader);
+                        AuthCodeHelper.getAuthCode("2021005114632037");
                     }
                     catch (Exception e) {
                         Log.printStackTrace(e);
@@ -243,10 +248,20 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                     @SuppressLint({"WakelockTimeout", "UnsafeDynamicallyLoadedCode"})
                     @Override
                     protected void afterHookedMethod(MethodHookParam param) {
+                        // 1. 获取目标 Service 实例（appService 是 Service 子类，也是 Context 类型）
                         Service appService = (Service) param.thisObject;
                         if (!ClassUtil.CURRENT_USING_SERVICE.equals(appService.getClass().getCanonicalName())) {
-                            return;
+                            return;// 非目标 Service，直接返回，保障只处理支付宝前台服务
                         }
+                        
+                        // 2. 兜底赋值全局 context（对应 Kotlin appContext 的二次赋值）
+                        context = appService.getApplicationContext(); // 获取应用全局上下文，更新全局变量
+                        service = appService; // 存储 Service 实例，供后续复用
+                        
+                        // 3. 调用 registerBroadcastReceiver，传入参数 Context（appService）
+                        // 这里的 appService 就是对应 Kotlin registerBroadcastReceiver(appContext!!) 的参数
+                        registerBroadcastReceiver(appService);
+                        
                         Log.i(TAG, "Service onCreate");
                         context = appService.getApplicationContext();
                         System.load(LibraryUtil.getLibSesamePath(context));
@@ -645,6 +660,7 @@ public class ApplicationHook implements IXposedHookLoadPackage {
         if (service == null) {
             return false;
         }
+
         destroyHandler(force);
         try {
             if (force) {
@@ -663,6 +679,12 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                     }, 2000);
                     return false;
                 }
+                
+                //调用 startIfNeeded 方法，参数与 Kotlin 保持一致
+                ModuleHttpServerManager.getInstance().startIfNeeded(8080, "ET3vB^#td87sQqKaY*eMUJXP", processName, "com.eg.android.AlipayGphone");
+                // 注册广播接收器，传入非空的 appContext
+                registerBroadcastReceiver(context);
+                
                 UserIdMap.initUser(userId);
                 Model.initAllModel();
                 Log.record("模块版本：" + modelVersion);
@@ -1137,6 +1159,7 @@ public class ApplicationHook implements IXposedHookLoadPackage {
             intentFilter.addAction("com.eg.android.AlipayGphone.sesame.status");
             intentFilter.addAction("com.eg.android.AlipayGphone.sesame.rpctest");
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                // 传入的 Context 参数（对应 Kotlin 的 appContext）用于注册广播
                 context.registerReceiver(new AlipayBroadcastReceiver(), intentFilter, Context.RECEIVER_EXPORTED);
             }
             else {

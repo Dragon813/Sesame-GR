@@ -159,6 +159,62 @@ public class AntForestRpcCall {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.energyRainSettlement", "[{\"activityPropNums" + "\":0,\"saveEnergy\":" + saveEnergy + ",\"token\":\"" + token + "\",\"version\":\"" + VERSION + "\"}]");
     }
     
+    /** 查询游戏列表 */
+    public static String queryGameList() {
+        return ApplicationHook.requestString("com.alipay.charitygamecenter.queryGameList",
+                "[{" +
+                "  \"bizType\": \"ANTFOREST\"," +
+                "  \"commonDegradeFilterRequest\": {" +
+                "    \"deviceLevel\": \"high\"," +
+                "    \"platform\": \"Android\"," +
+                "    \"unityDeviceLevel\": \"high\"" +
+                "  }," +
+                "  \"requestType\": \"RPC\"," +
+                "  \"sceneCode\": \"ANTFOREST\"," +
+                "  \"source\": \"chInfo_ch_appcenter__chsub_9patch\"," +
+                "  \"version\": \"" + VERSION + "\"" +
+                "}]");
+    }
+    /**
+     * 领取游戏中心奖励 (批量开宝箱)
+     * @param batchDrawCount 批量领取的次数 (例如 1 或 10)
+     */
+    public static String drawGameCenterAward(int batchDrawCount) {
+        return ApplicationHook.requestString("com.alipay.charitygamecenter.drawGameCenterAward",
+                "[{" +
+                "  \"batchDrawCount\": " + batchDrawCount + "," +
+                "  \"bizType\": \"ANTFOREST\"," +
+                "  \"requestType\": \"RPC\"," +
+                "  \"sceneCode\": \"ANTFOREST\"," +
+                "  \"source\": \"leyuan\"," +
+                "  \"version\": \"" + VERSION + "\"" +
+                "}]");
+    }
+    /**
+     * 查询能量雨/游戏结束列表奖励
+     */
+    public static String queryEnergyRainEndGameList() {
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.queryEnergyRainEndGameList", "[ {} ]");
+    }
+    
+    /** 初始化/上报游戏任务 */
+    public static String initTask(String taskType) {
+        // 生成类似 GAME_DONE_SLJYD_1769062463227_569cf36c 的 outBizNo
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        String randomSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
+        String outBizNo = taskType + "_" + timestamp + "_" + randomSuffix;
+        
+        return ApplicationHook.requestString("com.alipay.antiep.initTask",
+                "[{" +
+                "  \"outBizNo\": \"" + outBizNo + "\"," +
+                "  \"requestType\": \"H5\"," +
+                "  \"sceneCode\": \"ANTFOREST_ENERGY_RAIN_TASK\"," +
+                "  \"source\": \"ANTFOREST\"," +
+                "  \"taskType\": \"" + taskType + "\"" +
+                "}]");
+    }
+    
+    
     public static String receiveTaskAward(String sceneCode, String taskType) {
         return ApplicationHook.requestString("com.alipay.antiep.receiveTaskAward", "[{\"ignoreLimit\":false," + "\"requestType\":\"H5\",\"sceneCode\":\"" + sceneCode + "\",\"source\":\"ANTFOREST\",\"taskType\":\"" + taskType + "\"}]");
     }

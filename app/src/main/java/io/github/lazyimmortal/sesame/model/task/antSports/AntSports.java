@@ -221,7 +221,8 @@ public class AntSports extends ModelTask {
                 userTaskGroupQuery("SPORTS_DAILY_GROUP");
                 userTaskRightsReceive();
                 pathFeatureQuery();
-                participate();
+                //{"error":3000,"errorMessage":"系统出错，正在排查","errorNo":3,"errorTip":"3000"}
+                //participate();
             }
             
             if (club.getValue()) {

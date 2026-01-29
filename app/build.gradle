@@ -85,4 +85,7 @@ dependencies {
     compatibleImplementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.13.5'
     compatibleImplementation group: 'com.fasterxml.jackson.core', name: 'jackson-annotations', version: '2.13.5'
 
+    // NanoHTTPD 核心依赖（最新稳定版）
+    implementation 'org.nanohttpd:nanohttpd:2.3.1'
+
 }
