@@ -105,7 +105,10 @@ public class AntMember extends ModelTask {
     public void run() {
         try {
             //初始任务列表
-            initMemberTaskListMap(AutoAntMemberTaskList.getValue(), AutoMemberCreditSesameTaskList.getValue(), AntMemberTask.getValue(), collectSesame.getValue());
+            if (!Status.hasFlagToday("BlackList::initMember")) {
+                initMemberTaskListMap(AutoAntMemberTaskList.getValue(), AutoMemberCreditSesameTaskList.getValue(), AntMemberTask.getValue(), collectSesame.getValue());
+                Status.flagToday("BlackList::initMember");
+            }
             
             if (memberSign.getValue()) {
                 memberSign();
@@ -160,7 +163,7 @@ public class AntMember extends ModelTask {
                 checkAndDoSignIn();
                 //查询并处理任务列表
                 queryAndProcessTaskList();
-
+                
                 //查询玩乐豆小球列表，有则领取
                 queryPointBallList();
                 

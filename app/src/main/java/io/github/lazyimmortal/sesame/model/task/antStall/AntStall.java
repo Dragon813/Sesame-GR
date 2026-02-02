@@ -144,12 +144,15 @@ public class AntStall extends ModelTask {
             selfHomeHandler(selfHome);
             
             //初始任务列表
-            initAntStallTaskListMap(AutoAntStallTaskList.getValue(), taskList.getValue());
+            if (!Status.hasFlagToday("BlackList::initAntStall")) {
+                initAntStallTaskListMap(AutoAntStallTaskList.getValue(), taskList.getValue());
+                Status.flagToday("BlackList::initAntStall");
+            }
             
             if (throwManureType.getValue() != ThrowManureType.NONE) {
                 throwManure();
             }
-            if(!manualCollectManure.getValue()){
+            if (!manualCollectManure.getValue()) {
                 collectManure();
             }
             

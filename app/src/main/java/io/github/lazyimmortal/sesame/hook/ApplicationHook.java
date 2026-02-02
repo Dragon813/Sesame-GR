@@ -1,6 +1,9 @@
 package io.github.lazyimmortal.sesame.hook;
 
 
+import static io.github.lazyimmortal.sesame.hook.SimplePageManager.addHandler;
+import static io.github.lazyimmortal.sesame.hook.SimplePageManager.enableWindowMonitoring;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlarmManager;
@@ -186,6 +189,17 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                         AlipayMiniMarkHelper.init(classLoader);
                         AuthCodeHelper.init(classLoader);
                         AuthCodeHelper.getAuthCode("2021005114632037");
+                        // ========== 关键改动：异步执行 initSimplePageManager，不阻塞 ==========
+                        // 用线程直接执行（项目中大量使用 Thread 方式，贴合风格）
+                        //new Thread(() -> {
+                        //    try {
+                                initSimplePageManager();
+                       //     } catch (Throwable t) {
+                                // 复用项目日志风格，捕获异步执行异常
+                       //         Log.i(TAG, "initSimplePageManager async err:");
+                       //         Log.printStackTrace(TAG, t);
+                       //     }
+                       // }, "InitSimplePageManager-Thread").start();
                     }
                     catch (Exception e) {
                         Log.printStackTrace(e);
@@ -1171,5 +1185,35 @@ public class ApplicationHook implements IXposedHookLoadPackage {
             Log.i(TAG, "hook registerBroadcastReceiver err:");
             Log.printStackTrace(TAG, th);
         }
+    }
+    
+    // 滑块验证hook注册
+    private void initSimplePageManager() {
+        if (shouldEnableSimplePageManager()) {
+            enableWindowMonitoring(classLoader);
+            addHandler(
+                    "com.alipay.mobile.nebulax.xriver.activity.XRiverActivity", new Captcha1Handler()
+            );
+            addHandler("com.eg.android.AlipayGphone.AlipayLogin", new Captcha2Handler());
+        }
+    }
+    
+    /**
+     * 检查目标应用版本是否需要启用SimplePageManager功能
+     * @return true表示版本低于等于10.6.58.99999，需要启用；false表示不需要
+     */
+    private boolean shouldEnableSimplePageManager() {
+        if (alipayVersion.toString().isEmpty()) {
+            return false;
+        }
+        
+        AlipayVersion maxSupported = new AlipayVersion("10.6.58.99999");
+        if (alipayVersion.compareTo(maxSupported) > 0) {
+            // 只有在不支持时才打印警告
+            Log.record("目标应用版本 " + alipayVersion + " 高于 10.6.58，不支持自动过滑块验证");
+            return false;
+        }
+        
+        return true;
     }
 }

@@ -1,12 +1,9 @@
 package io.github.lazyimmortal.sesame.model.task.antForest;
 
-import static io.github.lazyimmortal.sesame.util.RandomUtil.getRandomString;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -166,8 +163,13 @@ public class AntForestV2 extends ModelTask {
     private BooleanModelField balanceNetworkDelay;
     //PK能量
     private BooleanModelField pkEnergy;
-    private BooleanModelField closeWhackMole;
-    private IntegerModelField WhackMoleRoundNum;
+    private ChoiceModelField whackModeName;
+    private IntegerModelField whackModeGames;
+    private IntegerModelField whackModeCount;
+    private IntegerModelField earliestwhackMoleTime;
+    
+    // 定义运行模式名称数组（需提前声明，与原 Kotlin 中的 whackMoleModeNames 对应）
+    
     private BooleanModelField collectProp;
     private StringModelField queryInterval;
     private StringModelField collectInterval;
@@ -282,8 +284,10 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(helpFriendCollectListLimit = new IntegerModelField("helpFriendCollectListLimit", "复活好友能量下限(大于该值复活)", 0, 0, 100000));
         modelFields.addField(vitalityExchangeBenefit = new BooleanModelField("vitalityExchangeBenefit", "活力值 | 兑换权益", false));
         modelFields.addField(vitality_ExchangeBenefitList = new SelectAndCountModelField("vitality_ExchangeBenefitList", "活力值 | 权益列表", new LinkedHashMap<>(), VitalityBenefit::getList, "请填写兑换次数(每日)"));
-        modelFields.addField(closeWhackMole = new BooleanModelField("closeWhackMole", "关闭6秒拼手速(打地鼠)", true));
-        modelFields.addField(WhackMoleRoundNum = new IntegerModelField("WhackMoleRoundNum", "打地鼠同时开局数(结算取最高局)", 3, 1, 6));
+        modelFields.addField(whackModeName = new ChoiceModelField("whackModeName", "6秒拼手速 | 运行模式", whackModeNames.CLOSE, whackModeNames.nickNames));
+        modelFields.addField(whackModeGames = new IntegerModelField("whackModeGames", "6秒拼手速 | 激进模式局数", 5));
+        modelFields.addField(whackModeCount = new IntegerModelField("whackModeCount", "6秒拼手速 | 兼容模式击打数", 15));
+        modelFields.addField(earliestwhackMoleTime = new IntegerModelField("earliestwhackMoleTime", "6秒拼手速 | 最早执行(24小时制)", 0, 8, 23));
         modelFields.addField(collectProp = new BooleanModelField("collectProp", "收集道具", false));
         modelFields.addField(whoYouWantToGiveTo = new SelectModelField("whoYouWantToGiveTo", "赠送道具好友列表", new LinkedHashSet<>(), AlipayUser::getList, "会赠送所有可送道具都给已选择的好友"));
         modelFields.addField(energyRain = new BooleanModelField("energyRain", "收集能量雨", false));
@@ -414,7 +418,7 @@ public class AntForestV2 extends ModelTask {
             if (!TaskCommon.IS_ENERGY_TIME && selfHomeObject != null) {
                 String whackMoleStatus = selfHomeObject.optString("whackMoleStatus");
                 if (Objects.equals("CAN_PLAY", whackMoleStatus) || Objects.equals("CAN_INITIATIVE_PLAY", whackMoleStatus) || Objects.equals("NEED_MORE_FRIENDS", whackMoleStatus)) {
-                    whackMole();
+                    checkAndHandleWhackMole();
                 }
                 boolean hasMore = false;
                 do {
@@ -514,7 +518,14 @@ public class AntForestV2 extends ModelTask {
                 }
                 while (hasMore);
                 //JSONArray usingUserProps = selfHomeObject.has("usingUserProps") ? selfHomeObject.getJSONArray("usingUserProps") : new JSONArray();
-                JSONArray usingUserProps = selfHomeObject.has("usingUserPropsNew") ? selfHomeObject.getJSONArray("usingUserPropsNew") : new JSONArray();
+                //JSONArray usingUserProps = selfHomeObject.has("usingUserPropsNew") ? selfHomeObject.getJSONArray("usingUserPropsNew") : new JSONArray();
+                JSONArray usingUserProps;
+                if (selfHomeObject.has("usingUserPropsNew")) {
+                    usingUserProps = selfHomeObject.getJSONArray("usingUserPropsNew");
+                }
+                else {
+                    usingUserProps = selfHomeObject.has("usingUserProps") ? selfHomeObject.getJSONArray("usingUserProps") : new JSONArray();
+                }
                 boolean canConsumeAnimalProp = true;
                 if (usingUserProps.length() > 0) {
                     for (int i = 0; i < usingUserProps.length(); i++) {
@@ -562,7 +573,10 @@ public class AntForestV2 extends ModelTask {
                 //}
                 
                 //初始任务列表
-                initAntForestTaskListMap(AutoAntForestVitalityTaskList.getValue(), AutoAntForestHuntTaskList.getValue(), receiveForestTaskAward.getValue(), ForestHunt.getValue());
+                if (!Status.hasFlagToday("BlackList::initAntForest")) {
+                    initAntForestTaskListMap(AutoAntForestVitalityTaskList.getValue(), AutoAntForestHuntTaskList.getValue(), receiveForestTaskAward.getValue(), ForestHunt.getValue());
+                    Status.flagToday("BlackList::initAntForest");
+                }
                 
                 // 组队合种浇水
                 if (partnerteamWater.getValue()) {
@@ -629,12 +643,11 @@ public class AntForestV2 extends ModelTask {
                 if (dress.getValue()) {
                     dress();
                 }
-                if (!closeWhackMole.getValue()) {
-                    whackMole();
-                }
+                
+                checkAndHandleWhackMole();
                 
                 //森林乐园
-                if(drawGameCenterAward.getValue()){
+                if (drawGameCenterAward.getValue()) {
                     doforestgame();
                 }
                 
@@ -858,6 +871,27 @@ public class AntForestV2 extends ModelTask {
             long serverTime = userHomeObject.getLong("now");
             int offsetTime = offsetTimeMath.nextInteger((int) ((start + end) / 2 - serverTime));
             Log.i("服务器时间：" + serverTime + "，本地与服务器时间差：" + offsetTime);
+            //兼容组队模式
+            if (isTeam(userHomeObject)) {
+                JSONObject teamHomeResult = userHomeObject.optJSONObject("teamHomeResult");
+                JSONObject mainMember = teamHomeResult != null ? teamHomeResult.optJSONObject("mainMember") : null;
+                //取出组队模式下的selfHomeObject
+                if (mainMember != null) {
+                    Iterator<String> keyIterator = mainMember.keys();
+                    while (keyIterator.hasNext()) {
+                        String key = keyIterator.next();
+                        Object value = mainMember.get(key);
+                        //将道具卡详情存为一般森林主页格式，以便统一解析
+                        if (key.equals("usingUserProps")) {
+                            key = "usingUserPropsNew";
+                        }
+                        // 核心方法：put()
+                        // 效果：存在该 key 则覆盖原值，不存在则新增键值对
+                        userHomeObject.put(key, value);
+                    }
+                }
+                //userHomeObject = teamHomeResult != null ? teamHomeResult.optJSONObject("mainMember") : null;
+            }
         }
         catch (Throwable t) {
             Log.printStackTrace(t);
@@ -885,11 +919,11 @@ public class AntForestV2 extends ModelTask {
         try {
             JSONObject selfHomeObject = querySelfHome();
             if (selfHomeObject != null) {
-                if (closeWhackMole.getValue()) {
+                if (whackModeName.getValue() == whackModeNames.CLOSE) {
                     JSONObject propertiesObject = selfHomeObject.optJSONObject("properties");
                     if (propertiesObject != null) {
                         if (Objects.equals("Y", propertiesObject.optString("whackMole"))) {
-                            if (WhackMole.closeWhackMole()) {
+                            if (io.github.lazyimmortal.sesame.model.task.antForest.WhackMole.closeWhackMole()) {
                                 Log.record("6秒拼手速关闭成功");
                             }
                             else {
@@ -901,7 +935,7 @@ public class AntForestV2 extends ModelTask {
                 String nextAction = selfHomeObject.optString("nextAction");
                 if ("WhackMole".equalsIgnoreCase(nextAction)) {
                     Log.record("检测到6秒拼手速强制弹窗，先执行拼手速");
-                    whackMole();
+                    checkAndHandleWhackMole();
                 }
                 return collectUserEnergy(UserIdMap.getCurrentUid(), selfHomeObject, "ordinary");
             }
@@ -963,7 +997,6 @@ public class AntForestV2 extends ModelTask {
                             if (joProp.getLong("endTime") > serverTime) {
                                 Log.record("[" + userName + "]被能量罩保护着哟");
                                 isCollectEnergy = false;
-                                
                                 JSONArray jaBubbles = userHomeObject.getJSONArray("bubbles");
                                 for (int ii = 0; ii < jaBubbles.length(); ii++) {
                                     JSONObject canbubble = jaBubbles.getJSONObject(ii);
@@ -1064,8 +1097,10 @@ public class AntForestV2 extends ModelTask {
                             break;
                     }
                 }
-                //不是自己或者是自己全收的情况
-                if (batchRobEnergy.getValue() && (!isSelf || (CollectSelfEnergyType.getValue() == CollectSelfType.ALL))) {
+                //兼容组队模式
+                JSONObject selfHomeObject = new JSONObject(AntForestRpcCall.queryHomePage());
+                //不是自己或者是自己不在组队模式全收的情况
+                if (batchRobEnergy.getValue() && (!isSelf || (CollectSelfEnergyType.getValue() == CollectSelfType.ALL && !isTeam(selfHomeObject)))) {
                     Iterator<Long> iterator = bubbleIdList.iterator();
                     List<Long> batchBubbleIdList = new ArrayList<>();
                     while (iterator.hasNext()) {
@@ -1617,7 +1652,7 @@ public class AntForestV2 extends ModelTask {
      */
     private void whackMole() {
         try {
-            if (!closeWhackMole.getValue()) {
+            if (whackModeName.getValue() == whackModeNames.CLOSE) {
                 // 检查今天是否已执行过打地鼠
                 if (Status.hasFlagToday("forest::whackMole::executed")) {
                     Log.record("⏭️ 今天已完成过6秒拼手速，跳过执行");
@@ -1625,7 +1660,7 @@ public class AntForestV2 extends ModelTask {
                 else {
                     // 主动执行打地鼠（今日首次）
                     Log.record("🎮 开始执行6秒拼手速（今日首次）");
-                    WhackMole.startWhackMole(WhackMoleRoundNum.getValue());
+                    checkAndHandleWhackMole();
                     Status.flagToday("forest::whackMole::executed");
                     Log.record("✅ 6秒拼手速已完成，今天不再执行");
                 }
@@ -1633,6 +1668,48 @@ public class AntForestV2 extends ModelTask {
         }
         catch (Throwable t) {
             Log.i(TAG, "whackMole err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+    
+    private void checkAndHandleWhackMole() {
+        try {
+            // 获取当前选择的索引 (0, 1, 或 2)
+            int modeIndex = (whackModeName != null) ? whackModeName.getValue() : 0;
+            
+            // 如果索引为 0 (关闭)，直接返回
+            if (modeIndex == 0) {
+                return;
+            }
+            
+            // 检查执行时间
+            int hour = Integer.parseInt(Log.getFormatTime().split(":")[0]);
+            if (hour >= earliestwhackMoleTime.getValue()) {
+                String whackMoleFlag = "forest::whackMole::executed";
+                if (Status.hasFlagToday(whackMoleFlag)) {
+                    return;
+                }
+                
+                // 根据索引匹配模式
+                switch (modeIndex) {
+                    case 1: // 兼容模式
+                        Log.record("触发任务🎮拼手速:兼容模式");
+                        WhackMole.setTotalGames(1);
+                        int defaultMoleCount = (whackModeCount != null) ? whackModeCount.getValue() : 15;
+                        WhackMole.setMoleCount(defaultMoleCount);
+                        WhackMole.start(WhackMole.Mode.COMPATIBLE);
+                        break;
+                    
+                    case 2: // 激进模式
+                        Log.record("触发任务🎮拼手速:激进模式");
+                        int configGames = (whackModeGames != null) ? whackModeGames.getValue() : 5;
+                        WhackMole.setTotalGames(configGames);
+                        WhackMole.start(WhackMole.Mode.AGGRESSIVE);
+                        break;
+                }
+            }
+        }
+        catch (Throwable t) {
             Log.printStackTrace(TAG, t);
         }
     }
@@ -2474,7 +2551,7 @@ public class AntForestV2 extends ModelTask {
                         if ("GAME_DONE_SLJYD".equals(taskType)) {
                             if ("TODO".equals(taskStatus) || "NOT_TRIGGER".equals(taskStatus)) {
                                 // 执行任务上报
-                                GameTask.Forest_sljyd.report("森林",1);
+                                GameTask.Forest_sljyd.report("森林", 1);
                                 return true; // 有任务待处理
                             }
                             else if ("FINISHED".equals(taskStatus) || "DONE".equals(taskStatus)) {
@@ -2564,7 +2641,7 @@ public class AntForestV2 extends ModelTask {
                 // 2. 判断是否需要刷任务
                 int remainToTask = limitCount - usedCount;
                 if (remainToTask > 0) {
-                    GameTask.Forest_slxcc.report("森林",remainToTask);
+                    GameTask.Forest_slxcc.report("森林", remainToTask);
                 }
                 else {
                     Log.record("今日森林乐园游戏任务已满额");
@@ -3628,7 +3705,7 @@ public class AntForestV2 extends ModelTask {
             
             int currentEnergy = homeJo.optJSONObject("userBaseInfo").optInt("currentEnergy", 0);
             if (currentEnergy < 10) {
-                Log.record("当前能量不足10g (" + currentEnergy + "g)，无法浇水");
+                Log.record("当前能量不足10g(" + currentEnergy + "g)，无法浇水");
                 return;
             }
             
@@ -3652,7 +3729,7 @@ public class AntForestV2 extends ModelTask {
             }
             
             int serverRemaining = miscJo.optJSONObject("combineHandlerVOMap").optJSONObject("teamCanWaterCount").optInt("waterCount", 0);
-            Log.record("组队状态检查: 目标剩余" + userRemainingQuota + "g | 官方剩余" + serverRemaining + "g | 背包能量" + currentEnergy + "g");
+            Log.record("组队状态检查:目标剩余" + userRemainingQuota + "g|官方剩余" + serverRemaining + "g|背包能量" + currentEnergy + "g");
             
             if (serverRemaining < 10) {
                 Log.record("官方限制今日无可浇水额度，跳过");
@@ -4024,5 +4101,12 @@ public class AntForestV2 extends ModelTask {
         int BELOW_THRESHOLD = 2;
         
         String[] nickNames = {"所有", "大于阈值", "小于阈值"};
+    }
+    
+    public interface whackModeNames {
+        int CLOSE = 0;
+        int WHACK_MODE_COMPATIBLE = 1;
+        int WHACK_MODE_AGGRESSIVE = 2;
+        String[] nickNames = {"关闭", "兼容模式", "激进模式"};
     }
 }

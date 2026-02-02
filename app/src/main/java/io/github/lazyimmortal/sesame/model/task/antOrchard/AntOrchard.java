@@ -139,8 +139,10 @@ public class AntOrchard extends ModelTask {
             }
             
             //初始任务列表
-            initAntOrchardTaskListMap(AutoAntOrchardTaskList.getValue(), orchardListTask.getValue());
-            
+            if (!Status.hasFlagToday("BlackList::initAntOrchard")) {
+                initAntOrchardTaskListMap(AutoAntOrchardTaskList.getValue(), orchardListTask.getValue());
+                Status.flagToday("BlackList::initAntOrchard");
+            }
             // 额外信息获取（每日肥料包）
             extraInfoGet();
             
@@ -1118,7 +1120,7 @@ public class AntOrchard extends ModelTask {
                                 }
                                 
                                 String jackpotMessage = jackpot ? "（触发大奖）" : "";
-                                Log.farm("砸出肥料🎖️" + manureCount + " g" + unsmashedGoldenEggsString + jackpotMessage+"#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                                Log.farm("砸出肥料🎖️" + manureCount + "g" + unsmashedGoldenEggsString + jackpotMessage + "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                             }
                         }
                     }

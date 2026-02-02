@@ -305,7 +305,7 @@ public class MessageUtil {
             TaskSelectModelField.add(taskTitle, 0); // 数组类型忽略count，传0
         }
         if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
-            Log.record("添加" + TaskListName + "黑名单: " + TaskSelectModelField.getValue());
+            Log.record("自动拉黑🏴在["+TaskListName+"]中添加[" + taskTitle + "]黑名单:" + TaskSelectModelField.getValue());
         }
         else {
             Log.record("添加" + TaskListName + "黑名单失败：" + taskTitle);

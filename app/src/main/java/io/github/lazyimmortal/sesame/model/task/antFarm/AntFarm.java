@@ -191,7 +191,10 @@ public class AntFarm extends ModelTask {
             }
             
             //初始任务列表
-            initAntFarmTaskListMap(AutoAntFarmDoFarmTaskList.getValue(), AutoAntFarmDrawMachineTaskList.getValue(), drawMachine.getValue());
+            if (!Status.hasFlagToday("BlackList::initAntFarm")) {
+                initAntFarmTaskListMap(AutoAntFarmDoFarmTaskList.getValue(), AutoAntFarmDrawMachineTaskList.getValue(), drawMachine.getValue());
+                Status.flagToday("BlackList::initAntFarm");
+            }
             
             if (rewardFriend.getValue()) {
                 rewardFriend();
@@ -1283,9 +1286,11 @@ public class AntFarm extends ModelTask {
             boolean correct = jo.getBoolean("correct");
             String award = extInfo.getString("award");
             Log.record("庄园答题📝回答" + (correct ? "正确" : "错误") + "#获得[" + award + "g饲料]");
-            JSONArray operationConfigList = jo.getJSONArray("operationConfigList");
-            savePreviewQuestion(operationConfigList);
-            return true;
+            if (jo.has("operationConfigList")) {
+                JSONArray operationConfigList = jo.getJSONArray("operationConfigList");
+                savePreviewQuestion(operationConfigList);
+                return true;
+            }
         }
         catch (Throwable t) {
             Log.i(TAG, "doAnswerTask err:");
@@ -2163,7 +2168,7 @@ public class AntFarm extends ModelTask {
         }
     }
     
-    // 获取活力值商店列表
+    // 获取乐币购买商店列表
     private JSONArray getGameCenterMallItemList(String bizType) {
         JSONArray mallItemSimpleList = null;
         try {
@@ -2603,7 +2608,7 @@ public class AntFarm extends ModelTask {
                     int remainToTask = limit - used;
                     // 已开数量 < 上限 且 无可用次数 → 触发任务刷取
                     if (remainToTask > 0 && quotaCanUse == 0) {
-                        GameTask.Farm_ddply.report("庄园",remainToTask);
+                        GameTask.Farm_ddply.report("庄园", remainToTask);
                     }
                     else if (remainToTask <= 0) {
                         Log.record("今日 " + limit + " 个金蛋任务已全部满额");

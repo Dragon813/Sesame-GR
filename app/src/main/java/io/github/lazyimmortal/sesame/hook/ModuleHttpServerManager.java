@@ -60,8 +60,8 @@ public class ModuleHttpServerManager {
             
             server = newServer;
             // 原Kotlin中注释的日志可根据需要启用
-            Log.record("🚀 HTTP 服务已启动: http://127.0.0.1:" + port);
-            Log.record("🔑 Token: " + secretToken);
+            Log.record("服务启动🚀HTTP: http://127.0.0.1:" + port);
+            Log.record("标记令牌🔑Token: " + secretToken);
             
         } catch (Exception e) {
             Log.printStackTrace("HTTP 服务启动失败", e);

@@ -97,8 +97,10 @@ public class AntOcean extends ModelTask {
             }
             
             //初始任务列表
-            initAntOceanAntiepTaskListMap(AutoAntOceanAntiepTaskList.getValue(), queryTaskList.getValue());
-            
+            if (!Status.hasFlagToday("BlackList::initAntOceanAntiep")) {
+                initAntOceanAntiepTaskListMap(AutoAntOceanAntiepTaskList.getValue(), queryTaskList.getValue());
+                Status.flagToday("BlackList::initAntOceanAntiep");
+            }
             queryHomePage();
             
             if (queryTaskList.getValue()) {

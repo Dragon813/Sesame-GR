@@ -185,11 +185,11 @@ public class AntSports extends ModelTask {
                         if ((Boolean) XposedHelpers.callMethod(XposedHelpers.callStaticMethod(classLoader.loadClass("com.alibaba.health.pedometer.intergation.rpc.RpcManager"), "a"), "a", new Object[]{step, Boolean.FALSE, "system"})) {
                             Toast.show("同步步数🏃🏻‍♂️[" + step + "步]");
                             Log.other("同步步数🏃🏻‍♂️[" + step + "步]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                            Status.flagToday("sport::syncStep");
                         }
                         else {
                             Log.record("同步运动步数失败:" + step);
                         }
-                        Status.flagToday("sport::syncStep");
                     }
                     catch (Throwable t) {
                         Log.printStackTrace(TAG, t);
@@ -202,7 +202,10 @@ public class AntSports extends ModelTask {
             }
             
             //初始任务列表
-            initAntSportsTaskListMap(AutoAntSportsTaskList.getValue(), sportsTasks.getValue());
+            if (!Status.hasFlagToday("BlackList::initAntSports")) {
+                initAntSportsTaskListMap(AutoAntSportsTaskList.getValue(), sportsTasks.getValue());
+                Status.flagToday("BlackList::initAntSports");
+            }
             
             if (donateCharityCoinType.getValue() != DonateCharityCoinType.ZERO) {
                 queryProjectList();

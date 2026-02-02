@@ -125,6 +125,8 @@ public class AntFarmRpcCall {
     //String outBizNo = taskType + "_" + RandomUtil.nextDouble();
     //{"bizKey":"IP_EXCHANGE_TASK","requestType":"RPC","sceneCode":"ANTFARM","source":"antfarm_villa","taskSceneCode":"ANTFARM_IP_DRAW_TASK"}
     
+    
+    //{"bizKey":"ccl_rongrongxiaoji","requestType":"RPC","sceneCode":"ANTFARM","source":"antfarm_villa","taskSceneCode":"ANTFARM_DAILY_DRAW_TASK"}
     public static String doFarmTask(String bizKey, String taskSceneCode) {
         String args1 = "[{\"bizKey\":\"" + bizKey + "\",\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"taskSceneCode\":\"" + taskSceneCode + "\"}]";
         return ApplicationHook.requestString("com.alipay.antfarm.doFarmTask", args1);

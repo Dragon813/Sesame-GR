@@ -101,14 +101,14 @@ public enum GameTask {
                 JSONObject data = resJson.optJSONObject("data");
                 if (data != null) {
                     this.cachedToken = data.optString("token");
-                    Log.record("登录成功✅Token 已获取");
+                    Log.record("登录成功✅Token已获取");
                     return this.cachedToken;
                 }
             } else {
-                Log.error("❌ 登录接口报错 (Code " + respCode + "): " + responseText);
+                Log.error("登录接口❌报错(Code" + respCode + "):" + responseText);
             }
         } catch (Exception e) {
-            Log.error("🚨 登录过程抛出异常: " + e.getMessage());
+            Log.error("登录过程🚨抛出异常:" + e.getMessage());
         }
         return null;
     }
@@ -122,11 +122,11 @@ public enum GameTask {
         new Thread(() -> {
             this.cachedToken = login();
             if (this.cachedToken == null || this.cachedToken.isEmpty()) {
-                 Log.error("⚠️ 无法获取有效的 Token，放弃上报任务");
+                 Log.error("无法获取⚠️有效的Token，放弃上报任务");
                 return;
             }
 
-            Log.record("开始执行🚀"+gameType+"游戏任务：目标 " + eggCount + " 个蛋，需请求 " + totalNeeded + " 次");
+            Log.record("开始执行🚀"+gameType+"游戏任务:目标" + eggCount + "个蛋，需请求" + totalNeeded + "次");
             for (int i = 1; i <= totalNeeded; i++) {
                 if (!executeSingleReport(gameType,i, totalNeeded)) {
                     // 具体的错误原因已在 executeSingleReport 中详细输出

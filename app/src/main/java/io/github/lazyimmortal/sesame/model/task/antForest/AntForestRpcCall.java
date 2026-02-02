@@ -15,9 +15,12 @@ import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class AntForestRpcCall {
     
@@ -382,11 +385,63 @@ public class AntForestRpcCall {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.startWhackMole", "[{\"source\":\"" + source + "\"}]");
     }
     
+    public static String startWhackMole() throws JSONException
+    {
+        JSONObject param = new JSONObject();
+        param.put("source", "senlinguangchangdadishu");
+        return ApplicationHook.requestString(
+                "alipay.antforest.forest.h5.startWhackMole",
+                "[" + param + "]"
+        );
+    }
+    
     /**
      * 打单个地鼠
      */
     public static String whackMole(long moleId, String token, String source) {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.whackMole", "[{\"moleId\":" + moleId + ",\"source\":\"" + source + "\",\"token\":\"" + token + "\",\"version\":\"" + VERSION + "\"}]");
+    }
+    
+    public static String oldwhackMole(long moleId, String token, String source) {
+        return ApplicationHook.requestString(
+                "alipay.antforest.forest.h5.whackMole",
+                "[{\"moleId\":" + moleId + ",\"source\":\"" + source + "\",\"token\":\"" + token + "\",\"version\":\"" + VERSION + "\"}]");
+    }
+    public static String oldstartWhackMole(String source) {
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.startWhackMole", "[{\"source\":\"" + source + "\"}]");
+    }
+    
+    public static String settlementWhackMole(String token) throws JSONException {
+        // 改用传统 for 循环生成 1-20 的 moleIdList（替换原 1-15，按注释要求改到20）
+        List<Integer> moleIdList = new ArrayList<>();
+        for (int i = 1; i <= 20; i++) { // 按你注释要求改为 1-20
+            moleIdList.add(i);
+        }
+        
+        JSONObject param = new JSONObject();
+        param.put("moleIdList", new JSONArray(moleIdList));
+        param.put("settlementScene", "NORMAL");
+        param.put("source", "senlinguangchangdadishu");
+        param.put("token", token);
+        param.put("version", VERSION);
+        
+        return ApplicationHook.requestString(
+                "alipay.antforest.forest.h5.settlementWhackMole",
+                "[" + param + "]"
+        );
+    }
+    
+    //兼容模式结算
+    public static String oldsettlementWhackMole(String token, List<String> moleIdList, String source) {
+        return ApplicationHook.requestString(
+                "alipay.antforest.forest.h5.settlementWhackMole",
+                "[{\"moleIdList\":["
+                + String.join(",", moleIdList)
+                + "],\"settlementScene\":\"NORMAL\",\"source\":\"" + source + "\",\"token\":\""
+                + token
+                + "\",\"version\":\""
+                + VERSION
+                + "\"}]");
     }
     
     public static String settlementWhackMole(String token, List<String> moleIdList, String source) {
