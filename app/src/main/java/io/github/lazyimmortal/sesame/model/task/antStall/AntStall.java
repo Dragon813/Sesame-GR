@@ -87,6 +87,7 @@ public class AntStall extends ModelTask {
     
     private BooleanModelField manualCollectManure;
     private BooleanModelField taskList;
+    private BooleanModelField doTaskOnce;
     private BooleanModelField donate;
     private BooleanModelField nextVillage;
     private BooleanModelField inviteRegister;
@@ -115,6 +116,7 @@ public class AntStall extends ModelTask {
         modelFields.addField(taskList = new BooleanModelField("taskList", "新村任务 | 加速产币", false));
         modelFields.addField(AutoAntStallTaskList = new BooleanModelField("AutoAntStallTaskList", "新村任务 | 自动黑白名单", true));
         modelFields.addField(AntStallTaskList = new SelectModelField("AntStallTaskList", "新村任务 | 黑名单列表", new LinkedHashSet<>(), AlipayAntStallTaskList::getList));
+        modelFields.addField(doTaskOnce = new BooleanModelField("doTaskOnce", "新村任务仅执行一次", false));
         modelFields.addField(donate = new BooleanModelField("donate", "助力就业岗位", false));
         modelFields.addField(nextVillage = new BooleanModelField("nextVillage", "解锁新村新店", false));
         modelFields.addField(inviteRegister = new BooleanModelField("inviteRegister", "邀请开通 | 开启", false));
@@ -165,6 +167,7 @@ public class AntStall extends ModelTask {
             
             if (taskList.getValue()) {
                 taskList();
+                
             }
             if (assistFriend.getValue()) {
                 assistFriend();
@@ -248,7 +251,11 @@ public class AntStall extends ModelTask {
             }
             
             if (taskList) {
-                JSONObject jo = new JSONObject(AntStallRpcCall.taskList());
+                String jostr = AntStallRpcCall.taskList();
+                if (jostr == null) {
+                    return;
+                }
+                JSONObject jo = new JSONObject(jostr);
                 if (MessageUtil.checkResultCode(TAG, jo)) {
                     JSONArray taskModels = jo.getJSONArray("taskModels");
                     for (int i = 0; i < taskModels.length(); i++) {
@@ -646,8 +653,19 @@ public class AntStall extends ModelTask {
     
     private void taskList() {
         try {
-            JSONObject jo = new JSONObject(AntStallRpcCall.taskList());
+            String jostr = AntStallRpcCall.taskList();
+            if (jostr == null) {
+                return;
+            }
+            JSONObject jo = new JSONObject(jostr);
             if (!MessageUtil.checkResultCode(TAG, jo)) {
+                if (jo.has("errorMessage")) {
+                    String errorMessage = jo.optString("errorMessage");
+                    //如果出错今天停止兑换
+                    if (errorMessage.equals("系统繁忙，请稍后再试。")) {
+                        Status.flagToday("antstall::blockTask");
+                    }
+                }
                 return;
             }
             JSONObject signListModel = jo.getJSONObject("signListModel");
@@ -678,6 +696,10 @@ public class AntStall extends ModelTask {
                     TimeUtil.sleep(1000);
                 }
                 receiveTaskAward(taskType, title);
+            }
+            //为了防止异常，新村任务只做一次
+            if (doTaskOnce.getValue()) {
+                Status.flagToday("antstall::blockTask");
             }
         }
         catch (Throwable t) {

@@ -1,6 +1,8 @@
 package io.github.lazyimmortal.sesame.model.task.antFarm;
 
 import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -8,6 +10,7 @@ import java.util.Random;
 import java.util.UUID;
 
 import io.github.lazyimmortal.sesame.hook.ApplicationHook;
+import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.RandomUtil;
 import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
@@ -124,7 +127,6 @@ public class AntFarmRpcCall {
     //String.valueOf(System.currentTimeMillis()) + RandomUtil.nextLong();
     //String outBizNo = taskType + "_" + RandomUtil.nextDouble();
     //{"bizKey":"IP_EXCHANGE_TASK","requestType":"RPC","sceneCode":"ANTFARM","source":"antfarm_villa","taskSceneCode":"ANTFARM_IP_DRAW_TASK"}
-    
     
     //{"bizKey":"ccl_rongrongxiaoji","requestType":"RPC","sceneCode":"ANTFARM","source":"antfarm_villa","taskSceneCode":"ANTFARM_DAILY_DRAW_TASK"}
     public static String doFarmTask(String bizKey, String taskSceneCode) {
@@ -564,16 +566,19 @@ public class AntFarmRpcCall {
         String args = "[{\"content\":\"" + escapedContent + "\",\"deliverId\":\"" + deliverId + "\",\"groupId\":\"" + groupId + "\",\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"userIds\":" + userIds.toString() + "}]";
         return ApplicationHook.requestString("com.alipay.antfarm.deliverMsgSend", args);
     }
+    
     /*
     public static String inviteFriendVisitFamily(JSONArray inviteList) {
         String args = "[{\"inviteList\":" + inviteList.toString() + ",\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\"}]";
         return ApplicationHook.requestString("com.alipay.antfarm.inviteFriendVisitFamily", args);
     }
     */
-    public static String batchInviteP2P(String ownerGroupId,String inviteUID) {
-        String args = "[{\"inviteP2PVOList\":[{\"beInvitedUserId\":\""+inviteUID+"\",\"bizTraceId\":\"\"}],\"invitedBizExtendInfo\":{\"familyId\":\""+ownerGroupId+"\",\"inviteSceneCode\":\"ANTFARM_FAMILY_INVITE\"},\"linkParams\":{\"groupId\":\""+ownerGroupId+"\",\"inviteSceneCode\":\"ANTFARM_FAMILY_INVITE\",\"inviteUserId\":\""+UserIdMap.getCurrentUid()+"\",\"source\":\"familyInvite\"},\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM_FAMILY_INVITE\",\"source\":\"antfarm\"}]";
+    public static String batchInviteP2P(String ownerGroupId, String inviteUID) {
+        String args = "[{\"inviteP2PVOList\":[{\"beInvitedUserId\":\"" + inviteUID + "\",\"bizTraceId\":\"\"}],\"invitedBizExtendInfo\":{\"familyId\":\"" + ownerGroupId + "\",\"inviteSceneCode\":\"ANTFARM_FAMILY_INVITE\"},\"linkParams\":{\"groupId\":\"" + ownerGroupId + "\",\"inviteSceneCode" +
+                      "\":\"ANTFARM_FAMILY_INVITE\",\"inviteUserId\":\"" + UserIdMap.getCurrentUid() + "\",\"source\":\"familyInvite\"},\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM_FAMILY_INVITE\",\"source\":\"antfarm\"}]";
         return ApplicationHook.requestString("com.alipay.antiep.batchInviteP2P", args);
     }
+    
     public static String assignFamilyMember(String assignAction, String beAssignUser) {
         String args = "[{\"assignAction\":\"" + assignAction + "\",\"beAssignUser\":\"" + beAssignUser + "\",\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\"}]";
         return ApplicationHook.requestString("com.alipay.antfarm.assignFamilyMember", args);
@@ -584,22 +589,68 @@ public class AntFarmRpcCall {
         return ApplicationHook.requestString("com.alipay.antfarm.clickForGiftV2", args);
     }
     
+    /**
+     * 查询物品列表（ip抽抽乐）
+     *
+     * @param activityId 活动ID（如图片中的 ipDrawMachine_260112）
+     * @param pageSize   每页数量 * @param startIndex 起始索引
+     * @return 返回结果JSON字符串
+     */
+    public static String getItemList(String activityId, int pageSize, int startIndex) {
+        String data = "[{" + "\"activityId\":\"" + activityId + "\"," + "\"pageSize\":" + pageSize + "," + "\"requestType\":\"RPC\"," + "\"sceneCode\":\"ANTFARM_IP_DRAW_MALL\"," + "\"source\":\"antfarm.villa\"," + "\"startIndex\":" + startIndex + "}]";
+        return ApplicationHook.requestString("com.alipay.antiep.itemList", data);
+    }
+    
+    private static String generateRequestId() {
+        long timestamp = System.currentTimeMillis();
+        // 生成16位随机长整型数字（正数）
+        long randomNum = (long) ((Math.random() * 9 + 1) * Math.pow(10, 15));
+        return timestamp + "_" + randomNum;
+    }
+    
+    /**
+     * ip抽抽乐兑换装扮
+     *
+     * @param spuId      标准产品单元ID
+     * @param skuId      库存保持单位ID
+     * @param activityId 活动ID (例如: ipDrawMachine_260112)
+     * @param sceneCode  场景代码 (例如: ANTFARM_IP_DRAW_MALL)
+     * @param source     来源
+     * @return 返回结果JSON字符串
+     */
+    public static String exchangeBenefit(String spuId, String skuId, String activityId, String sceneCode, String source) {
+        String requestId = generateRequestId();
+        try {
+            JSONObject requestDataItem = new JSONObject();
+            
+            JSONObject context = new JSONObject();
+            context.put("activityId", activityId);
+            
+            requestDataItem.put("context", context);
+            requestDataItem.put("requestId", requestId);
+            requestDataItem.put("requestType", "RPC");
+            requestDataItem.put("sceneCode", sceneCode);
+            requestDataItem.put("skuId", skuId);
+            requestDataItem.put("source", source);
+            requestDataItem.put("spuId", spuId);
+            JSONArray requestData = new JSONArray().put(requestDataItem);
+            
+            return ApplicationHook.requestString("com.alipay.antcommonweal.exchange.h5.exchangeBenefit", requestData.toString());
+        }
+        catch (JSONException e) {
+            Log.printStackTrace("exchangeBenefit Error", e);
+            return "";
+        }
+    }
     
     /**
      * 领取蚂蚁庄园游戏中心奖励 (开宝箱)
+     *
      * @param drawTimes 开启次数
      */
     public static String drawGameCenterAward(int drawTimes) {
-        return ApplicationHook.requestString("com.alipay.antfarm.drawGameCenterAward",
-                "[{" +
-                "  \"drawTimes\": " + drawTimes + "," +
-                "  \"requestType\": \"NORMAL\"," +
-                "  \"sceneCode\": \"ANTFARM\"," +
-                "  \"source\": \"H5\"," +
-                "  \"version\": \"" + VERSION + "\"" +
-                "}]");
+        return ApplicationHook.requestString("com.alipay.antfarm.drawGameCenterAward", "[{" + "  \"drawTimes\": " + drawTimes + "," + "  \"requestType\": \"NORMAL\"," + "  \"sceneCode\": \"ANTFARM\"," + "  \"source\": \"H5\"," + "  \"version\": \"" + VERSION + "\"" + "}]");
     }
-    
     
     /**
      * 查询游戏列表 (如：蚂蚁农场、庄园等)
@@ -608,19 +659,8 @@ public class AntFarmRpcCall {
     public static String queryGameList() {
         // 按照你提供的 JSON 结构进行字符串拼接
         // 注意：requestData 是一个数组，内部包含一个对象
-        String data = "[{" +
-                      "\"bizType\":\"ANTFARM\"," +
-                      "\"commonDegradeFilterRequest\":{" +
-                      "\"deviceLevel\":\"high\"," +
-                      "\"platform\":\"Android\"," +
-                      "\"unityDeviceLevel\":\"high\"" +
-                      "}," +
-                      "\"recentAppRecordList\":[]," +
-                      "\"requestType\":\"NORMAL\"," +
-                      "\"sceneCode\":\"ANTFARM\"," +
-                      "\"source\":\"H5\"," +
-                      "\"version\":\"" + VERSION + "\"" +
-                      "}]";
+        String data = "[{" + "\"bizType\":\"ANTFARM\"," + "\"commonDegradeFilterRequest\":{" + "\"deviceLevel\":\"high\"," + "\"platform\":\"Android\"," + "\"unityDeviceLevel\":\"high\"" + "}," + "\"recentAppRecordList\":[]," + "\"requestType\":\"NORMAL\"," + "\"sceneCode\":\"ANTFARM\"," +
+                      "\"source\":\"H5\"," + "\"version\":\"" + VERSION + "\"" + "}]";
         
         return ApplicationHook.requestString("com.alipay.charitygamecenter.queryGameList", data);
     }

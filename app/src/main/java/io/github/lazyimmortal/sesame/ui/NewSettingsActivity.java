@@ -79,6 +79,7 @@ import io.github.lazyimmortal.sesame.util.idMap.TreeIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.VitalityBenefitIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.WalkPathIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.rpcRequestMap;
 
 public class NewSettingsActivity extends BaseActivity {
     
@@ -129,6 +130,7 @@ public class NewSettingsActivity extends BaseActivity {
         NewAncientTreeIdMap.load();
         BeachIdMap.load();
         PlantSceneIdMap.load();
+        rpcRequestMap.load();
         ForestHuntIdMap.load();
         MemberCreditSesameTaskListMap.load();
         AntForestVitalityTaskListMap.load();

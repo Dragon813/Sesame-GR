@@ -94,7 +94,7 @@ public class AuthCodeHelper {
             
             return null;
         } catch (Throwable e) {
-            Log.printStackTrace(TAG+"主动调用获取授权码失败: " + e.getMessage(), e);
+            //Log.printStackTrace(TAG+"主动调用获取授权码失败: " + e.getMessage(), e);
             return null;
         }
     }

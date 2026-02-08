@@ -1,5 +1,7 @@
 package io.github.lazyimmortal.sesame.model.task.antFarm;
 
+import android.os.Build;
+
 import io.github.lazyimmortal.sesame.entity.AlipayAntFarmDoFarmTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntFarmDrawMachineTaskList;
 import io.github.lazyimmortal.sesame.entity.GameCenterMallItem;
@@ -99,6 +101,7 @@ public class AntFarm extends ModelTask {
     private BooleanModelField drawMachine;
     private BooleanModelField AutoAntFarmDrawMachineTaskList;
     private SelectModelField AntFarmDrawMachineTaskList;
+    private BooleanModelField IPexchangeBenefit;
     private BooleanModelField ornamentsDressUp;
     private SelectModelField ornamentsDressUpList;
     private IntegerModelField ornamentsDressUpDays;
@@ -142,6 +145,7 @@ public class AntFarm extends ModelTask {
         modelFields.addField(drawMachine = new BooleanModelField("drawMachine", "装扮抽抽乐", false));
         modelFields.addField(AutoAntFarmDrawMachineTaskList = new BooleanModelField("AutoAntFarmDrawMachineTaskList", "抽抽乐 | 自动黑白名单", true));
         modelFields.addField(AntFarmDrawMachineTaskList = new SelectModelField("AntFarmDrawMachineTaskList", "抽抽乐 | 黑名单列表", new LinkedHashSet<>(), AlipayAntFarmDrawMachineTaskList::getList));
+        modelFields.addField(IPexchangeBenefit = new BooleanModelField("IPexchangeBenefit", "抽抽乐兑换 | 开启", false));
         modelFields.addField(donationType = new ChoiceModelField("donationType", "每日捐蛋 | 方式", DonationType.ZERO, DonationType.nickNames));
         modelFields.addField(donationAmount = new IntegerModelField("donationAmount", "每日捐蛋 | 倍数(每项)", 1));
         modelFields.addField(family = new BooleanModelField("family", "亲密家庭 | 开启", false));
@@ -2308,6 +2312,13 @@ public class AntFarm extends ModelTask {
     private static Boolean BuyMallItem(String spuId, String skuId) {
         try {
             JSONObject jo = new JSONObject(AntFarmRpcCall.buyMallItem(spuId, skuId));
+            if (jo.has("errorMessage")) {
+                String errorMessage = jo.optString("errorMessage");
+                //如果出错今天停止兑换
+                if (errorMessage.equals("系统繁忙，请稍后再试。")) {
+                    Status.flagToday("farm::buyLimit::" + skuId);
+                }
+            }
             return MessageUtil.checkResultCode(TAG, jo);
         }
         catch (Throwable th) {
@@ -2330,6 +2341,28 @@ public class AntFarm extends ModelTask {
                     }
                     if (queryDrawMachineActivityjo.getJSONArray("otherDrawMachineActivityIds").length() > 0) {
                         drawMachine("ANTFARM_IP_DRAW_TASK", "ipDrawMachine", "dailyDrawMachine");
+                        //自动抽奖
+                        if (IPexchangeBenefit.getValue()) {
+                            try {
+                                jo = new JSONObject(AntFarmRpcCall.queryDrawMachineActivity("dailyDrawMachine", "ipDrawMachine"));
+                                if (!MessageUtil.checkResultCode(TAG, jo)) {
+                                    return;
+                                }
+                                JSONObject activity = jo.optJSONObject("drawMachineActivity");
+                                if (activity == null) {
+                                    return;
+                                }
+                                String activityId = activity.optString("activityId");
+                                if (!activityId.isEmpty()) {
+                                    IPexchangeBenefit(activityId);
+                                }
+                            }
+                            catch (Throwable t) {
+                                Log.i(TAG, "drawMachine err:");
+                                Log.printStackTrace(TAG, t);
+                            }
+                            
+                        }
                     }
                 }
             }
@@ -2439,6 +2472,170 @@ public class AntFarm extends ModelTask {
         catch (Throwable t) {
             Log.i(TAG, "drawMachine err:");
             Log.printStackTrace(TAG, t);
+        }
+        return false;
+    }
+    
+    public void IPexchangeBenefit(String activityId) {
+        try {
+            String response = AntFarmRpcCall.getItemList(activityId, 10, 0);
+            JSONObject respJson = new JSONObject(response);
+            
+            if (respJson.optBoolean("success", false) || "100000000".equals(respJson.optString("code"))) {
+                int totalCent = 0;
+                JSONObject mallAccount = respJson.optJSONObject("mallAccountInfoVO");
+                if (mallAccount != null) {
+                    JSONObject holdingCount = mallAccount.optJSONObject("holdingCount");
+                    if (holdingCount != null) {
+                        totalCent = holdingCount.optInt("cent", 0);
+                    }
+                }
+                //Log.record("当前持有总碎片:" + (totalCent / 100));
+                JSONArray itemVOList = respJson.optJSONArray("itemInfoVOList");
+                if (itemVOList == null) {
+                    return;
+                }
+                
+                List<JSONObject> allSkus = new ArrayList<>();
+                for (int i = 0; i < itemVOList.length(); i++) {
+                    JSONObject item = itemVOList.optJSONObject(i);
+                    if (item == null) {
+                        continue;
+                    }
+                    boolean itemReachedLimit = isReachedLimit(item);
+                    JSONObject minPriceObj = item.optJSONObject("minPrice");
+                    int cent = minPriceObj != null ? minPriceObj.optInt("cent", 0) : 0;
+                    
+                    JSONArray skuList = item.optJSONArray("skuModelList");
+                    if (skuList == null) {
+                        continue;
+                    }
+                    for (int j = 0; j < skuList.length(); j++) {
+                        JSONObject sku = skuList.optJSONObject(j);
+                        if (sku == null) {
+                            continue;
+                        }
+                        sku.put("_spuId", item.optString("spuId"));
+                        sku.put("_spuName", item.optString("spuName"));
+                        sku.put("_isReachLimit", itemReachedLimit || isReachedLimit(sku));
+                        sku.put("_cent", cent);
+                        allSkus.add(sku);
+                    }
+                }
+                // 按价格从高到低排序
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    allSkus.sort((JSONObject a, JSONObject b) -> Integer.compare(b.optInt("_cent", 0), a.optInt("_cent", 0)));
+                }
+                else {
+                    // 低版本用 Collections.sort 兼容
+                    Collections.sort(allSkus, new Comparator<JSONObject>() {
+                        @Override
+                        public int compare(JSONObject a, JSONObject b) {
+                            return Integer.compare(b.optInt("_cent", 0), a.optInt("_cent", 0));
+                        }
+                    });
+                }
+                
+                for (JSONObject sku : allSkus) {
+                    if (sku.optBoolean("_isReachLimit")) {
+                        continue;
+                    }
+                    int cent = sku.optInt("_cent", 0);
+                    String skuName = sku.optString("skuName");
+                    
+                    if (isNoEnoughPoint(sku) || (cent > 0 && totalCent < cent)) {
+                        Log.record("兑换最高价值[" + skuName + "]碎片不足(持有" + (totalCent / 100) + "需" + (cent / 100) + ")");
+                        return;
+                    }
+                    break;
+                }
+                
+                // 执行顺序兑换，按价格从高到低
+                for (JSONObject sku : allSkus) {
+                    if (sku.optBoolean("_isReachLimit")) {
+                        continue;
+                    }
+                    
+                    String skuName = sku.optString("skuName");
+                    int cent = sku.optInt("_cent", 0);
+                    String extendInfo = sku.optString("skuExtendInfo");
+                    int limitCount = extendInfo.contains("20次") ? 20 : (extendInfo.contains("5次") ? 5 : 1);
+                    
+                    // 【核心逻辑】：如果当前项买不起，直接 return 停止，不再尝试后续更便宜的项目
+                    if (isNoEnoughPoint(sku) || (cent > 0 && totalCent < cent)) {
+                        Log.record("剩余碎片不足以兑换优先级项 [" + skuName + "] (需 " + (cent / 100) + ")，停止后续兑换任务");
+                        return;
+                    }
+                    
+                    int sessionExchangedCount = 0;
+                    while (sessionExchangedCount < limitCount) {
+                        // 预检查当前余额
+                        if (cent > 0 && totalCent < cent) {
+                            break;
+                        }
+                        
+                        String result = AntFarmRpcCall.exchangeBenefit(sku.optString("_spuId"), sku.optString("skuId"), activityId, "ANTFARM_IP_DRAW_MALL", "antfarm_villa");
+                        
+                        JSONObject resObj = new JSONObject(result);
+                        String resultCode = resObj.optString("resultCode");
+                        
+                        if ("SUCCESS".equals(resultCode)) {
+                            sessionExchangedCount++;
+                            totalCent -= cent; // 减去花费
+                            Log.farm("兑换装扮👔[" + skuName + "]#剩余碎片" + (totalCent / 100));
+                            TimeUtil.sleep(800);
+                        }
+                        else if ("NO_ENOUGH_POINT".equals(resultCode)) {
+                            return;
+                        }
+                        else if (resultCode.contains("LIMIT") || resultCode.contains("MAX")) {
+                            break;
+                        }
+                        else {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception e) {
+            Log.printStackTrace("自动兑换异常", e);
+        }
+    }
+    
+    private boolean isReachedLimit(JSONObject jo) {
+        if (jo == null) {
+            return false;
+        }
+        if ("REACH_LIMIT".equals(jo.optString("itemStatus"))) {
+            return true;
+        }
+        JSONArray list = jo.optJSONArray("itemStatusList");
+        if (list != null) {
+            for (int i = 0; i < list.length(); i++) {
+                String status = list.optString(i);
+                if ("REACH_LIMIT".equals(status) || status.contains("LIMIT")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
+    private boolean isNoEnoughPoint(JSONObject jo) {
+        if (jo == null) {
+            return false;
+        }
+        if ("NO_ENOUGH_POINT".equals(jo.optString("itemStatus"))) {
+            return true;
+        }
+        JSONArray list = jo.optJSONArray("itemStatusList");
+        if (list != null) {
+            for (int i = 0; i < list.length(); i++) {
+                if ("NO_ENOUGH_POINT".equals(list.optString(i))) {
+                    return true;
+                }
+            }
         }
         return false;
     }

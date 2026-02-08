@@ -7,6 +7,7 @@ import org.json.JSONObject;
 
 import io.github.lazyimmortal.sesame.hook.ApplicationHook;
 import io.github.lazyimmortal.sesame.util.RandomUtil;
+import io.github.lazyimmortal.sesame.util.Status;
 
 import java.util.UUID;
 
@@ -93,6 +94,7 @@ public class AntStallRpcCall {
 
 
     public static String taskList() {
+        if (Status.hasFlagToday("antstall::blockTask")){return null;}
         return ApplicationHook.requestString("com.alipay.antstall.task.list",
                 "[{\"source\":\"ch_appcenter__chsub_9patch\",\"systemType\":\"android\",\"version\":\"" +
                         VERSION + "\"}]");

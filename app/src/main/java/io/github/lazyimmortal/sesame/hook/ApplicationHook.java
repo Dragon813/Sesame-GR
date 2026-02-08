@@ -800,6 +800,7 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                 TokenConfig.load();
                 updateDay();
                 BaseModel.initData();
+                BaseModel.initRpcRequest();
                 Log.record("加载完成");
                 Toast.show("芝麻粒加载成功");
             }

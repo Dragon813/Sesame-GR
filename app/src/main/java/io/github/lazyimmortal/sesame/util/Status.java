@@ -24,7 +24,6 @@ public class Status {
     private final Map<String, Integer> forestHuntHelpLogList = new HashMap<>();
     private final Map<String, Integer> vitality_ExchangeBenefitLogList = new HashMap<>();
     private final Map<Integer, Integer> exchangeReserveLogList = new HashMap<>();
-    private final Set<String> ForestHuntHelpList = new HashSet<>();
     private final Set<String> ancientTreeCityCodeList = new HashSet<>();
     
     private int doubleTimes = 0;
@@ -107,6 +106,21 @@ public class Status {
         else return count;
     }
     
+    //记录完成任务次数
+    public static void rpcRequestListToday(String taskName, int count) {
+            INSTANCE.forestHuntHelpLogList.put(taskName, count);
+            save();
+    }
+    
+    public static Integer getrpcRequestListToday(String taskName) {
+        Integer count = INSTANCE.forestHuntHelpLogList.get(taskName);
+        if (count == null) {
+            return 0;
+        }
+        else return count;
+    }
+    
+    
     public static Boolean canWaterFriendToday(String id, int newCount) {
         Integer count = INSTANCE.waterFriendLogList.get(id);
         if (count == null) {
@@ -184,22 +198,6 @@ public class Status {
         if (canMemberPointExchangeBenefitToday(benefitId)) {
             INSTANCE.memberPointExchangeBenefitLogList.add(benefitId);
             save();
-        }
-    }
-    
-    public static Boolean canForestHuntHelpToday(String shareUserId) {
-        //Log.other("canForestHuntHelpToday:" +INSTANCE.toString());
-        return !INSTANCE.ForestHuntHelpList.contains(shareUserId);
-    }
-    
-    public static void ForestHuntHelpToday(String shareUserId,String taskUid) {
-        Status stat = INSTANCE;
-        if (!stat.ForestHuntHelpList.contains(shareUserId)) {
-            if(taskUid.equals(UserIdMap.getCurrentUid())){
-                stat.ForestHuntHelpList.add(shareUserId);
-                //Log.other("ForestHuntHelpList:" +stat.ForestHuntHelpList);
-                save();
-            }
         }
     }
     

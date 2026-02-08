@@ -71,6 +71,7 @@ public class SettingsActivity extends BaseActivity {
         NewAncientTreeIdMap.load();
         BeachIdMap.load();
         PlantSceneIdMap.load();
+        rpcRequestMap.load();
         ForestHuntIdMap.load();
         MemberCreditSesameTaskListMap.load();
         AntForestVitalityTaskListMap.load();

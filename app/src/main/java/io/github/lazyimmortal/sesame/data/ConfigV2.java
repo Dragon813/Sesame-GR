@@ -146,10 +146,16 @@ public class ConfigV2 {
         } else {
             success = FileUtil.setConfigV2File(userId, json);
         }
+        
+        // ========== 新增：保存成功后触发滚动备份 ==========
+        if (success) {
+            FileUtil.backupConfigV2WithRolling(userId);
+        }
+        
         Log.record("保存配置: " + userId);
         return success;
     }
-
+    
     public static synchronized ConfigV2 load(String userId) {
         Log.i(TAG, "开始加载配置");
         String userName = "";

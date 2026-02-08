@@ -1,6 +1,12 @@
 package io.github.lazyimmortal.sesame.data.task;
 
+import static io.github.lazyimmortal.sesame.model.normal.base.BaseModel.taskRpcRequest;
+
 import android.os.Build;
+
+import io.github.lazyimmortal.sesame.util.FileUtil;
+import io.github.lazyimmortal.sesame.util.Status;
+import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 import lombok.Getter;
 import io.github.lazyimmortal.sesame.data.Model;
 import io.github.lazyimmortal.sesame.data.ModelFields;
@@ -182,6 +188,13 @@ public abstract class ModelTask extends Model {
     }
 
     public static void startAllTask(Boolean force) {
+        //自动触发备份配置文件
+        if (!Status.hasFlagToday("Config::backup")) {
+            FileUtil.backupConfigV2WithRolling(UserIdMap.getCurrentUid());
+            Status.flagToday("Config::backup");
+        }
+        //执行BaseModel中自定义执行请求
+        taskRpcRequest();
         for (Model model : getModelArray()) {
             if (model != null) {
                 if (ModelType.TASK == model.getType()) {

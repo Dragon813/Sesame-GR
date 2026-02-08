@@ -1,5 +1,18 @@
 package io.github.lazyimmortal.sesame.model.normal.base;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+
+import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectAndCountModelField;
+import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectModelField;
+import io.github.lazyimmortal.sesame.entity.AlipayrpcRequest;
+import io.github.lazyimmortal.sesame.hook.ApplicationHook;
+import io.github.lazyimmortal.sesame.model.task.antForest.AntForestRpcCall;
 import lombok.Getter;
 
 import io.github.lazyimmortal.sesame.data.Model;
@@ -35,9 +48,15 @@ public class BaseModel extends Model {
     @Getter
     private static final IntegerModelField.MultiplyIntegerModelField waitWhenException = new IntegerModelField.MultiplyIntegerModelField("waitWhenException", "异常等待时间(分钟)", 60, 0, 24 * 60, 60_000);
     @Getter
+    public static final IntegerModelField backupConfigDays = new IntegerModelField("backupConfigDays", "按天和修改备份配置保存数(滚动覆盖)", 5);
+    @Getter
     private static final BooleanModelField newRpc = new BooleanModelField("newRpc", "使用新接口(最低支持v10.3.96.8100)", true);
     @Getter
     private static final BooleanModelField debugMode = new BooleanModelField("debugMode", "开启抓包(基于新接口)", false);
+    @Getter
+    private static final SelectAndCountModelField rpcRequestList = new SelectAndCountModelField("rpcRequestList", "RPC请求列表及每日执行数(慎用)", new LinkedHashMap<>(), AlipayrpcRequest::getList, "请填写每日执行次数");
+    @Getter
+    private static final SelectModelField rpcRequestTaskList= new SelectModelField("rpcRequestTaskList", "RPC可选任务列表(长按列表中的项仅移除用，内容需打开rpcResquest.json文件配置)", new LinkedHashSet<>(), AlipayrpcRequest::getList,"长按删除RPC列表项用");
     @Getter
     private static final BooleanModelField batteryPerm = new BooleanModelField("batteryPerm", "为支付宝申请后台运行权限", true);
     @Getter
@@ -74,7 +93,6 @@ public class BaseModel extends Model {
             Log.printStackTrace("❌ 验证码Hook配置同步失败", t);
         }*/
     }
-    
     @Override
     public ModelFields getFields() {
         ModelFields modelFields = new ModelFields();
@@ -85,9 +103,12 @@ public class BaseModel extends Model {
         modelFields.addField(energyTime);
         modelFields.addField(timedTaskModel);
         modelFields.addField(timeoutRestart);
-        modelFields.addField(waitWhenException);
+        modelFields.addField(backupConfigDays);
+        modelFields.addField(newRpc);
         modelFields.addField(newRpc);
         modelFields.addField(debugMode);
+        modelFields.addField(rpcRequestList);
+        modelFields.addField(rpcRequestTaskList);
         modelFields.addField(batteryPerm);
         modelFields.addField(recordLog);
         modelFields.addField(showToast);
@@ -150,4 +171,58 @@ public class BaseModel extends Model {
         
     }
     
+    public static void initRpcRequest() {
+        rpcRequestMap.load();
+        rpcRequestMap.add("{\"methodName\":\"alipay.antforest.forest.h5.queryMiscInfo\",\"requestData\":[{\"queryBizType\":\"usingProp\",\"source\":\"SELF_HOME\",\"version\":\"20240201\"}]}", "查询森林使用道具(示例)");
+        rpcRequestMap.add("{\"methodName\":\"alipay.antforest.forest.h5.updateUserConfig\",\"requestData\":[{\"configMap\":{\"inTeam\":\"Y\"},\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]}", "切换到组队浇水(示例)");
+        rpcRequestMap.add("{\"methodName\":\"alipay.antforest.forest.h5.updateUserConfig\",\"requestData\":[{\"configMap\":{\"inTeam\":\"N\"},\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]}", "切换到个人主页(示例)");
+        
+        rpcRequestMap.save();
+        
+    }
+    public static void taskRpcRequest() {
+        
+        // 1. 获取Map集合，增加空判断避免NPE
+        Map<String, Integer> taskRpcList = rpcRequestList.getValue();
+        if (taskRpcList == null || taskRpcList.isEmpty()) {
+            // 集合为空时直接返回，避免无效遍历
+            return;
+        }
+        // 2. 遍历Map的键值对
+        rpcRequestMap.load();
+        for (Map.Entry<String, Integer> taskRpc : taskRpcList.entrySet()) {
+            // 获取键（待解析的JSON字符串）和值（计数）
+            String taskRpcRequestMethodAndData = taskRpc.getKey();
+            Integer taskRpcCount = taskRpc.getValue();
+            String taskRpcName = rpcRequestMap.get(taskRpcRequestMethodAndData);
+            int taskRpcNameTodayCount = Status.getrpcRequestListToday(taskRpcName);
+            if (taskRpcNameTodayCount >= taskRpcCount) {
+                continue;
+            }
+            // 3. 解析JSON字符串，处理异常避免崩溃
+            JSONObject taskRpcJo = null;
+            try {
+                //保守执行，不管是否异常均认为执行
+                Status.rpcRequestListToday(taskRpcName, taskRpcNameTodayCount+1);
+                // 先判空，再解析JSON
+                if (taskRpcRequestMethodAndData == null || taskRpcRequestMethodAndData.isEmpty()) {
+                    continue; // 跳过空字符串，继续下一次遍历
+                }
+                taskRpcJo = new JSONObject(taskRpcRequestMethodAndData);
+                // 【可选】这里添加解析后的业务逻辑，比如获取JSON中的字段
+                String methodName = taskRpcJo.getString("methodName"); // 假设JSON中有method字段
+                String requestData = taskRpcJo.getString("requestData");     // 假设JSON中有data字段
+                Log.debug("自主调用🈸RPC["+taskRpcName+"]第" + (taskRpcNameTodayCount+1)+"["+taskRpcCount+"]次\n方法：" + methodName + "\n参数：" + requestData);
+                //调用接口执行请求
+                String taskRpcResult = ApplicationHook.requestString(methodName, requestData);
+                Log.debug("自主调用🈸RPC["+taskRpcName+"]返回\n数据：" + taskRpcResult);
+            }
+            catch (JSONException e) {
+                // 捕获JSON解析异常，打印日志而不是崩溃
+                e.printStackTrace();
+                // 可选：记录错误日志，或跳过当前无效的JSON字符串
+                Log.debug("JSON解析失败，字符串内容：" + taskRpcRequestMethodAndData);
+            }
+        }
+    }
 }
