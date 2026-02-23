@@ -14,7 +14,8 @@ import io.github.lazyimmortal.sesame.data.TokenConfig;
 import io.github.lazyimmortal.sesame.util.ToastUtil;
 
 public class ExtensionsActivity extends BaseActivity {
-
+    
+    Button btnGetWateredItems,btnGetWateringItems;
     Button btnGetTreeItems, btnGetNewTreeItems;
     Button btnQueryAreaTrees, btnGetUnlockTreeItems;
     Button btnClearDishImage;
@@ -26,6 +27,8 @@ public class ExtensionsActivity extends BaseActivity {
         super.onCreate(bundle);
         setContentView(R.layout.activity_extend);
         setBaseTitle(getString(R.string.extensions));
+        btnGetWateredItems = findViewById(R.id.btn_get_watered_items);
+        btnGetWateringItems = findViewById(R.id.btn_get_watering_items);
         btnGetTreeItems = findViewById(R.id.btn_get_tree_items);
         btnGetNewTreeItems = findViewById(R.id.btn_get_newTree_items);
         btnQueryAreaTrees = findViewById(R.id.btn_query_area_trees);
@@ -34,8 +37,24 @@ public class ExtensionsActivity extends BaseActivity {
         btnSetCustomWalkPathId = findViewById(R.id.btn_set_custom_walk_path_id_list);
         btnSetCustomWalkPathIdQueue = findViewById(R.id.btn_set_custom_walk_path_id_queue);
         btnDeveloperMode = findViewById(R.id.btn_developer_mode);
-
-
+        
+        
+        btnGetWateredItems.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                sendItemsBroadcast("antForest", "getWateredItems", null);
+                ToastUtil.show(ExtensionsActivity.this, "已发送查询请求，请在森林日志查看结果！");
+            }
+        });
+        
+        btnGetWateringItems.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                sendItemsBroadcast("antForest", "getWateringItems", null);
+                ToastUtil.show(ExtensionsActivity.this, "已发送查询请求，请在森林日志查看结果！");
+            }
+        });
+        
         btnGetTreeItems.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {

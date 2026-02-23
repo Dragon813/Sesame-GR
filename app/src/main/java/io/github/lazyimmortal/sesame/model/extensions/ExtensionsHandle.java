@@ -12,6 +12,7 @@ import io.github.lazyimmortal.sesame.model.task.antSports.AntSportsRpcCall;
 import io.github.lazyimmortal.sesame.model.task.protectEcology.ProtectTreeRpcCall;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
+import io.github.lazyimmortal.sesame.util.Status;
 import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
 import io.github.lazyimmortal.sesame.util.idMap.WalkPathIdMap;
@@ -25,7 +26,11 @@ public class ExtensionsHandle {
         }
         switch (type) {
             case "antForest":
-                if (Objects.equals("getTreeItems", fun)) {
+                if (Objects.equals("getWateredItems", fun)) {
+                    getWateredItems();
+                }else if (Objects.equals("getWateringItems", fun)) {
+                    getWateringItems();
+                }else if (Objects.equals("getTreeItems", fun)) {
                     getTreeItems();
                 } else if (Objects.equals("getNewTreeItems", fun)) {
                     getNewTreeItems();
@@ -57,7 +62,14 @@ public class ExtensionsHandle {
             return null;
         }
     }
-
+    private static void getWateredItems() {
+        Status.getWateredFriendToday();
+    }
+    
+    private static void getWateringItems() {
+        Status.getWateringFriendToday();
+    }
+    
     private static void getNewTreeItems() {
         try {
             JSONObject jo = new JSONObject(ProtectTreeRpcCall.queryTreeItemsForExchange("COMING", "project"));

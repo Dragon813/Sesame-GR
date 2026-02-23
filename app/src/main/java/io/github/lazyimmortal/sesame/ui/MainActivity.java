@@ -47,25 +47,25 @@ import io.github.lazyimmortal.sesame.util.ToastUtil;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
 public class MainActivity extends BaseActivity {
-
+    
     private final Handler handler = new Handler(Looper.getMainLooper());
-
+    
     private boolean hasPermissions = false;
-
+    
     private boolean isBackground = false;
-
+    
     private boolean isClick = false;
-
+    
     private TextView tvStatistics;
-
+    
     private Handler viewHandler;
-
+    
     private Runnable titleRunner;
-
+    
     private String[] userNameArray = {"默认"};
-
+    
     private UserEntity[] userEntityArray = {null};
-
+    
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,7 +110,8 @@ public class MainActivity extends BaseActivity {
         intentFilter.addAction("io.github.lazyimmortal.sesame.update");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(broadcastReceiver, intentFilter, Context.RECEIVER_EXPORTED);
-        } else {
+        }
+        else {
             registerReceiver(broadcastReceiver, intentFilter);
         }
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -124,7 +125,7 @@ public class MainActivity extends BaseActivity {
             positiveButton.setTextColor(ContextCompat.getColor(this, R.color.button));
         }
     }
-
+    
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         if (!hasPermissions) {
@@ -150,7 +151,7 @@ public class MainActivity extends BaseActivity {
             });
         }
     }
-
+    
     @Override
     protected void onResume() {
         super.onResume();
@@ -159,7 +160,8 @@ public class MainActivity extends BaseActivity {
                 viewHandler.postDelayed(titleRunner, 3000);
                 try {
                     sendBroadcast(new Intent("com.eg.android.AlipayGphone.sesame.status"));
-                } catch (Throwable th) {
+                }
+                catch (Throwable th) {
                     Log.i("view sendBroadcast status err:");
                     Log.printStackTrace(th);
                 }
@@ -177,7 +179,8 @@ public class MainActivity extends BaseActivity {
                             String userName;
                             if (userEntity == null) {
                                 userName = userId;
-                            } else {
+                            }
+                            else {
                                 userName = userEntity.getShowName() + ": " + userEntity.getAccount();
                             }
                             userNameList.add(userName);
@@ -189,7 +192,8 @@ public class MainActivity extends BaseActivity {
                 userEntityList.add(0, null);
                 userNameArray = userNameList.toArray(new String[0]);
                 userEntityArray = userEntityList.toArray(new UserEntity[0]);
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 userNameArray = new String[]{"默认"};
                 userEntityArray = new UserEntity[]{null};
                 Log.printStackTrace(e);
@@ -198,42 +202,49 @@ public class MainActivity extends BaseActivity {
                 Statistics.load();
                 Statistics.updateDay(Calendar.getInstance());
                 tvStatistics.setText(Statistics.getText(MainActivity.this));
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 Log.printStackTrace(e);
             }
         }
     }
-
+    
     @SuppressLint("NonConstantResourceId")
     public void onClick(View v) {
         if (v.getId() == R.id.btn_test) {
             try {
                 sendBroadcast(new Intent("com.eg.android.AlipayGphone.sesame.status"));
                 isClick = true;
-            } catch (Throwable th) {
+            }
+            catch (Throwable th) {
                 Log.i("view sendBroadcast status err:");
                 Log.printStackTrace(th);
             }
             return;
         }
-
+        
         String data = "file://";
         if (v.getId() == R.id.btn_forest_log) {
             data += FileUtil.getForestLogFile().getAbsolutePath();
-        } else if (v.getId() == R.id.btn_farm_log) {
+        }
+        else if (v.getId() == R.id.btn_farm_log) {
             data += FileUtil.getFarmLogFile().getAbsolutePath();
-        } else if (v.getId() == R.id.btn_other_log) {
+        }
+        else if (v.getId() == R.id.btn_other_log) {
             data += FileUtil.getOtherLogFile().getAbsolutePath();
-        } else if (v.getId() == R.id.btn_friend_watch) {
+        }
+        else if (v.getId() == R.id.btn_friend_watch) {
             ListDialog.show(this, getString(R.string.friend_watch), FriendWatch.getList(), SelectModelFieldFunc.newMapInstance(), false, ListDialog.ListType.SHOW);
             return;
-        } else if (v.getId() == R.id.btn_github) {
+        }
+        else if (v.getId() == R.id.btn_github) {
             //   欢迎自己打包 欢迎大佬pr
             //   项目开源且公益  维护都是自愿
             //   但是如果打包改个名拿去卖钱忽悠小白
             //   那我只能说你妈死了 就当开源项目给你妈烧纸钱了
             data = "https://github.com/Dragon813/Sesame-GR";
-        } else if (v.getId() == R.id.btn_settings) {
+        }
+        else if (v.getId() == R.id.btn_settings) {
             selectSettingUid();
             return;
         }
@@ -241,30 +252,25 @@ public class MainActivity extends BaseActivity {
         it.setData(Uri.parse(data));
         startActivity(it);
     }
-
+    
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        int state = getPackageManager()
-                .getComponentEnabledSetting(new ComponentName(this, getClass().getCanonicalName() + "Alias"));
+        int state = getPackageManager().getComponentEnabledSetting(new ComponentName(this, getClass().getCanonicalName() + "Alias"));
         menu.add(0, 1, 1, R.string.view_record_file);
         menu.add(0, 2, 2, R.string.view_debug_file);
-        menu.add(0, 3, 3, R.string.view_error_log_file);
-        menu.add(0, 4, 4, R.string.export_error_log_file);
-        menu.add(0, 5, 5, R.string.view_runtime_log_file);
-        menu.add(0, 6, 6, R.string.export_runtime_log_file);
-        menu.add(0, 7, 7, R.string.export_the_statistic_file);
-        menu.add(0, 8, 8, R.string.import_the_statistic_file);
-        menu.add(0, 9, 9, R.string.hide_the_application_icon)
-                .setCheckable(true)
-                .setChecked(state > PackageManager.COMPONENT_ENABLED_STATE_ENABLED);
-        menu.add(0, 10, 10, R.string.language_simplified_chinese)
-                .setCheckable(true)
-                .setChecked(AppConfig.INSTANCE.getLanguageSimplifiedChinese());
-        menu.add(0, 11, 11, R.string.extensions);
+        menu.add(0, 3, 3, R.string.extensions);
+        menu.add(0, 4, 4, R.string.view_error_log_file);
+        menu.add(0, 5, 5, R.string.export_error_log_file);
+        menu.add(0, 6, 6, R.string.view_runtime_log_file);
+        menu.add(0, 7, 7, R.string.export_runtime_log_file);
+        menu.add(0, 8, 8, R.string.export_the_statistic_file);
+        menu.add(0, 9, 9, R.string.import_the_statistic_file);
+        menu.add(0, 10, 10, R.string.hide_the_application_icon).setCheckable(true).setChecked(state > PackageManager.COMPONENT_ENABLED_STATE_ENABLED);
+        menu.add(0, 11, 11, R.string.language_simplified_chinese).setCheckable(true).setChecked(AppConfig.INSTANCE.getLanguageSimplifiedChinese());
         menu.add(0, 12, 12, R.string.settings);
         return super.onCreateOptionsMenu(menu);
     }
-
+    
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
@@ -284,8 +290,12 @@ public class MainActivity extends BaseActivity {
                 debugIt.putExtra("canClear", true);
                 startActivity(debugIt);
                 break;
-
             case 3:
+                Intent extend = new Intent(this, ExtensionsActivity.class);
+                startActivity(extend);
+                break;
+            case 4:
+                
                 String errorData = "file://";
                 errorData += FileUtil.getErrorLogFile().getAbsolutePath();
                 Intent errorIt = new Intent(this, HtmlViewerActivity.class);
@@ -294,15 +304,15 @@ public class MainActivity extends BaseActivity {
                 errorIt.setData(Uri.parse(errorData));
                 startActivity(errorIt);
                 break;
-
-            case 4:
+            
+            case 5:
                 File errorLogFile = FileUtil.exportFile(FileUtil.getErrorLogFile());
                 if (errorLogFile != null) {
                     ToastUtil.show(this, "文件已导出到: " + errorLogFile.getPath());
                 }
                 break;
-
-            case 5:
+            
+            case 6:
                 String allData = "file://";
                 allData += FileUtil.getRuntimeLogFile().getAbsolutePath();
                 Intent allIt = new Intent(this, HtmlViewerActivity.class);
@@ -311,36 +321,35 @@ public class MainActivity extends BaseActivity {
                 allIt.setData(Uri.parse(allData));
                 startActivity(allIt);
                 break;
-
-            case 6:
+            
+            case 7:
                 File allLogFile = FileUtil.exportFile(FileUtil.getRuntimeLogFile());
                 if (allLogFile != null) {
                     ToastUtil.show(this, "文件已导出到: " + allLogFile.getPath());
                 }
                 break;
-
-            case 7:
+            
+            case 8:
                 File statisticsFile = FileUtil.exportFile(FileUtil.getStatisticsFile());
                 if (statisticsFile != null) {
                     ToastUtil.show(this, "文件已导出到: " + statisticsFile.getPath());
                 }
                 break;
-
-            case 8:
+            
+            case 9:
                 if (FileUtil.copyTo(FileUtil.getExportedStatisticsFile(), FileUtil.getStatisticsFile())) {
                     tvStatistics.setText(Statistics.getText(MainActivity.this));
                     ToastUtil.show(this, "导入成功！");
                 }
                 break;
-                
-            case 9:
+            
+            case 10:
                 int state = item.isChecked() ? PackageManager.COMPONENT_ENABLED_STATE_DEFAULT : PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
-                getPackageManager()
-                        .setComponentEnabledSetting(new ComponentName(this, getClass().getCanonicalName() + "Alias"), state, PackageManager.DONT_KILL_APP);
+                getPackageManager().setComponentEnabledSetting(new ComponentName(this, getClass().getCanonicalName() + "Alias"), state, PackageManager.DONT_KILL_APP);
                 item.setChecked(!item.isChecked());
                 break;
             
-            case 10:
+            case 11:
                 AppConfig appConfig = AppConfig.INSTANCE;
                 appConfig.setLanguageSimplifiedChinese(!appConfig.getLanguageSimplifiedChinese());
                 if (AppConfig.save()) {
@@ -349,19 +358,14 @@ public class MainActivity extends BaseActivity {
                     recreate();
                 }
                 break;
-
-            case 11:
-                Intent extend = new Intent(this, ExtensionsActivity.class);
-                startActivity(extend);
-                break;
-
+            
             case 12:
                 selectSettingUid();
                 break;
         }
         return super.onOptionsItemSelected(item);
     }
-
+    
     private void selectSettingUid() {
         AtomicBoolean selected = new AtomicBoolean(false);
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -391,7 +395,7 @@ public class MainActivity extends BaseActivity {
             }).start();
         }
     }
-
+    
     private void goSettingActivity(int index) {
         UserEntity userEntity = userEntityArray[index];
         boolean isNewUI = AppConfig.INSTANCE.getNewUI() && !"TEST".equals(ViewAppInfo.getAppVersion()) && LibraryUtil.loadLibrary("sesame");
@@ -399,12 +403,13 @@ public class MainActivity extends BaseActivity {
         if (userEntity != null) {
             intent.putExtra("userId", userEntity.getUserId());
             intent.putExtra("userName", userEntity.getShowName());
-        } else {
+        }
+        else {
             intent.putExtra("userName", userNameArray[index]);
         }
         startActivity(intent);
     }
-
+    
     private void updateSubTitle(RunType runType) {
         switch (runType) {
             case DISABLE:
@@ -421,5 +426,5 @@ public class MainActivity extends BaseActivity {
                 break;
         }
     }
-
+    
 }

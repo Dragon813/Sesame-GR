@@ -14,6 +14,8 @@
     <string name="collected">收</string>
     <string name="helped">帮</string>
     <string name="watered">浇</string>
+    <string name="wateredcount">被水次数</string>
+    <string name="wateringcount">浇水次数</string>
 
     <string name="more">更多</string>
     <string name="hello_user">你好，用户！</string>

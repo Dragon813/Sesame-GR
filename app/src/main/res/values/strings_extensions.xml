@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="get_watered_items">Get watered items🍯</string>
+    <string name="get_watering_items">Get watering items🚿</string>
     <string name="get_tree_items">Get tree items🌱</string>
     <string name="get_newTree_items">Get newTree items🌱</string>
     <string name="query_area_trees">Query unlock area🗺️</string>

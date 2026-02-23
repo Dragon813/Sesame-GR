@@ -21,6 +21,8 @@ public class Status {
     
     // forest
     private final Map<String, Integer> waterFriendLogList = new HashMap<>();
+    private final Map<String, Integer> wateredFriendLogList = new HashMap<>();
+    private final Map<String, Integer> wateringFriendLogList = new HashMap<>();
     private final Map<String, Integer> forestHuntHelpLogList = new HashMap<>();
     private final Map<String, Integer> vitality_ExchangeBenefitLogList = new HashMap<>();
     private final Map<Integer, Integer> exchangeReserveLogList = new HashMap<>();
@@ -73,9 +75,9 @@ public class Status {
     }
     
     //在写入status中时，重要数据提前记录Uid,一定程度上避免因支付宝账号切换导致标记到下一个账号的少数情况
-    public static void flagToday(String tag,String taskUid) {
+    public static void flagToday(String tag, String taskUid) {
         if (!hasFlagToday(tag)) {
-            if(taskUid.equals(UserIdMap.getCurrentUid())){
+            if (taskUid.equals(UserIdMap.getCurrentUid())) {
                 INSTANCE.flagLogList.add(tag);
                 save();
             }
@@ -91,8 +93,8 @@ public class Status {
     }
     
     //根据助力场景记录助力次数
-    public static void forestHuntHelpToday(String taskType, int count,String taskUid) {
-        if(taskUid.equals(UserIdMap.getCurrentUid())){
+    public static void forestHuntHelpToday(String taskType, int count, String taskUid) {
+        if (taskUid.equals(UserIdMap.getCurrentUid())) {
             INSTANCE.forestHuntHelpLogList.put(taskType, count);
             save();
         }
@@ -103,13 +105,15 @@ public class Status {
         if (count == null) {
             return 0;
         }
-        else return count;
+        else {
+            return count;
+        }
     }
     
     //记录完成任务次数
     public static void rpcRequestListToday(String taskName, int count) {
-            INSTANCE.forestHuntHelpLogList.put(taskName, count);
-            save();
+        INSTANCE.forestHuntHelpLogList.put(taskName, count);
+        save();
     }
     
     public static Integer getrpcRequestListToday(String taskName) {
@@ -117,9 +121,84 @@ public class Status {
         if (count == null) {
             return 0;
         }
-        else return count;
+        else {
+            return count;
+        }
     }
     
+    public static void wateredFriendToday(String id) {
+        Integer count = INSTANCE.wateredFriendLogList.get(id);
+        if (count == null) {
+            count = 0; // 首次被浇水，次数初始化为0
+        }
+        INSTANCE.wateredFriendLogList.put(id, count + 1);
+        save();
+    }
+    //Log.forest("统计被水🍯
+    //Log.forest("统计浇水🚿
+    public static void getWateredFriendToday() {
+        // 1. 基础统计：浇水好友数量（Map的key数量）
+        int friendCount = INSTANCE.wateredFriendLogList.size();
+        // 2. 统计总浇水量（遍历Map累加所有value）
+        int totalWaterAmount = 0;
+        
+        // 3. 遍历Map的键值对并输出详细信息
+        for (Map.Entry<String, Integer> entry : INSTANCE.wateredFriendLogList.entrySet()) {
+            String friendId = entry.getKey();       // 好友ID
+            Integer waterAmount = entry.getValue(); // 给该好友的浇水量（避免空指针）
+            if (waterAmount == null) {
+                waterAmount = 0;
+            }
+            
+            // 可选：通过UserIdMap获取好友昵称（如果需要显示名称而非ID）
+            String friendName = UserIdMap.getShowName(friendId);
+            
+            // 输出单条明细（日志/控制台）
+            Log.forest("统计被水🍯被["+friendName+"]浇水"+waterAmount+"次");
+            
+            // 累加总浇水量
+            totalWaterAmount += waterAmount;
+        }
+        
+        // 4. 输出汇总统计信息
+        Log.forest("统计被水🍯共计被"+friendCount+"个好友浇水"+ totalWaterAmount+"次#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+    }
+    
+    public static void wateringFriendToday(String id) {
+        Integer count = INSTANCE.wateringFriendLogList.get(id);
+        if (count == null) {
+            count = 0; // 首次被浇水，次数初始化为0
+        }
+        INSTANCE.wateringFriendLogList.put(id, count + 1);
+    }
+    
+    public static void getWateringFriendToday() {
+        // 1. 基础统计：浇水好友数量（Map的key数量）
+        int friendCount = INSTANCE.wateringFriendLogList.size();
+        // 2. 统计总浇水量（遍历Map累加所有value）
+        int totalWaterAmount = 0;
+        
+        // 3. 遍历Map的键值对并输出详细信息
+        for (Map.Entry<String, Integer> entry : INSTANCE.wateringFriendLogList.entrySet()) {
+            String friendId = entry.getKey();       // 好友ID
+            Integer waterAmount = entry.getValue(); // 给该好友的浇水量（避免空指针）
+            if (waterAmount == null) {
+                waterAmount = 0;
+            }
+            
+            // 可选：通过UserIdMap获取好友昵称（如果需要显示名称而非ID）
+            String friendName = UserIdMap.getShowName(friendId);
+            
+            // 输出单条明细（日志/控制台）
+            Log.forest("统计浇水🚿给["+friendName+"]浇水"+waterAmount+"次");
+            
+            // 累加总浇水量
+            totalWaterAmount += waterAmount;
+        }
+        
+        // 4. 输出汇总统计信息
+        Log.forest("统计浇水🚿共计给"+friendCount+"个好友浇水"+ totalWaterAmount+"次#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+    }
     
     public static Boolean canWaterFriendToday(String id, int newCount) {
         Integer count = INSTANCE.waterFriendLogList.get(id);
@@ -129,8 +208,8 @@ public class Status {
         return count < newCount;
     }
     
-    public static void waterFriendToday(String id, int count,String taskUid) {
-        if(taskUid.equals(UserIdMap.getCurrentUid())){
+    public static void waterFriendToday(String id, int count, String taskUid) {
+        if (taskUid.equals(UserIdMap.getCurrentUid())) {
             INSTANCE.waterFriendLogList.put(id, count);
             save();
         }
@@ -145,8 +224,7 @@ public class Status {
     }
     
     public static Boolean canVitalityExchangeBenefitToday(String skuId, int count) {
-        return !hasFlagToday("forest::exchangeLimit::" + skuId)
-               && getVitalityExchangeBenefitCountToday(skuId) < count;
+        return !hasFlagToday("forest::exchangeLimit::" + skuId) && getVitalityExchangeBenefitCountToday(skuId) < count;
     }
     
     public static void vitalityExchangeBenefitToday(String skuId) {
@@ -164,8 +242,7 @@ public class Status {
     }
     
     public static Boolean canGameCenterBuyMallItemToday(String skuId, int count) {
-        return !hasFlagToday("farm::buyLimit::" + skuId)
-               && getGameCenterBuyMallItemCountToday(skuId) < count;
+        return !hasFlagToday("farm::buyLimit::" + skuId) && getGameCenterBuyMallItemCountToday(skuId) < count;
     }
     
     public static void gameCenterBuyMallItemToday(String skuId) {
@@ -173,7 +250,6 @@ public class Status {
         INSTANCE.gameCenterBuyMallItemList.put(skuId, count);
         save();
     }
-    
     
     public static int getExchangeReserveCountToday(int id) {
         Integer count = INSTANCE.exchangeReserveLogList.get(id);
@@ -236,8 +312,7 @@ public class Status {
     public static Boolean canVisitFriendToday(String id, int countLimit) {
         countLimit = Math.max(countLimit, 0);
         countLimit = Math.min(countLimit, 3);
-        return !hasFlagToday("farm::visitFriendLimit::" + id)
-               && getVisitFriendCountToday(id) < countLimit;
+        return !hasFlagToday("farm::visitFriendLimit::" + id) && getVisitFriendCountToday(id) < countLimit;
     }
     
     public static void visitFriendToday(String id) {
@@ -266,7 +341,8 @@ public class Status {
         }
         if (limited) {
             count = 3;
-        } else {
+        }
+        else {
             count += 1;
         }
         INSTANCE.stallHelpedCountLogList.put(id, count);
@@ -274,8 +350,7 @@ public class Status {
     }
     
     public static Boolean canUseAccelerateToolToday() {
-        return !hasFlagToday("farm::useFarmToolLimit::" + "ACCELERATE" + "TOOL")
-               && INSTANCE.useAccelerateToolCount < 8;
+        return !hasFlagToday("farm::useFarmToolLimit::" + "ACCELERATE" + "TOOL") && INSTANCE.useAccelerateToolCount < 8;
     }
     
     public static void useAccelerateToolToday() {
@@ -301,9 +376,7 @@ public class Status {
     }
     
     public static Boolean canOrchardShareP2PToday(String friendUserId) {
-        return !hasFlagToday("orchard::shareP2PLimit")
-               && !hasFlagToday("orchard::shareP2PLimit::" + friendUserId)
-               && !INSTANCE.orchardShareP2PLogList.contains(friendUserId);
+        return !hasFlagToday("orchard::shareP2PLimit") && !hasFlagToday("orchard::shareP2PLimit::" + friendUserId) && !INSTANCE.orchardShareP2PLogList.contains(friendUserId);
     }
     
     public static void orchardShareP2PToday(String friendUserId) {
@@ -314,9 +387,7 @@ public class Status {
     }
     
     public static Boolean canStallShareP2PToday(String friendUserId) {
-        return !hasFlagToday("stall::shareP2PLimit")
-               && !hasFlagToday("stall::shareP2PLimit::" + friendUserId)
-               && !INSTANCE.stallShareP2PLogList.contains(friendUserId);
+        return !hasFlagToday("stall::shareP2PLimit") && !hasFlagToday("stall::shareP2PLimit::" + friendUserId) && !INSTANCE.stallShareP2PLogList.contains(friendUserId);
     }
     
     public static void stallShareP2PToday(String friendUserId) {
@@ -398,20 +469,23 @@ public class Status {
                     Log.system(TAG, "重新格式化 status.json");
                     FileUtil.write2File(formatted, FileUtil.getStatusFile(currentUid));
                 }
-            } else {
+            }
+            else {
                 JsonUtil.copyMapper().updateValue(INSTANCE, new Status());
                 Log.i(TAG, "初始化 status.json");
                 Log.system(TAG, "初始化 status.json");
                 FileUtil.write2File(JsonUtil.toFormatJsonString(INSTANCE), FileUtil.getStatusFile(currentUid));
             }
-        } catch (Throwable t) {
+        }
+        catch (Throwable t) {
             Log.printStackTrace(TAG, t);
             Log.i(TAG, "状态文件格式有误，已重置");
             Log.system(TAG, "状态文件格式有误，已重置");
             try {
                 JsonUtil.copyMapper().updateValue(INSTANCE, new Status());
                 FileUtil.write2File(JsonUtil.toFormatJsonString(INSTANCE), FileUtil.getStatusFile(currentUid));
-            } catch (JsonMappingException e) {
+            }
+            catch (JsonMappingException e) {
                 Log.printStackTrace(TAG, e);
             }
         }
@@ -424,7 +498,8 @@ public class Status {
     public static synchronized void unload() {
         try {
             JsonUtil.copyMapper().updateValue(INSTANCE, new Status());
-        } catch (JsonMappingException e) {
+        }
+        catch (JsonMappingException e) {
             Log.printStackTrace(TAG, e);
         }
     }
@@ -441,14 +516,16 @@ public class Status {
         }
         if (updateDay(nowCalendar)) {
             Log.system(TAG, "重置 status.json");
-        } else {
+        }
+        else {
             Log.system(TAG, "保存 status.json");
         }
         long lastSaveTime = INSTANCE.saveTime;
         try {
             INSTANCE.saveTime = System.currentTimeMillis();
             FileUtil.write2File(JsonUtil.toFormatJsonString(INSTANCE), FileUtil.getStatusFile(currentUid));
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             INSTANCE.saveTime = lastSaveTime;
             throw e;
         }
@@ -458,12 +535,11 @@ public class Status {
         if (TimeUtil.isLessThanSecondOfDays(INSTANCE.saveTime, nowCalendar.getTimeInMillis())) {
             Status.unload();
             return true;
-        } else {
+        }
+        else {
             return false;
         }
     }
-    
-    
     
     @Data
     private static class WaterFriendLog {

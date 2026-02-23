@@ -22,6 +22,37 @@
             android:orientation="horizontal">
 
             <Button
+                android:id="@+id/btn_get_watered_items"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="10dp"
+                android:layout_weight="1"
+                android:background="@drawable/button_extend"
+                android:text="@string/get_watered_items"
+                android:textColor="@color/button_text" />
+
+            <Button
+                android:id="@+id/btn_get_watering_items"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="10dp"
+                android:layout_weight="1"
+                android:background="@drawable/button_extend"
+                android:text="@string/get_watering_items"
+                android:textColor="@color/button_text" />
+        </LinearLayout>
+
+
+        <LinearLayout
+            style="?android:attr/buttonBarStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal">
+
+            <Button
                 android:id="@+id/btn_get_tree_items"
                 style="?android:attr/buttonBarButtonStyle"
                 android:layout_width="0dp"

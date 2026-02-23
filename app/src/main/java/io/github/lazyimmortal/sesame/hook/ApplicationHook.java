@@ -1,6 +1,5 @@
 package io.github.lazyimmortal.sesame.hook;
 
-
 import static io.github.lazyimmortal.sesame.hook.SimplePageManager.addHandler;
 import static io.github.lazyimmortal.sesame.hook.SimplePageManager.enableWindowMonitoring;
 
@@ -125,7 +124,7 @@ public class ApplicationHook implements IXposedHookLoadPackage {
     
     @Getter
     private static final AtomicInteger reLoginCount = new AtomicInteger(0);
-
+    
     @Getter
     private static Handler mainHandler;
     
@@ -143,6 +142,10 @@ public class ApplicationHook implements IXposedHookLoadPackage {
     private static XC_MethodHook.Unhook rpcRequestUnhook;
     
     private static XC_MethodHook.Unhook rpcResponseUnhook;
+    
+    private static BroadcastReceiver broadcastReceiver = null;
+    
+    private static volatile boolean broadcastReceiverRegistered = false;
     
     public static void setOffline(boolean offline) {
         ApplicationHook.offline = offline;
@@ -176,16 +179,15 @@ public class ApplicationHook implements IXposedHookLoadPackage {
             //Log.record("closeCaptchaDialogVPN"+BaseModel.getcloseCaptchaDialogVPN());
             //if(BaseModel.getcloseCaptchaDialogVPN()){
             //    hookAlipayAlertDialog(lpparam.classLoader);
-                
+            
             //}
-
             
             XposedHelpers.findAndHookMethod(Application.class, "attach", Context.class, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                     context = (Context) param.args[0];
+                    alipayVersion = new AlipayVersion(context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionName);
                     try {
-                        alipayVersion = new AlipayVersion(context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionName);
                         AlipayMiniMarkHelper.init(classLoader);
                         AuthCodeHelper.init(classLoader);
                         AuthCodeHelper.getAuthCode("2021005114632037");
@@ -193,13 +195,13 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                         // 用线程直接执行（项目中大量使用 Thread 方式，贴合风格）
                         //new Thread(() -> {
                         //    try {
-                                initSimplePageManager();
-                       //     } catch (Throwable t) {
-                                // 复用项目日志风格，捕获异步执行异常
-                       //         Log.i(TAG, "initSimplePageManager async err:");
-                       //         Log.printStackTrace(TAG, t);
-                       //     }
-                       // }, "InitSimplePageManager-Thread").start();
+                        initSimplePageManager();
+                        //     } catch (Throwable t) {
+                        // 复用项目日志风格，捕获异步执行异常
+                        //         Log.i(TAG, "initSimplePageManager async err:");
+                        //         Log.printStackTrace(TAG, t);
+                        //     }
+                        // }, "InitSimplePageManager-Thread").start();
                     }
                     catch (Exception e) {
                         Log.printStackTrace(e);
@@ -291,7 +293,7 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                                     return;
                                 }
                                 Log.record("应用版本：" + alipayVersion.getVersionString());
-                                Log.record("模块版本：" + modelVersion+"（交流更新QQ群：694474777）");
+                                Log.record("模块版本：" + modelVersion + "（交流更新QQ群：694474777）");
                                 Log.record("开始执行");
                                 try {
                                     int checkInterval = BaseModel.getCheckInterval().getValue();
@@ -375,7 +377,6 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                                 }
                             }
                         });
-                        registerBroadcastReceiver(appService);
                         dayCalendar = Calendar.getInstance();
                         Statistics.load();
                         FriendWatch.load();
@@ -465,7 +466,6 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                     
-                    
                     // 1. 基础信息初始化（避免空指针）
                     Object dialogObj = param.thisObject;
                     String className = dialogObj.getClass().getName();
@@ -476,84 +476,90 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                     dialogAllInfo.append("对话框类名：").append(dialogObj.getClass().getName()).append("\n");
                     dialogAllInfo.append("父类名：").append(dialogObj.getClass().getSuperclass().getName()).append("\n");
                     if (className.contains("alipay")) {
-                    // 3. 获取对话框上下文（反射，兼容自定义Dialog）
-                    try {
-                        Field mContextField = dialogObj.getClass().getSuperclass().getDeclaredField("mContext");
-                        mContextField.setAccessible(true);
-                        Context context = (Context) mContextField.get(dialogObj);
-                        dialogAllInfo.append("所属上下文：").append(context != null ? context.getClass().getName() : "null").append("\n");
-                    } catch (Exception e) {
-                        dialogAllInfo.append("所属上下文：获取失败 - ").append(e.getMessage()).append("\n");
-                    }
-                    
-                    // 4. 强转为Dialog（兼容非AlertDialog的自定义Dialog）
-                    Dialog dialog = null;
-                    if (dialogObj instanceof Dialog) {
-                        dialog = (Dialog) dialogObj;
-                    } else {
-                        // 若不是Dialog子类，尝试反射获取Dialog实例（极端场景）
+                        // 3. 获取对话框上下文（反射，兼容自定义Dialog）
                         try {
-                            Field dialogField = dialogObj.getClass().getDeclaredField("mDialog");
-                            dialogField.setAccessible(true);
-                            dialog = (Dialog) dialogField.get(dialogObj);
-                        } catch (Exception e) {
-                            dialogAllInfo.append("转换Dialog失败：").append(e.getMessage()).append("\n");
+                            Field mContextField = dialogObj.getClass().getSuperclass().getDeclaredField("mContext");
+                            mContextField.setAccessible(true);
+                            Context context = (Context) mContextField.get(dialogObj);
+                            dialogAllInfo.append("所属上下文：").append(context != null ? context.getClass().getName() : "null").append("\n");
                         }
-                    }
-                    
-                    if (dialog != null) {
-                        // 5. 获取系统标准ID的元素（标题、消息、按钮）
-                        // 5.1 标题（android.R.id.title）
-                        TextView titleView = dialog.findViewById(android.R.id.title);
-                        String title = titleView != null ? titleView.getText().toString().trim() : "无标题/未找到系统标题ID";
-                        dialogAllInfo.append("系统标题（title）：").append(title).append("\n");
-                        
-                        // 5.2 消息文本（android.R.id.message）
-                        TextView messageView = dialog.findViewById(android.R.id.message);
-                        String message = messageView != null ? messageView.getText().toString().trim() : "无消息/未找到系统消息ID";
-                        dialogAllInfo.append("系统消息（message）：").append(message).append("\n");
-                        
-                        // 5.3 所有按钮（button1=确定、button2=取消、button3=中性）
-                        TextView btn1 = dialog.findViewById(android.R.id.button1);
-                        String btn1Text = btn1 != null ? btn1.getText().toString().trim() : "无确定按钮";
-                        dialogAllInfo.append("确定按钮（button1）：").append(btn1Text).append("\n");
-                        
-                        TextView btn2 = dialog.findViewById(android.R.id.button2);
-                        String btn2Text = btn2 != null ? btn2.getText().toString().trim() : "无取消按钮";
-                        dialogAllInfo.append("取消按钮（button2）：").append(btn2Text).append("\n");
-                        
-                        TextView btn3 = dialog.findViewById(android.R.id.button3);
-                        String btn3Text = btn3 != null ? btn3.getText().toString().trim() : "无中性按钮";
-                        dialogAllInfo.append("中性按钮（button3）：").append(btn3Text).append("\n");
-                        
-                        // 6. 遍历Dialog根布局，获取所有TextView文本（适配自定义布局）
-                        dialogAllInfo.append("===== 自定义布局所有TextView内容 =====\n");
-                        View rootView = dialog.getWindow().getDecorView().getRootView();
-                        collectAllTextViewText(rootView, dialogAllInfo);
-                    } else {
-                        dialogAllInfo.append("Dialog实例为空，无法获取控件信息\n");
-                    }
-                    
-                    // 7. 打印完整日志（核心：所有元素内容）
-                    Log.i(TAG, dialogAllInfo.toString());
-                    //Log.record(dialogAllInfo.toString());
-                    
-                    // 8. 阻止对话框显示（无论内容是什么，都拦截；也可加文本判断）
-                    if (dialogAllInfo.length() > 0) { // 先判断是否有内容
-                        Log.record("页面内容："+dialogAllInfo.toString());
-                        if(dialogAllInfo.toString().contains("请检查是否使用了代理软件或VPN")||dialogAllInfo.toString().contains("访问被拒绝")){
-                            Log.record("包含指定字符");
-                            param.setResult(null);
+                        catch (Exception e) {
+                            dialogAllInfo.append("所属上下文：获取失败 - ").append(e.getMessage()).append("\n");
                         }
+                        
+                        // 4. 强转为Dialog（兼容非AlertDialog的自定义Dialog）
+                        Dialog dialog = null;
+                        if (dialogObj instanceof Dialog) {
+                            dialog = (Dialog) dialogObj;
+                        }
+                        else {
+                            // 若不是Dialog子类，尝试反射获取Dialog实例（极端场景）
+                            try {
+                                Field dialogField = dialogObj.getClass().getDeclaredField("mDialog");
+                                dialogField.setAccessible(true);
+                                dialog = (Dialog) dialogField.get(dialogObj);
+                            }
+                            catch (Exception e) {
+                                dialogAllInfo.append("转换Dialog失败：").append(e.getMessage()).append("\n");
+                            }
+                        }
+                        
+                        if (dialog != null) {
+                            // 5. 获取系统标准ID的元素（标题、消息、按钮）
+                            // 5.1 标题（android.R.id.title）
+                            TextView titleView = dialog.findViewById(android.R.id.title);
+                            String title = titleView != null ? titleView.getText().toString().trim() : "无标题/未找到系统标题ID";
+                            dialogAllInfo.append("系统标题（title）：").append(title).append("\n");
+                            
+                            // 5.2 消息文本（android.R.id.message）
+                            TextView messageView = dialog.findViewById(android.R.id.message);
+                            String message = messageView != null ? messageView.getText().toString().trim() : "无消息/未找到系统消息ID";
+                            dialogAllInfo.append("系统消息（message）：").append(message).append("\n");
+                            
+                            // 5.3 所有按钮（button1=确定、button2=取消、button3=中性）
+                            TextView btn1 = dialog.findViewById(android.R.id.button1);
+                            String btn1Text = btn1 != null ? btn1.getText().toString().trim() : "无确定按钮";
+                            dialogAllInfo.append("确定按钮（button1）：").append(btn1Text).append("\n");
+                            
+                            TextView btn2 = dialog.findViewById(android.R.id.button2);
+                            String btn2Text = btn2 != null ? btn2.getText().toString().trim() : "无取消按钮";
+                            dialogAllInfo.append("取消按钮（button2）：").append(btn2Text).append("\n");
+                            
+                            TextView btn3 = dialog.findViewById(android.R.id.button3);
+                            String btn3Text = btn3 != null ? btn3.getText().toString().trim() : "无中性按钮";
+                            dialogAllInfo.append("中性按钮（button3）：").append(btn3Text).append("\n");
+                            
+                            // 6. 遍历Dialog根布局，获取所有TextView文本（适配自定义布局）
+                            dialogAllInfo.append("===== 自定义布局所有TextView内容 =====\n");
+                            View rootView = dialog.getWindow().getDecorView().getRootView();
+                            collectAllTextViewText(rootView, dialogAllInfo);
+                        }
+                        else {
+                            dialogAllInfo.append("Dialog实例为空，无法获取控件信息\n");
+                        }
+                        
+                        // 7. 打印完整日志（核心：所有元素内容）
+                        Log.i(TAG, dialogAllInfo.toString());
+                        //Log.record(dialogAllInfo.toString());
+                        
+                        // 8. 阻止对话框显示（无论内容是什么，都拦截；也可加文本判断）
+                        if (dialogAllInfo.length() > 0) { // 先判断是否有内容
+                            Log.record("页面内容：" + dialogAllInfo.toString());
+                            if (dialogAllInfo.toString().contains("请检查是否使用了代理软件或VPN") || dialogAllInfo.toString().contains("访问被拒绝")) {
+                                Log.record("包含指定字符");
+                                param.setResult(null);
+                            }
+                        }
+                        Log.i(TAG, "已拦截CaptchaDialog显示");
+                        Log.record("已拦截CaptchaDialog显示");
                     }
-                    Log.i(TAG, "已拦截CaptchaDialog显示");
-                    Log.record("已拦截CaptchaDialog显示");
-                }}
+                }
             });
             
             Log.i(TAG, "支付宝CaptchaDialog Hook成功（类加载完成）");
             Log.record("支付宝CaptchaDialog Hook成功（类加载完成）");
-        } catch (Throwable t) {
+        }
+        catch (Throwable t) {
             Log.error(t.toString());
             Log.record("支付宝CaptchaDialog Hook失败：" + t.getMessage());
             Log.printStackTrace(TAG, t);
@@ -562,8 +568,9 @@ public class ApplicationHook implements IXposedHookLoadPackage {
     
     /**
      * 递归遍历View树，收集所有TextView的文本内容（适配自定义布局）
+     *
      * @param rootView 根布局
-     * @param info 拼接日志的StringBuilder
+     * @param info     拼接日志的StringBuilder
      */
     private void collectAllTextViewText(View rootView, StringBuilder info) {
         if (rootView instanceof ViewGroup) {
@@ -573,11 +580,11 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                 View child = viewGroup.getChildAt(i);
                 collectAllTextViewText(child, info); // 递归
             }
-        } else if (rootView instanceof TextView) {
+        }
+        else if (rootView instanceof TextView) {
             // 是TextView，记录ID（若有）和文本
             TextView textView = (TextView) rootView;
-            String viewId = textView.getId() != View.NO_ID ?
-                            rootView.getResources().getResourceEntryName(textView.getId()) : "无ID";
+            String viewId = textView.getId() != View.NO_ID ? rootView.getResources().getResourceEntryName(textView.getId()) : "无ID";
             String text = textView.getText().toString().trim();
             if (!text.isEmpty()) { // 只记录非空文本
                 info.append("TextView(ID: ").append(viewId).append(")：").append(text).append("\n");
@@ -674,7 +681,7 @@ public class ApplicationHook implements IXposedHookLoadPackage {
         if (service == null) {
             return false;
         }
-
+        
         destroyHandler(force);
         try {
             if (force) {
@@ -696,8 +703,6 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                 
                 //调用 startIfNeeded 方法，参数与 Kotlin 保持一致
                 ModuleHttpServerManager.getInstance().startIfNeeded(8080, "ET3vB^#td87sQqKaY*eMUJXP", processName, "com.eg.android.AlipayGphone");
-                // 注册广播接收器，传入非空的 appContext
-                registerBroadcastReceiver(context);
                 
                 UserIdMap.initUser(userId);
                 Model.initAllModel();
@@ -1128,11 +1133,29 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                     case "com.eg.android.AlipayGphone.sesame.restart":
                         String userId = intent.getStringExtra("userId");
                         if (StringUtil.isEmpty(userId) || Objects.equals(UserIdMap.getCurrentUid(), userId)) {
-                            initHandler(true);
+                            BroadcastReceiver.PendingResult r = goAsync();
+                            new Thread(() -> {
+                                try {
+                                    initHandler(true);
+                                }
+                                catch (Throwable th) {
+                                    Log.printStackTrace(TAG, th);
+                                }
+                                r.finish();
+                            }, "Sesame-Restart").start();
                         }
                         break;
                     case "com.eg.android.AlipayGphone.sesame.execute":
-                        initHandler(false);
+                        BroadcastReceiver.PendingResult r2 = goAsync();
+                        new Thread(() -> {
+                            try {
+                                initHandler(false);
+                            }
+                            catch (Throwable th) {
+                                Log.printStackTrace(TAG, th);
+                            }
+                            r2.finish();
+                        }, "Sesame-Execute").start();
                         break;
                     case "com.eg.android.AlipayGphone.sesame.reLogin":
                         reLogin();
@@ -1167,19 +1190,32 @@ public class ApplicationHook implements IXposedHookLoadPackage {
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private void registerBroadcastReceiver(Context context) {
         try {
+            if (broadcastReceiverRegistered && broadcastReceiver != null) {
+                try {
+                    context.unregisterReceiver(broadcastReceiver);
+                    broadcastReceiverRegistered = false;
+                    Log.i(TAG, "hook unregisterBroadcastReceiver successfully");
+                } catch (Throwable t) {
+                    Log.i(TAG, "hook unregisterBroadcastReceiver err:");
+                    Log.printStackTrace(TAG, t);
+                }
+            }
+            
             IntentFilter intentFilter = new IntentFilter();
             intentFilter.addAction("com.eg.android.AlipayGphone.sesame.restart");
             intentFilter.addAction("com.eg.android.AlipayGphone.sesame.execute");
             intentFilter.addAction("com.eg.android.AlipayGphone.sesame.reLogin");
             intentFilter.addAction("com.eg.android.AlipayGphone.sesame.status");
             intentFilter.addAction("com.eg.android.AlipayGphone.sesame.rpctest");
+            
+            broadcastReceiver = new AlipayBroadcastReceiver();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                // 传入的 Context 参数（对应 Kotlin 的 appContext）用于注册广播
-                context.registerReceiver(new AlipayBroadcastReceiver(), intentFilter, Context.RECEIVER_EXPORTED);
+                context.registerReceiver(broadcastReceiver, intentFilter, Context.RECEIVER_EXPORTED);
             }
             else {
-                context.registerReceiver(new AlipayBroadcastReceiver(), intentFilter);
+                context.registerReceiver(broadcastReceiver, intentFilter);
             }
+            broadcastReceiverRegistered = true;
             Log.i(TAG, "hook registerBroadcastReceiver successfully");
         }
         catch (Throwable th) {
@@ -1192,15 +1228,14 @@ public class ApplicationHook implements IXposedHookLoadPackage {
     private void initSimplePageManager() {
         if (shouldEnableSimplePageManager()) {
             enableWindowMonitoring(classLoader);
-            addHandler(
-                    "com.alipay.mobile.nebulax.xriver.activity.XRiverActivity", new Captcha1Handler()
-            );
+            addHandler("com.alipay.mobile.nebulax.xriver.activity.XRiverActivity", new Captcha1Handler());
             addHandler("com.eg.android.AlipayGphone.AlipayLogin", new Captcha2Handler());
         }
     }
     
     /**
      * 检查目标应用版本是否需要启用SimplePageManager功能
+     *
      * @return true表示版本低于等于10.6.58.99999，需要启用；false表示不需要
      */
     private boolean shouldEnableSimplePageManager() {

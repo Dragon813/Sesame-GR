@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="get_watered_items">查询被浇水情况🍯</string>
+    <string name="get_watering_items">查询浇水情况🚿</string>
     <string name="get_tree_items">查询树苗余量🌱</string>
     <string name="get_newTree_items">查询树苗上新🌱</string>
     <string name="query_area_trees">查询未解锁地区🗺️</string>

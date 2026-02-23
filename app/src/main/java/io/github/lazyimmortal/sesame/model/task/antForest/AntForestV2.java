@@ -271,10 +271,10 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(CollectSelfEnergyThreshold = new IntegerModelField("CollectSelfEnergyThreshold", "收自己单个能量球阈值", 0, 0, 10000));
         modelFields.addField(CollectBombEnergyLimit = new IntegerModelField("CollectBombEnergyLimit", "单个炸弹能量大于该值收取", 0, 0, 100000));
         modelFields.addField(continuousUseCardOptions = new SelectModelField("continuousUseCardOptions", "连续兑换使用道具卡片 | 选项", new LinkedHashSet<>(), CustomOption::getContinuousUseCardOptions, "光盘行动需要先手动完成一次"));
-        modelFields.addField(doubleClickType = new ChoiceModelField("doubleClickType", "双击卡 | " + "自动使用", UsePropType.CLOSE, UsePropType.nickNames));
-        modelFields.addField(doubleCountLimit = new IntegerModelField("doubleCountLimit", "双击卡 | " + "使用次数", 6));
-        modelFields.addField(doubleCardTime = new ListModelField.ListJoinCommaToStringModelField("doubleCardTime", "双击卡 | 使用时间(范围)", ListUtil.newArrayList("0700" + "-0730")));
-        modelFields.addField(doubleCardConstant = new BooleanModelField("DoubleCardConstant", "双击卡 | 限时双击永动机", false));
+        //modelFields.addField(doubleClickType = new ChoiceModelField("doubleClickType", "双击卡 | " + "自动使用", UsePropType.CLOSE, UsePropType.nickNames));
+        //modelFields.addField(doubleCountLimit = new IntegerModelField("doubleCountLimit", "双击卡 | " + "使用次数", 6));
+        //modelFields.addField(doubleCardTime = new ListModelField.ListJoinCommaToStringModelField("doubleCardTime", "双击卡 | 使用时间(范围)", ListUtil.newArrayList("0700" + "-0730")));
+        //modelFields.addField(doubleCardConstant = new BooleanModelField("DoubleCardConstant", "双击卡 | 限时双击永动机", false));
         modelFields.addField(returnWater10 = new IntegerModelField("returnWater10", "返水 | 10克需收能量" + "(关闭:0)", 0));
         modelFields.addField(returnWater18 = new IntegerModelField("returnWater18", "返水 | 18克需收能量" + "(关闭:0)", 0));
         modelFields.addField(returnWater33 = new IntegerModelField("returnWater33", "返水 | 33克需收能量" + "(关闭:0)", 0));
@@ -445,6 +445,9 @@ public class AntForestV2 extends ModelTask {
                                             }
                                             
                                             if (collected > 0) {
+                                                //记录被浇水次数
+                                                Status.wateredFriendToday(wateringBubble.getString("userId"));
+                                                Statistics.addData(Statistics.DataType.WATEREDCOUNT, 1);
                                                 String msg = "收取金球🍯[" + friendShowName + "]的浇水[" + collected + "g]";
                                                 Log.forest(msg + "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                                                 Toast.show(msg);
@@ -1330,7 +1333,7 @@ public class AntForestV2 extends ModelTask {
         Runnable runnable = () -> {
             try {
                 String userId = collectEnergyEntity.getUserId();
-                usePropBeforeCollectEnergy(userId);
+                //usePropBeforeCollectEnergy(userId);
                 RpcEntity rpcEntity = collectEnergyEntity.getRpcEntity();
                 boolean needDouble = collectEnergyEntity.getNeedDouble();
                 boolean needRetry = collectEnergyEntity.getNeedRetry();
@@ -2071,6 +2074,9 @@ public class AntForestV2 extends ModelTask {
                 String resultCode = jo.getString("resultCode");
                 switch (resultCode) {
                     case "SUCCESS":
+                        //记录浇水次数
+                        Status.wateringFriendToday(userId);
+                        Statistics.addData(Statistics.DataType.WATERINGCOUNT, 1);
                         int currentEnergy = jo.getJSONObject("userBaseInfo").getInt("currentEnergy");
                         Log.forest("好友浇水🚿给[" + UserIdMap.getShowName(userId) + "]浇" + waterEnergy + "g#剩余能量[" + currentEnergy + "g]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                         Toast.show("好友浇水🚿给[" + UserIdMap.getShowName(userId) + "]浇" + waterEnergy + "g");

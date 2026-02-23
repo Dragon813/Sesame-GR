@@ -8,9 +8,14 @@ android {
         version = "${buildTime}"
         //version = "Dragon"
     }
-    def gitCommitHash = 'git rev-parse --short HEAD'.execute().text.trim()
-    def gitBranchName = 'git rev-parse --abbrev-ref HEAD'.execute().text.trim()
-    def gitCommitCount = "git rev-list --count HEAD".execute().text.trim().toInteger()
+    def gitCommitHash = "unknown"
+    def gitBranchName = "unknown"
+    def gitCommitCount = 1
+    try {
+        gitCommitHash = 'git rev-parse --short HEAD'.execute().text.trim()
+        gitBranchName = 'git rev-parse --abbrev-ref HEAD'.execute().text.trim()
+        gitCommitCount = "git rev-list --count HEAD".execute().text.trim().toInteger()
+    } catch (Exception ignored) { }
     def buildTime = new Date().format("yyyy-MM-dd HH:mm:ss", TimeZone.getTimeZone("Asia/Shanghai"))
 
     compileSdk 34
@@ -53,11 +58,8 @@ android {
     }
     applicationVariants.configureEach { variant ->
         variant.outputs.configureEach { output ->
-            def outputFile = output.outputFile
-            if (outputFile != null && outputFile.name.endsWith('.apk')) {
-                if (variant.buildType.name == 'release') {
-                    output.outputFileName = "${applicationName}-${variant.productFlavors[0].ext.applicationType}-${defaultConfig.versionName}.apk"
-                }
+            if (variant.buildType.name == 'release') {
+                output.outputFileName = "${applicationName}-${variant.productFlavors[0].ext.applicationType}-${defaultConfig.versionName}.apk"
             }
         }
     }
