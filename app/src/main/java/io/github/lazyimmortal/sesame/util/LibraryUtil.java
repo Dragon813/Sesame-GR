@@ -5,7 +5,9 @@ import android.content.pm.PackageManager;
 
 import org.json.JSONObject;
 
-import io.github.lazyimmortal.sesame.BuildConfig;
+import io.github.dragon813.sesame.BuildConfig;
+import io.github.dragon813.sesame.util.Log;
+import io.github.dragon813.sesame.util.ToastUtil;
 
 public class LibraryUtil {
     private static final String TAG = LibraryUtil.class.getSimpleName();

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="io.github.lazyimmortal.sesame">
+    package="io.github.dragon813.sesame">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -40,7 +40,7 @@
 
 
         <activity
-            android:name="io.github.lazyimmortal.sesame.ui.MainActivity"
+            android:name="io.github.dragon813.sesame.ui.MainActivity"
             android:exported="true"
             android:resizeableActivity="true">
             <intent-filter>
@@ -53,7 +53,7 @@
             android:name=".ui.MainActivityAlias"
             android:enabled="true"
             android:exported="true"
-            android:targetActivity="io.github.lazyimmortal.sesame.ui.MainActivity">
+            android:targetActivity="io.github.dragon813.sesame.ui.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -61,28 +61,28 @@
         </activity-alias>
 
         <activity
-            android:name="io.github.lazyimmortal.sesame.ui.AlphaActivity"
+            android:name="io.github.dragon813.sesame.ui.AlphaActivity"
             android:resizeableActivity="true"
             tools:targetApi="n"
             tools:ignore="MissingClass" />
 
         <activity
-            android:name="io.github.lazyimmortal.sesame.ui.ExtensionsActivity"
+            android:name="io.github.dragon813.sesame.ui.ExtensionsActivity"
             android:resizeableActivity="true"
             tools:targetApi="n" />
 
         <activity
-            android:name="io.github.lazyimmortal.sesame.ui.NewSettingsActivity"
+            android:name="io.github.dragon813.sesame.ui.NewSettingsActivity"
             android:resizeableActivity="true"
             tools:targetApi="n" />
 
         <activity
-            android:name="io.github.lazyimmortal.sesame.ui.SettingsActivity"
+            android:name="io.github.dragon813.sesame.ui.SettingsActivity"
             android:resizeableActivity="true"
             tools:targetApi="n" />
 
         <activity
-            android:name="io.github.lazyimmortal.sesame.ui.HtmlViewerActivity"
+            android:name="io.github.dragon813.sesame.ui.HtmlViewerActivity"
             android:resizeableActivity="true"
             tools:targetApi="n" />
 
