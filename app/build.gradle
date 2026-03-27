@@ -19,9 +19,9 @@ android {
     def buildTime = new Date().format("yyyy-MM-dd HH:mm:ss", TimeZone.getTimeZone("Asia/Shanghai"))
 
     compileSdk 34
-    namespace 'io.github.lazyimmortal.sesame'
+    namespace 'io.github.dragon813.sesame'
     defaultConfig {
-        applicationId "io.github.lazyimmortal.sesame"
+        applicationId "io.github.dragon813.sesame"
         minSdk 21
         //noinspection ExpiredTargetSdkVersion
         targetSdk 34
@@ -54,6 +54,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
         }
     }
     applicationVariants.configureEach { variant ->
