@@ -28,6 +28,7 @@ import io.github.lazyimmortal.sesame.entity.AlipayAntMemberTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntOceanAntiepTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntOrchardTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntSportsTaskList;
+import io.github.lazyimmortal.sesame.entity.WalkPathThemeMapList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntStallTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayBeach;
 import io.github.lazyimmortal.sesame.entity.AlipayMemberCreditSesameTaskList;
@@ -296,7 +297,7 @@ public class ListDialog {
         });
         lv_list.setOnItemLongClickListener((p1, p2, p3, p4) -> {
             IdAndName curIdAndName = (IdAndName) p1.getAdapter().getItem(p3);
-            if ((curIdAndName instanceof AlipayTree) || (curIdAndName instanceof AlipayReserve) || (curIdAndName instanceof AlipayAnimal) || (curIdAndName instanceof AlipayMarathon) || (curIdAndName instanceof AlipayNewAncientTree) || (curIdAndName instanceof AlipayBeach) || (curIdAndName instanceof AlipayPlantScene) || (curIdAndName instanceof AlipayrpcRequest) || (curIdAndName instanceof AlipayForestHunt) || (curIdAndName instanceof AlipayMemberCreditSesameTaskList) || (curIdAndName instanceof AlipayAntForestVitalityTaskList) || (curIdAndName instanceof AlipayAntForestHuntTaskList) || (curIdAndName instanceof AlipayAntFarmDoFarmTaskList) || (curIdAndName instanceof AlipayAntFarmDrawMachineTaskList) || (curIdAndName instanceof AlipayAntOceanAntiepTaskList) || (curIdAndName instanceof AlipayAntOrchardTaskList) || (curIdAndName instanceof AlipayAntStallTaskList) || (curIdAndName instanceof AlipayAntSportsTaskList) || (curIdAndName instanceof AlipayAntMemberTaskList) || (curIdAndName instanceof WalkPath)) {
+            if ((curIdAndName instanceof AlipayTree) || (curIdAndName instanceof AlipayReserve) || (curIdAndName instanceof AlipayAnimal) || (curIdAndName instanceof AlipayMarathon) || (curIdAndName instanceof AlipayNewAncientTree) || (curIdAndName instanceof AlipayBeach) || (curIdAndName instanceof AlipayPlantScene) || (curIdAndName instanceof AlipayrpcRequest) || (curIdAndName instanceof AlipayForestHunt) || (curIdAndName instanceof AlipayMemberCreditSesameTaskList) || (curIdAndName instanceof AlipayAntForestVitalityTaskList) || (curIdAndName instanceof AlipayAntForestHuntTaskList) || (curIdAndName instanceof AlipayAntFarmDoFarmTaskList) || (curIdAndName instanceof AlipayAntFarmDrawMachineTaskList) || (curIdAndName instanceof AlipayAntOceanAntiepTaskList) || (curIdAndName instanceof AlipayAntOrchardTaskList) || (curIdAndName instanceof AlipayAntStallTaskList) || (curIdAndName instanceof AlipayAntSportsTaskList) ||(curIdAndName instanceof WalkPathThemeMapList) || (curIdAndName instanceof AlipayAntMemberTaskList) || (curIdAndName instanceof WalkPath)) {
                 try {
                     new AlertDialog.Builder(c).setTitle("删除 " + curIdAndName.name).setPositiveButton(c.getString(R.string.ok), (dialog, which) -> {
                         if (which == DialogInterface.BUTTON_POSITIVE) {
@@ -390,15 +391,16 @@ public class ListDialog {
                                 AntSportsTaskListMap.remove(curIdAndName.id);
                                 AntSportsTaskListMap.save();
                             }
+                            else if (curIdAndName instanceof WalkPathThemeMapList) {
+                                WalkPathThemeMapList.remove(curIdAndName.id);
+                                PathThemeMapListMap.remove(curIdAndName.id);
+                                PathThemeMapListMap.save();
+                            }
+
                             else if (curIdAndName instanceof AlipayAntMemberTaskList) {
                                 AlipayAntMemberTaskList.remove(curIdAndName.id);
                                 AntMemberTaskListMap.remove(curIdAndName.id);
                                 AntMemberTaskListMap.save();
-                            }
-                            else if (curIdAndName instanceof WalkPath) {
-                                WalkPath.remove(curIdAndName.id);
-                                WalkPathIdMap.remove(curIdAndName.id);
-                                WalkPathIdMap.save();
                             }
                             selectModelFieldFunc.remove(curIdAndName.id);
                             ListAdapter.get(c).exitFind();

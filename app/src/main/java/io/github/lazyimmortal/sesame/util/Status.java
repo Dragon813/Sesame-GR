@@ -204,8 +204,21 @@ public class Status {
                     String friendName = UserIdMap.getShowName(friendId);
                     int actual = actualWaterAmount == null ? 0 : actualWaterAmount;
                     int diff = configWaterAmount - actual;
-                    if (diff != 0) {
-                        Log.forest("统计被水🍯被[" + friendName + "]缺少" + diff + "次");       
+                    if (diff > 0) {
+                        Log.forest("统计被水🍯被[" + friendName + "]少浇" + diff + "次");
+                    } else if (diff < 0) {
+                        Log.forest("统计被水🍯被[" + friendName + "]多浇" + (-diff) + "次");
+                    }
+                }
+            }
+            // 6.3 检查不在预计列表中但实际被浇了水的好友
+            for (Map.Entry<String, Integer> entry : INSTANCE.wateredFriendLogList.entrySet()) {
+                String friendId = entry.getKey();
+                if (!configWateredFriendList.containsKey(friendId)) {
+                    Integer actualWaterAmount = entry.getValue();
+                    if (actualWaterAmount != null && actualWaterAmount > 0) {
+                        String friendName = UserIdMap.getShowName(friendId);
+                        Log.forest("统计被水🍯被[" + friendName + "]多浇" + actualWaterAmount + "次");
                     }
                 }
             }

@@ -578,6 +578,14 @@ public class FileUtil {
         }
         return file;
     }
+
+    public static File getPathThemeMapListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "PathThemeMapList.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
     
     public static File getAntMemberTaskListMapFile() {
         File file = new File(MAIN_DIRECTORY_FILE, "AntMemberTask.json");

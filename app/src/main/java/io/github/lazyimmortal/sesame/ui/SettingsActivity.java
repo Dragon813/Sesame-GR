@@ -82,8 +82,8 @@ public class SettingsActivity extends BaseActivity {
         AntOrchardTaskListMap.load();
         AntStallTaskListMap.load();
         AntSportsTaskListMap.load();
+        PathThemeMapListMap.load();
         AntMemberTaskListMap.load();
-        WalkPathIdMap.load();
         ConfigV2.load(userId);
         setContentView(R.layout.activity_settings);
         if (userName != null) {

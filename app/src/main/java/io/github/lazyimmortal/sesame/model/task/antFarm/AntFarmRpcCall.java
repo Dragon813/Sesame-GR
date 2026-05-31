@@ -651,7 +651,44 @@ public class AntFarmRpcCall {
     public static String drawGameCenterAward(int drawTimes) {
         return ApplicationHook.requestString("com.alipay.antfarm.drawGameCenterAward", "[{" + "  \"drawTimes\": " + drawTimes + "," + "  \"requestType\": \"NORMAL\"," + "  \"sceneCode\": \"ANTFARM\"," + "  \"source\": \"H5\"," + "  \"version\": \"" + VERSION + "\"" + "}]");
     }
-    
+
+    /**
+     * 查询排位赛入口信息
+     * 返回 hasUnReceivedAward 表示是否有待领取的奖励
+     */
+    public static String queryCompetitionEntranceInfo() {
+        return ApplicationHook.requestString("com.alipay.antfarm.queryCompetitionEntranceInfo", "[{" + "  \"requestType\": \"NORMAL\"," + "  \"sceneCode\": \"ANTFARM\"," + "  \"source\": \"H5\"," + "  \"version\": \"" + VERSION + "\"" + "}]");
+    }
+
+    /**
+     * 进入排位赛排名页面（加入排位赛）
+     */
+    public static String enterDonationCompetitionRank() {
+        return ApplicationHook.requestString("com.alipay.antfarm.enterDonationCompetitionRank", "[{" + "  \"requestType\": \"NORMAL\"," + "  \"sceneCode\": \"ANTFARM\"," + "  \"source\": \"H5\"," + "  \"version\": \"" + VERSION + "\"" + "}]");
+    }
+
+    /**
+     * 设置排位赛配置（退出排位赛使用 action="EXIT"）
+     */
+    public static String setDonationCompetitionConf(String action) {
+        return ApplicationHook.requestString("com.alipay.antfarm.setDonationCompetitionConf", "[{" + "  \"action\": \"" + action + "\"," + "  \"requestType\": \"NORMAL\"," + "  \"sceneCode\": \"ANTFARM\"," + "  \"source\": \"H5\"," + "  \"version\": \"" + VERSION + "\"" + "}]");
+    }
+
+    /**
+     * 查询排位赛奖励列表页面
+     */
+    public static String enterCompetitionAwardPage() {
+        return ApplicationHook.requestString("com.alipay.antfarm.enterCompetitionAwardPage", "[{" + "  \"requestType\": \"NORMAL\"," + "  \"sceneCode\": \"ANTFARM\"," + "  \"source\": \"H5\"," + "  \"version\": \"" + VERSION + "\"" + "}]");
+    }
+
+    /**
+     * 领取排位赛奖励
+     */
+    //{"requestType":"NORMAL","rightsId":"0501_16","sceneCode":"ANTFARM","source":"H5","version":"1.8.2302070202.46"}
+    public static String receiveDonationLevelReward(String rightsId) {
+        return ApplicationHook.requestString("com.alipay.antfarm.receiveDonationLevelReward", "[{" + "  \"requestType\": \"NORMAL\"," + "  \"rightsId\": \"" + rightsId + "\"," + "  \"sceneCode\": \"ANTFARM\"," + "  \"source\": \"H5\"," + "  \"version\": \"" + VERSION + "\"" + "}]");
+    }
+
     /**
      * 查询游戏列表 (如：蚂蚁农场、庄园等)
      * 对应 methodName: com.alipay.charitygamecenter.queryGameList

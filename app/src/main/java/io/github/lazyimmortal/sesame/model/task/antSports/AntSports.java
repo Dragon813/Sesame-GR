@@ -6,6 +6,7 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -22,7 +23,7 @@ import io.github.lazyimmortal.sesame.data.modelFieldExt.IntegerModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectModelField;
 import io.github.lazyimmortal.sesame.data.task.ModelTask;
 import io.github.lazyimmortal.sesame.entity.AlipayAntSportsTaskList;
-import io.github.lazyimmortal.sesame.entity.AlipayMemberCreditSesameTaskList;
+import io.github.lazyimmortal.sesame.entity.WalkPathThemeMapList;
 import io.github.lazyimmortal.sesame.entity.AlipayUser;
 import io.github.lazyimmortal.sesame.entity.WalkPath;
 import io.github.lazyimmortal.sesame.hook.ApplicationHook;
@@ -39,6 +40,7 @@ import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
 import io.github.lazyimmortal.sesame.util.idMap.AntSportsTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.AntStallTaskListMap;
+import io.github.lazyimmortal.sesame.util.idMap.PathThemeMapListMap;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
 public class AntSports extends ModelTask {
@@ -47,8 +49,7 @@ public class AntSports extends ModelTask {
     
     private int tmpStepCount = -1;
     private BooleanModelField walk;
-    private ChoiceModelField walkPathTheme;
-    private SelectModelField walkCustomPathIdList;
+    private SelectModelField PathThemeMapList;
     private BooleanModelField receiveCoinAsset;
     private ChoiceModelField donateCharityCoinType;
     private IntegerModelField donateCharityCoinAmount;
@@ -108,8 +109,8 @@ public class AntSports extends ModelTask {
     public ModelFields getFields() {
         ModelFields modelFields = new ModelFields();
         modelFields.addField(walk = new BooleanModelField("walk", "行走路线 | 开启", false));
-        modelFields.addField(walkPathTheme = new ChoiceModelField("walkPathTheme", "行走路线 | 路线主题", WalkPathTheme.DA_MEI_ZHONG_GUO, WalkPathTheme.nickNames));
-        modelFields.addField(walkCustomPathIdList = new SelectModelField("walkCustomPathIdList", "行走路线 | 自定义路线列表", new LinkedHashSet<>(), WalkPath::getList, "请选择要行走的路线，选择多条则随机走其中一条"));
+        modelFields.addField(PathThemeMapList = new SelectModelField("PathThemeMapList", "行走路线 | 路线主题", new LinkedHashSet<>(), WalkPathThemeMapList::getList, "请选择要行走的主题，选择多条则随机走其中一个主题下的路线"));
+        //modelFields.addField(walkCustomPathIdList = new SelectModelField("walkCustomPathIdList", "行走路线 | 自定义路线列表", new LinkedHashSet<>(), WalkPath::getThemeListFromRpc, "请选择要行走的路线，选择多条则随机走其中一条"));
         modelFields.addField(sportsTasks = new BooleanModelField("sportsTasks", "运动任务", false));
         modelFields.addField(AutoAntSportsTaskList = new BooleanModelField("AutoAntSportsTaskList", "运动任务 | 自动黑白名单", true));
         modelFields.addField(AntSportsTaskList = new SelectModelField("AntSportsTaskList", "运动任务 | 黑名单列表", new LinkedHashSet<>(), AlipayAntSportsTaskList::getList));
@@ -206,6 +207,12 @@ public class AntSports extends ModelTask {
                 initAntSportsTaskListMap(AutoAntSportsTaskList.getValue(), sportsTasks.getValue());
                 Status.flagToday("BlackList::initAntSports");
             }
+
+            //初始化行走主题列表
+            //if (!Status.hasFlagToday("WalkPathTheme::init")) {
+                initWalkPathThemeMap();
+            //    Status.flagToday("WalkPathTheme::init");
+            //}
             
             if (donateCharityCoinType.getValue() != DonateCharityCoinType.ZERO) {
                 queryProjectList();
@@ -341,6 +348,36 @@ public class AntSports extends ModelTask {
             Log.i(TAG, "initSportsTaskListMap err:");
             Log.printStackTrace(TAG, t);
         }
+    }
+
+    private void initWalkPathThemeMap() {
+        //初始化PathThemeMapListMap
+        PathThemeMapListMap.load();
+        try {
+            String result = AntSportsRpcCall.queryThemeList();
+            JSONObject jo = new JSONObject(result);
+            JSONObject data = jo.optJSONObject("data");
+            if (data != null) {
+                JSONArray themeList = data.optJSONArray("themeList");
+                if (themeList != null) {
+                    for (int i = 0; i < themeList.length(); i++) {
+                        JSONObject theme = themeList.optJSONObject(i);
+                        String themeId = theme.optString("themeId");
+                        String themeName = theme.optString("themeName");
+                        if (themeId != null && !themeId.isEmpty() && themeName != null && !themeName.isEmpty()) {
+                            PathThemeMapListMap.add(themeId, themeName);
+                        }
+                    }
+                }
+            }
+            PathThemeMapListMap.save();
+            Log.record("同步路线主题:" + PathThemeMapListMap.getMap());
+
+        } catch (Throwable t) {
+            Log.i(TAG, "initWalkPathThemeMap err:");
+            Log.printStackTrace(TAG, t);
+        }
+
     }
     
     // 运动
@@ -795,13 +832,15 @@ public class AntSports extends ModelTask {
     }
     
     private String queryJoinPathId() {
-        String pathId = TokenConfig.getCustomWalkPathId(walkCustomPathIdList.getValue());
-        if (pathId != null) {
-            return pathId;
-        }
-        
+        String pathId = null;
+
         try {
-            String themeId = WalkPathTheme.walkPathThemeIds[walkPathTheme.getValue()];
+            Set<String> selectedThemes = PathThemeMapList.getValue();
+            if (selectedThemes == null || selectedThemes.isEmpty()) {
+                return pathId;
+            }
+            java.util.List<String> themeList = new java.util.ArrayList<>(selectedThemes);
+            String themeId = themeList.get((int) (Math.random() * themeList.size()));
             JSONObject theme = queryWorldMap(themeId);
             if (theme == null) {
                 return pathId;
@@ -820,7 +859,7 @@ public class AntSports extends ModelTask {
                 for (int j = 0; j < cityPathList.length(); j++) {
                     JSONObject cityPath = cityPathList.getJSONObject(j);
                     pathId = cityPath.getString("pathId");
-                    String pathCompleteStatus = cityPath.getString("pathCompleteStatus");
+                    String pathCompleteStatus = cityPath.optString("pathCompleteStatus");
                     if (!PathCompleteStatus.COMPLETED.name().equals(pathCompleteStatus)) {
                         return pathId;
                     }
@@ -2440,11 +2479,14 @@ public class AntSports extends ModelTask {
     public enum PathCompleteStatus {
         NOT_JOIN, JOIN, NOT_COMPLETED, COMPLETED, INTERRUPT;
     }
-    
+
     public enum TaskStatus {
         WAIT_COMPLETE, WAIT_RECEIVE, HAS_RECEIVED;
     }
-    
+
+
+
+
     public interface WalkPathTheme {
         int DA_MEI_ZHONG_GUO = 0;
         int GONG_YI_YI_XIAO_BU = 1;

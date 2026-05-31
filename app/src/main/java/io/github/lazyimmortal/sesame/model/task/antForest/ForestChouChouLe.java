@@ -148,14 +148,14 @@ public class ForestChouChouLe {
                             //先判断活力值是否大于20
                             int totalVitalityAmount = 0;
                             try {
-                                JSONObject jo = new JSONObject(AntForestRpcCall.queryHomePage());
+                                JSONObject jo = new JSONObject(AntForestRpcCall.queryVitalityStoreIndex());
                                 if (!MessageUtil.checkResultCode(TAG, jo)) {
                                     return;
                                 }
-                                if (!jo.has("userVitalityInfo")) {
+                                if (!jo.has("userVitalityInfoVO")) {
                                     return;
                                 }
-                                JSONObject userVitalityInfo = jo.getJSONObject("userVitalityInfo");
+                                JSONObject userVitalityInfo = jo.getJSONObject("userVitalityInfoVO");
                                 totalVitalityAmount = userVitalityInfo.optInt("totalVitalityAmount", 0);
                             }
                             catch (Throwable th) {

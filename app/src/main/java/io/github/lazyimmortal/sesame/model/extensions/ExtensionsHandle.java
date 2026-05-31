@@ -15,7 +15,7 @@ import io.github.lazyimmortal.sesame.util.MessageUtil;
 import io.github.lazyimmortal.sesame.util.Status;
 import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
-import io.github.lazyimmortal.sesame.util.idMap.WalkPathIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.PathThemeMapListMap;
 
 public class ExtensionsHandle {
     private static final String TAG = ExtensionsHandle.class.getSimpleName();
@@ -218,9 +218,9 @@ public class ExtensionsHandle {
                 Toast.show("添加自定义路线列表失败:找不到路线信息");
                 return;
             }
-            WalkPathIdMap.load();
-            WalkPathIdMap.add(pathId, pathName);
-            WalkPathIdMap.save();
+            PathThemeMapListMap.load();
+            PathThemeMapListMap.add(pathId, pathName);
+            PathThemeMapListMap.save();
             Toast.show("添加自定义路线列表成功:" + pathName);
         }
     }

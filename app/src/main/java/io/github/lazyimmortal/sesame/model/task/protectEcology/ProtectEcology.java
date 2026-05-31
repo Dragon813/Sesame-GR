@@ -53,6 +53,8 @@ public class ProtectEcology extends ModelTask {
     private static SelectAndCountModelField protectTreeList;
     private static BooleanModelField protectReserve;
     private static SelectAndCountModelField protectReserveList;
+    private static BooleanModelField protectReserveMinNum;
+    private IntegerModelField protectReserveNum;
     private static BooleanModelField protectBeachMinNum;
     private IntegerModelField protectBeachNum;
     private static BooleanModelField protectBeach;
@@ -74,6 +76,8 @@ public class ProtectEcology extends ModelTask {
         modelFields.addField(protectTreeList = new SelectAndCountModelField("protectTreeList", "保护森林 | 植树列表", new LinkedHashMap<>(), AlipayTree::getList, "请填写保护次数(上限总量)"));
         modelFields.addField(protectReserve = new BooleanModelField("protectReserve", "保护动物 | 保护地", false));
         modelFields.addField(protectReserveList = new SelectAndCountModelField("reserveList", "保护动物 | 保护地列表", new LinkedHashMap<>(), AlipayReserve::getList, "请填写保护次数(每日)"));
+        modelFields.addField(protectReserveMinNum = new BooleanModelField("protectReserveMinNum", "保护地 | 最少保护", false));
+        modelFields.addField(protectReserveNum = new IntegerModelField("protectReserveNum", "保护地 |最少保护下限", 1));
         modelFields.addField(protectAnimal = new BooleanModelField("protectAnimal", "保护动物 | 护林员", false));
         modelFields.addField(protectAnimalList = new SelectModelField("protectAnimalList", "保护动物 | 护林员列表", new HashSet<>(), AlipayAnimal::getList, "请选择需要点亮的护林员"));
         modelFields.addField(protectBeachMinNum = new BooleanModelField("protectBeachMinNum", "保护海洋 | 单个海滩保护", false));
@@ -106,6 +110,11 @@ public class ProtectEcology extends ModelTask {
         if (protectReserve.getValue()) {
             protectReserve();
         }
+
+        if (protectReserveMinNum.getValue()) {
+            protectReserveMinNum(protectReserveNum.getValue());
+        }
+
         if (protectAnimal.getValue()) {
             protectAnimal();
         }
@@ -587,7 +596,49 @@ public class ProtectEcology extends ModelTask {
         }
         return null;
     }
-    
+    private static void protectReserveMinNum(int protectReserveNum) {
+        if (protectReserveNum > 0) {
+            try {
+                JSONArray treeItems = queryTreeItemsForExchange("AVAILABLE", "project");
+                if (treeItems == null) {
+                    return;
+                }
+                for (int i = 0; i < treeItems.length(); i++) {
+                    JSONObject jo = treeItems.getJSONObject(i);
+                    String itemId = jo.getString("itemId");
+                    String itemName = jo.getString("itemName");
+                    int certCountForAlias=jo.optInt("certCountForAlias");
+                    int projectId=jo.optInt("projectId");
+                    if (Objects.equals("RESERVE", jo.getString("projectType"))) {
+
+                        if(certCountForAlias>=protectReserveNum)
+                        {continue;}
+                        while (certCountForAlias<protectReserveNum) {
+                            ExchangeableTree exchangeableTree = queryTreeForExchange(projectId);
+                            if (!exchangeableTree.canExchange) {
+                                break;
+                            }
+                            String projectName = exchangeableTree.projectName;
+                            certCountForAlias = certCountForAlias + 1;
+                            Log.forest("生态保护🏕️申请[" + projectName + "]#第" + certCountForAlias + "次");
+                            if (!exchangeTree(projectId, projectName)) {
+                                break;
+                            }
+                            Status.exchangeReserveToday(projectId);
+                            TimeUtil.sleep(300);
+                        }
+                    }
+                }
+            }
+            catch (Throwable t) {
+                Log.i(TAG, "protectReserveMinNum err:");
+                Log.printStackTrace(TAG, t);
+            }
+        }
+    }
+
+
+
     private static void protectBeachMinNum(int protectBeachNum) {
         if (protectBeachNum > 0) {
             try {

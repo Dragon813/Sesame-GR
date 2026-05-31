@@ -48,8 +48,6 @@ import io.github.lazyimmortal.sesame.ui.dto.ModelGroupDto;
 import io.github.lazyimmortal.sesame.util.AESUtil;
 import io.github.lazyimmortal.sesame.util.FileUtil;
 import io.github.lazyimmortal.sesame.util.JsonUtil;
-import io.github.lazyimmortal.sesame.util.LanguageUtil;
-import io.github.lazyimmortal.sesame.util.LibraryUtil;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.ToastUtil;
@@ -78,7 +76,7 @@ import io.github.lazyimmortal.sesame.util.idMap.ReserveIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.TreeIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.VitalityBenefitIdMap;
-import io.github.lazyimmortal.sesame.util.idMap.WalkPathIdMap;
+import io.github.lazyimmortal.sesame.util.idMap.PathThemeMapListMap;
 import io.github.lazyimmortal.sesame.util.idMap.rpcRequestMap;
 
 public class NewSettingsActivity extends BaseActivity {
@@ -142,7 +140,7 @@ public class NewSettingsActivity extends BaseActivity {
         AntStallTaskListMap.load();
         AntSportsTaskListMap.load();
         AntMemberTaskListMap.load();
-        WalkPathIdMap.load();
+        PathThemeMapListMap.load();
         ConfigV2.load(userId);
         setContentView(R.layout.activity_new_settings);
         if (userName != null) {
