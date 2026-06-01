@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/miuix_background"
+    android:paddingStart="@dimen/miuix_spacing_16"
+    android:paddingEnd="@dimen/miuix_spacing_16"
+    android:paddingBottom="@dimen/miuix_spacing_16">
+
+    <View android:layout_width="match_parent" android:layout_height="24dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="关于"
+        android:textSize="34sp"
+        android:textColor="@color/miuix_on_background"
+        android:fontFamily="sans-serif-medium"
+        android:layout_marginTop="48dp"
+        android:layout_marginBottom="20dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingTop="40dp">
+
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/title_logo"
+            android:layout_marginBottom="@dimen/miuix_spacing_16" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sesame"
+            android:textSize="24sp"
+            android:textColor="@color/miuix_on_background"
+            android:fontFamily="sans-serif-bold"
+            android:layout_marginBottom="@dimen/miuix_spacing_4" />
+
+        <TextView
+            android:id="@+id/tv_about_version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="2.0.3 (7716)"
+            android:textSize="14sp"
+            android:textColor="@color/miuix_on_background_variant"
+            android:layout_marginBottom="40dp" />
+
+        <LinearLayout
+            android:id="@+id/btn_github_source"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/miuix_card_bg"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_github_source"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="在 GitHub 查看源码"
+                android:textSize="@dimen/miuix_text_body1"
+                android:textColor="@color/miuix_on_background"
+                android:padding="@dimen/miuix_spacing_16"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground" />
+
+            <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                android:background="@color/miuix_divider_line"
+                android:layout_marginStart="@dimen/miuix_spacing_16" />
+
+            <TextView
+                android:id="@+id/tv_maintainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="维护者：Drogon813"
+                android:textSize="@dimen/miuix_text_body1"
+                android:textColor="@color/miuix_on_background"
+                android:padding="@dimen/miuix_spacing_16"
+                android:clickable="true" android:focusable="true"
+                android:background="?attr/selectableItemBackground" />
+
+            <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                android:background="@color/miuix_divider_line"
+                android:layout_marginStart="@dimen/miuix_spacing_16" />
+
+            <TextView
+                android:id="@+id/tv_ui_credit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="UI优化：aw1y2z"
+                android:textSize="@dimen/miuix_text_body1"
+                android:textColor="@color/miuix_on_background"
+                android:padding="@dimen/miuix_spacing_16"
+                android:clickable="true" android:focusable="true"
+                android:background="?attr/selectableItemBackground" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

@@ -1,6 +1,7 @@
 package io.github.lazyimmortal.sesame.data.modelFieldExt;
 
 import android.content.Context;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -49,12 +50,15 @@ public class SelectAndCountOneModelField extends ModelField<KVNode<String, Integ
         Button btn = new Button(context);
         btn.setText(getName());
         btn.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        btn.setTextColor(ContextCompat.getColor(context, R.color.button));
-        btn.setBackground(ContextCompat.getDrawable(context, R.drawable.button));
+        btn.setTextColor(ContextCompat.getColor(context, R.color.miuix_button_text_text));
+        btn.setBackground(ContextCompat.getDrawable(context, R.drawable.miuix_button_text_bg));
         btn.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-        btn.setMinHeight(150);
-        btn.setPaddingRelative(40, 0, 40, 0);
+        btn.setMinHeight((int) context.getResources().getDimension(R.dimen.miuix_button_min_height));
+        btn.setPaddingRelative((int) context.getResources().getDimension(R.dimen.miuix_spacing_16), 0,
+                (int) context.getResources().getDimension(R.dimen.miuix_spacing_16), 0);
         btn.setAllCaps(false);
+        btn.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL));
+        btn.setTextSize(TypedValue.COMPLEX_UNIT_PX, context.getResources().getDimension(R.dimen.miuix_text_body1));
         btn.setOnClickListener(v -> ListDialog.show(v.getContext(), ((Button) v).getText(), this, ListDialog.ListType.RADIO));
         return btn;
     }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MIUIX Section Card: full-width card for settings sections -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/miuix_surface" />
+    <corners android:radius="@dimen/miuix_spacing_12" />
+    <padding android:left="0dp" android:right="0dp" android:top="@dimen/miuix_spacing_4" android:bottom="@dimen/miuix_spacing_4" />
+</shape>

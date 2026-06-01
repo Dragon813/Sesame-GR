@@ -51,7 +51,7 @@ public class WatermarkView extends View {
         
         // 初始化画笔
         paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setColor(0xFF888888); // 灰色
+        paint.setColor(0xFF8C93B0); // MIUIX onBackgroundVariant
         paint.setAlpha(watermarkAlpha);
         paint.setTextSize(TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_SP,

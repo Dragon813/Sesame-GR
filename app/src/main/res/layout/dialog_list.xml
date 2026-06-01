@@ -10,7 +10,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:visibility="visible"
-        android:padding="8dp">
+        android:padding="@dimen/miuix_spacing_8">
 
         <!-- EditText 放在最左侧 -->
         <EditText
@@ -23,38 +23,30 @@
             android:inputType="number"
             android:hint="@string/one_click_setup"
             android:minHeight="50dp"
-            android:padding="12dp"
+            android:padding="@dimen/miuix_spacing_12"
             tools:ignore="LabelFor" />
 
         <!-- 全选按钮 -->
         <Button
             android:id="@+id/btn_select_all"
+            style="@style/MiuixButton.Text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_toEndOf="@id/one_click_setup"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="@dimen/miuix_spacing_8"
             android:layout_centerVertical="true"
-            android:background="@drawable/button"
-            android:minHeight="50dp"
-            android:padding="12dp"
-            android:text="@string/select_all"
-            android:textAllCaps="false"
-            android:textColor="@color/button" />
+            android:text="@string/select_all" />
 
         <!-- 反选按钮 -->
         <Button
             android:id="@+id/btn_select_invert"
+            style="@style/MiuixButton.Text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_toEndOf="@id/btn_select_all"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="@dimen/miuix_spacing_8"
             android:layout_centerVertical="true"
-            android:background="@drawable/button"
-            android:minHeight="50dp"
-            android:padding="12dp"
-            android:text="@string/select_invert"
-            android:textAllCaps="false"
-            android:textColor="@color/button" />
+            android:text="@string/select_invert" />
 
     </RelativeLayout>
 
@@ -79,28 +71,19 @@
             android:hint="@string/search" />
 
         <Button
+            android:id="@+id/btn_find_last"
+            style="@style/MiuixButton.Text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/button"
-            android:text="@string/last"
-            android:textAllCaps="false"
-            android:minHeight="50dp"
-            android:background="@drawable/button"
-            android:id="@+id/btn_find_last"
-            android:padding="12dp" />
+            android:text="@string/last" />
 
         <Button
+            android:id="@+id/btn_find_next"
+            style="@style/MiuixButton.Text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/button"
-            android:text="@string/next"
-            android:textAllCaps="false"
-            android:minHeight="50dp"
-            android:background="@drawable/button"
-            android:id="@+id/btn_find_next"
-            android:padding="12dp" />
+            android:text="@string/next" />
 
     </LinearLayout>
 
 </LinearLayout>
-

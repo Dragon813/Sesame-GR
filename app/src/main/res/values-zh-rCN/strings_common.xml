@@ -26,6 +26,7 @@
     <string name="unactivated">未激活</string>
     <string name="tips">提示</string>
     <string name="btn_understood">我知道了</string>
+    <string name="no_more_reminder">不再显示</string>
     <string name="hide_the_application_icon">隐藏图标</string>
     <string name="language_simplified_chinese">始终使用中文</string>
     <string name="view_error_log_file">查看异常日志</string>

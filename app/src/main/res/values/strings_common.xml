@@ -199,6 +199,7 @@
     <string name="unactivated">UNACTIVATED</string>
     <string name="tips">Tips</string>
     <string name="btn_understood">I see</string>
+    <string name="no_more_reminder">Don\'t show again</string>
     <string name="hide_the_application_icon">Hide the application icon</string>
     <string name="language_simplified_chinese">Always Chinese Language</string>
     <string name="view_error_log_file">View error log file</string>
