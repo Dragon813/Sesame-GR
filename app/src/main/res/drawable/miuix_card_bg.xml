@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MIUIX Card Background: white with subtle rounded corners -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/miuix_surface" />
+    <corners android:radius="@dimen/miuix_corner_radius" />
+    <stroke android:width="0.5dp" android:color="#FFE0E0E0" />
+</shape>

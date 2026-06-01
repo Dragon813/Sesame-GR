@@ -4,15 +4,17 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center"
-    android:padding="12dp"
-    android:minHeight="50dp">
+    android:padding="@dimen/miuix_spacing_12"
+    android:minHeight="50dp"
+    android:background="@color/miuix_surface_container">
 
     <TextView
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text=""
         android:layout_weight="1"
-        android:id="@+id/tv_idn" />
+        android:id="@+id/tv_idn"
+        android:textColor="@color/miuix_on_surface_container" />
 
     <CheckBox
         android:layout_width="wrap_content"

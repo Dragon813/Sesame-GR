@@ -1,18 +1,132 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- ============ MIUIX App Theme ============ -->
     <style name="AppTheme" parent="@style/Theme.AppCompat.Light">
-        <!--Appbar背景色-->
-        <item name="colorPrimary">@color/colorPrimary</item>
-        <!--ToolBar上的Title颜色-->
-        <item name="titleTextColor">@color/textColorPrimary</item>
-        <item name="subtitleTextColor">#333333</item>
-        <item name="android:navigationBarColor">@color/colorPrimary</item>
-        <item name="android:statusBarColor">@color/colorPrimary</item>
+        <!-- Toolbar / AppBar -->
+        <item name="colorPrimary">@color/miuix_primary</item>
+        <item name="colorPrimaryDark">@color/miuix_button_main_bg_pressed</item>
+        <item name="colorAccent">@color/miuix_primary</item>
+
+        <!-- Toolbar text -->
+        <item name="titleTextColor">@color/miuix_on_primary</item>
+        <item name="subtitleTextColor">@color/miuix_disabled_on_primary</item>
+
+        <!-- Window (immersive) -->
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:windowTranslucentNavigation">false</item>
+        <item name="android:windowBackground">@color/miuix_background</item>
+        <item name="android:windowLightStatusBar">true</item>
         <item name="windowNoTitle">true</item>
+
+        <!-- Default text colors -->
+        <item name="android:textColorPrimary">@color/miuix_on_background</item>
+        <item name="android:textColorSecondary">@color/miuix_on_background_variant</item>
+
+        <!-- Activity transitions -->
+        <item name="android:windowAnimationStyle">@style/MiuixWindowAnimation</item>
+
+        <!-- Dialog -->
+        <item name="android:alertDialogTheme">@style/MiuixDialog</item>
+        <item name="alertDialogTheme">@style/MiuixDialog</item>
     </style>
 
-    <style name="MenuTheme">
-        <item name="android:textColorSecondary">@color/textColorPrimary</item>
+    <style name="MiuixDialog" parent="Theme.AppCompat.Light.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/miuix_dialog_bg</item>
+        <item name="android:textColorPrimary">@color/miuix_on_background</item>
+        <item name="android:colorAccent">@color/miuix_primary</item>
     </style>
+
+    <!-- ============ MIUIX Window Transition Animations ============ -->
+    <style name="MiuixWindowAnimation" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/miuix_fade_in</item>
+        <item name="android:activityOpenExitAnimation">@anim/miuix_fade_out</item>
+        <item name="android:activityCloseEnterAnimation">@anim/miuix_fade_in</item>
+        <item name="android:activityCloseExitAnimation">@anim/miuix_fade_out</item>
+    </style>
+
+    <!-- ============ MIUIX Button Styles ============ -->
+    <style name="MiuixButton" parent="Widget.AppCompat.Button">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:minHeight">@dimen/miuix_button_min_height</item>
+        <item name="android:paddingStart">@dimen/miuix_spacing_16</item>
+        <item name="android:paddingEnd">@dimen/miuix_spacing_16</item>
+        <item name="android:gravity">center</item>
+    </style>
+
+    <style name="MiuixButton.Main" parent="MiuixButton">
+        <item name="android:background">@drawable/miuix_button_main_bg</item>
+        <item name="android:textColor">@color/miuix_button_main_text</item>
+    </style>
+
+    <style name="MiuixButton.Secondary" parent="MiuixButton">
+        <item name="android:background">@drawable/miuix_button_secondary_bg</item>
+        <item name="android:textColor">@color/miuix_button_secondary_text</item>
+    </style>
+
+    <style name="MiuixButton.Text" parent="MiuixButton">
+        <item name="android:background">@drawable/miuix_button_text_bg</item>
+        <item name="android:textColor">@color/miuix_on_background</item>
+    </style>
+
+    <!-- ============ MIUIX Text Styles ============ -->
+    <style name="MiuixText" />
+
+    <style name="MiuixText.TitleLarge">
+        <item name="android:textSize">@dimen/miuix_text_title3</item>
+        <item name="android:textColor">@color/miuix_on_background</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="MiuixText.TitleMedium">
+        <item name="android:textSize">@dimen/miuix_text_title4</item>
+        <item name="android:textColor">@color/miuix_on_background</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="MiuixText.Body1">
+        <item name="android:textSize">@dimen/miuix_text_body1</item>
+        <item name="android:textColor">@color/miuix_on_background</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <style name="MiuixText.Body2">
+        <item name="android:textSize">@dimen/miuix_text_body2</item>
+        <item name="android:textColor">@color/miuix_on_background_variant</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <style name="MiuixText.Caption">
+        <item name="android:textSize">@dimen/miuix_text_footnote1</item>
+        <item name="android:textColor">@color/miuix_on_background_variant</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <!-- ============ MIUIX Card Style ============ -->
+    <style name="MiuixCard">
+        <item name="android:background">@drawable/miuix_card_bg</item>
+        <item name="android:padding">@dimen/miuix_spacing_16</item>
+    </style>
+
+    <!-- ============ MIUIX Group Title (Section Header) ============ -->
+    <style name="MiuixGroupTitle">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">#FFA0A0A0</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:paddingStart">@dimen/miuix_spacing_16</item>
+        <item name="android:paddingEnd">@dimen/miuix_spacing_16</item>
+        <item name="android:paddingTop">@dimen/miuix_spacing_16</item>
+        <item name="android:paddingBottom">@dimen/miuix_spacing_4</item>
+    </style>
+
+    <!-- ============ Menu Theme ============ -->
+    <style name="MenuTheme">
+        <item name="android:textColorSecondary">@color/miuix_on_primary</item>
+    </style>
+
 </resources>

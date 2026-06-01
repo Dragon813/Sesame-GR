@@ -1,21 +1,97 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="background">#F4F4F4</color>
-    <color name="secondary_text">#9CA1B5</color>
-    <color name="main_button">#FFFFFF</color>
-    <color name="main_button_pressed">#FFEBCD</color>
-    <color name="main_button_text">#290C4C</color>
-    <color name="button">#216EEE</color>
-    <color name="button_pressed">#219FFF</color>
-    <color name="button_text">#FFFFFF</color>   
-    <color name="dashboard_item_1">#216EEE</color>
-    <color name="dashboard_item_2">#5351FC</color>
-    <color name="dashboard_item_3">#E64000</color>
-    <color name="dashboard_item_4">#F6B900</color>
+    <!-- ============ MIUIX Color System ============ -->
+    <!-- Primary -->
+    <color name="miuix_primary">#FF3482FF</color>
+    <color name="miuix_on_primary">#FFFFFFFF</color>
+    <color name="miuix_primary_variant">#FF3482FF</color>
+    <color name="miuix_primary_container">#FF5D9BFF</color>
+    <color name="miuix_on_primary_container">#FFFFFFFF</color>
+    <color name="miuix_disabled_primary">#FFC2D9FF</color>
+    <color name="miuix_disabled_on_primary">#FFF3F8FF</color>
 
-    <color name="colorPrimary">#216EEE</color>
-    <color name="textColorPrimary">#FFFFFF</color>
-    <color name="textColorDisable">#333333</color>
+    <!-- Secondary -->
+    <color name="miuix_secondary">#FFE6E6E6</color>
+    <color name="miuix_on_secondary">#FFFFFFFF</color>
+    <color name="miuix_secondary_variant">#FFF0F0F0</color>
+    <color name="miuix_on_secondary_variant">#FF303030</color>
+    <color name="miuix_secondary_container">#FFF0F0F0</color>
+    <color name="miuix_on_secondary_container">#FFA9A9A9</color>
+    <color name="miuix_disabled_secondary">#FFF0F0F0</color>
+    <color name="miuix_disabled_on_secondary">#FFFCFCFC</color>
+
+    <!-- Background & Surface -->
+    <color name="miuix_background">#FFF5F5F7</color>
+    <color name="miuix_on_background">#FF000000</color>
+    <color name="miuix_on_background_variant">#FF8C93B0</color>
+    <color name="miuix_surface">#FFFFFFFF</color>
+    <color name="miuix_surface_secondary">#FFF5F5F7</color>
+    <color name="miuix_on_surface">#FF000000</color>
+    <color name="miuix_surface_variant">#FFFFFFFF</color>
+    <color name="miuix_on_surface_secondary">#CC000000</color>
+    <color name="miuix_surface_container">#FFFFFFFF</color>
+    <color name="miuix_on_surface_container">#FF000000</color>
+    <color name="miuix_surface_container_high">#FFE8E8E8</color>
+    <color name="miuix_on_surface_container_high">#FFA2A2A2</color>
+    <color name="miuix_surface_container_highest">#FFE8E8E8</color>
+    <color name="miuix_on_surface_container_highest">#FF000000</color>
+
+    <!-- Error -->
+    <color name="miuix_error">#FFE94634</color>
+    <color name="miuix_on_error">#FFFFFFFF</color>
+    <color name="miuix_error_container">#FFFDF6F4</color>
+    <color name="miuix_on_error_container">#FF410002</color>
+
+    <!-- Tertiary -->
+    <color name="miuix_tertiary_container">#FFEAF2FF</color>
+    <color name="miuix_on_tertiary_container">#FF3482FF</color>
+
+    <!-- Group Title (MIUIX Section Header) -->
+    <color name="miuix_group_title">#FF9C27B0</color>
+    <color name="miuix_group_title_text">#FF9C27B0</color>
+
+    <!-- Outline & Divider -->
+    <color name="miuix_outline">#FFD9D9D9</color>
+    <color name="miuix_divider_line">#FFE0E0E0</color>
+
+    <!-- Window Dimming -->
+    <color name="miuix_window_dimming">#4D000000</color>
+
+    <!-- Slider -->
+    <color name="miuix_slider_background">#0F000000</color>
+    <color name="miuix_slider_key_point">#4DA3B3CD</color>
+    <color name="miuix_slider_key_point_fg">#FF6EB5FF</color>
+
+    <!-- ============ MIUIX Button Colors ============ -->
+    <color name="miuix_button_main_bg">#FF3482FF</color>
+    <color name="miuix_button_main_bg_pressed">#FF277AF7</color>
+    <color name="miuix_button_main_text">#FFFFFFFF</color>
+    <color name="miuix_button_secondary_bg">#FFF0F0F0</color>
+    <color name="miuix_button_secondary_bg_pressed">#FFE0E0E0</color>
+    <color name="miuix_button_secondary_text">#FF303030</color>
+    <color name="miuix_button_text_bg">#00000000</color>
+    <color name="miuix_button_text_bg_pressed">#1A000000</color>
+    <color name="miuix_button_text_text">@color/miuix_on_background</color>
+
+    <!-- ============ Legacy color aliases (for backward compat) ============ -->
+    <color name="background">@color/miuix_background</color>
+    <color name="secondary_text">@color/miuix_on_background_variant</color>
+    <color name="main_button">@color/miuix_surface_container</color>
+    <color name="main_button_pressed">@color/miuix_surface_container_high</color>
+    <color name="main_button_text">@color/miuix_on_surface</color>
+    <color name="button">@color/miuix_primary</color>
+    <color name="button_pressed">@color/miuix_button_main_bg_pressed</color>
+    <color name="button_text">@color/miuix_on_primary</color>
+    <color name="dashboard_item_1">@color/miuix_primary</color>
+    <color name="dashboard_item_2">#FF5351FC</color>
+    <color name="dashboard_item_3">#FFE64000</color>
+    <color name="dashboard_item_4">#FFF6B900</color>
+    <color name="colorPrimary">@color/miuix_primary</color>
+    <color name="textColorPrimary">@color/miuix_on_primary</color>
+    <color name="textColorDisable">@color/miuix_on_background_variant</color>
     <color name="navigationBarColor">#AA000000</color>
 
+    <!-- Internal colors (from strings.xml) -->
+    <color name="color_alpha">#00000000</color>
+    <color name="color_btn_down">@color/miuix_button_secondary_bg_pressed</color>
 </resources>

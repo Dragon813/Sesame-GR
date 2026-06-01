@@ -953,7 +953,12 @@ public class FileUtil {
             }
         }
         catch (Throwable t) {
-            Log.printStackTrace(TAG, t);
+            // EPERM on close is a known issue when running inside another app's process.
+            // Data is already flushed before close, so this is safe to ignore silently.
+            String msg = t.getMessage();
+            if (msg == null || !msg.contains("EPERM")) {
+                Log.printStackTrace(TAG, t);
+            }
         }
     }
     

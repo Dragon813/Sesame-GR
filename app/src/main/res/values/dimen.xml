@@ -1,4 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="setting_item_padding">16dp</dimen>
+    <!-- ============ MIUIX Spacing System ============ -->
+    <dimen name="miuix_spacing_4">4dp</dimen>
+    <dimen name="miuix_spacing_8">8dp</dimen>
+    <dimen name="miuix_spacing_12">12dp</dimen>
+    <dimen name="miuix_spacing_16">16dp</dimen>
+    <dimen name="miuix_spacing_24">24dp</dimen>
+
+    <!-- ============ MIUIX Corner Radius ============ -->
+    <dimen name="miuix_corner_radius">12dp</dimen>
+    <dimen name="miuix_corner_radius_small">8dp</dimen>
+
+    <!-- ============ MIUIX Button ============ -->
+    <dimen name="miuix_button_min_height">48dp</dimen>
+    <dimen name="miuix_button_corner_radius">12dp</dimen>
+
+    <!-- ============ MIUIX Text Sizes (in sp) ============ -->
+    <dimen name="miuix_text_title3">20sp</dimen>
+    <dimen name="miuix_text_title4">18sp</dimen>
+    <dimen name="miuix_text_body1">16sp</dimen>
+    <dimen name="miuix_text_body2">14sp</dimen>
+    <dimen name="miuix_text_footnote1">13sp</dimen>
+    <dimen name="miuix_text_main">17sp</dimen>
+    <dimen name="miuix_text_button">17sp</dimen>
+
+    <!-- ============ Legacy alias ============ -->
+    <dimen name="setting_item_padding">@dimen/miuix_spacing_16</dimen>
 </resources>
