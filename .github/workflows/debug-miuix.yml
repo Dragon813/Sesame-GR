@@ -2,7 +2,7 @@ name: MIUIX Debug Build
 
 on:
   push:
-branches:
+   branches:
       - MIUIX
 
 permissions:
