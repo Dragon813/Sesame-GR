@@ -846,7 +846,6 @@ public class AntForestRpcCall {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.updateUserConfig", args);
     }
 
-
     public static String checkRewardqueryMiscInfo() {
         String args = "[{\"extInfo\":\"{\\\"checkReward\\\":true}\",\"queryBizType\":\"energyPvpInfo\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]";
         return ApplicationHook.requestString("alipay.antforest.forest.h5.queryMiscInfo", args);
@@ -855,5 +854,11 @@ public class AntForestRpcCall {
     public static String receivePvpRewards() {
         String args = "[{\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]";
         return ApplicationHook.requestString("alipay.antforest.forest.h5.receivePvpRewards", args);
+    }
+
+
+    public static String queryPvpHomeInfo() {
+        String args = "[{\"queryWaitToReceive\":true,\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]";
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.queryPvpHomeInfo", args);
     }
 }
