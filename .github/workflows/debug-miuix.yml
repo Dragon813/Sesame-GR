@@ -1,0 +1,74 @@
+name: MIUIX Debug Build
+
+on:
+  push:
+    branches:
+      - MIUIX
+
+jobs:
+  build:
+    # 仅在同步上游(合并 origin/main)时触发
+    if: contains(github.event.head_commit.message, 'origin/main')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleNormalDebug
+
+      - name: Locate debug APK
+        id: locate
+        run: |
+          apk=$(find app/build/outputs/apk/normal/debug -name "*.apk" | head -n 1)
+          echo "apk=$apk" >> $GITHUB_OUTPUT
+
+      - name: Resolve version info
+        id: version
+        run: |
+          echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "date=$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
+
+      - name: Create/Update Debug Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: debug-miuix
+          name: "Debug Build - MIUIX"
+          body: |
+            ## 🛠 MIUIX Debug 构建
+
+            > ⚠️ **此为 Debug 版本，仅供调试测试使用，请勿用于生产环境。**
+            >
+            > 正式版本请使用 [Release](https://github.com/${{ github.repository }}/releases/latest) 页面发布的签名版本。
+
+            ---
+
+            ### 📦 构建信息
+
+            | 项目 | 详情 |
+            |------|------|
+            | 分支 | `MIUIX` |
+            | 提交 | `${{ env.short_sha }}` |
+            | 构建时间 | `${{ env.date }}` |
+            | 同步自 | `${{ github.event.head_commit.message }}` |
+
+            ### 📥 下载
+            点击下方 **app-normal-debug.apk** 下载安装。
+
+            > **适用系统**: Android 8.0+
+          prerelease: true
+          allowUpdates: true
+          removeArtifacts: true
+          artifacts: ${{ steps.locate.outputs.apk }}
+          token: ${{ secrets.GITHUB_TOKEN }}
