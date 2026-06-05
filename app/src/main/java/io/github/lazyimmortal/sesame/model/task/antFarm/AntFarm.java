@@ -109,12 +109,12 @@ public class AntFarm extends ModelTask {
     private ChoiceModelField hireAnimalType;
     private SelectModelField hireAnimalList;
     private BooleanModelField drawGameCenterAward;
-
     private BooleanModelField competition;
+    private IntegerModelField competitionStarNum;
     private IntegerModelField competitionLeadEggs;      // 领先第一名的蛋数
     private IntegerModelField competitionDailyLimit;    // 每日捐蛋上限
     private IntegerModelField competitionStealMinutes;  // 偷榜提前分钟数(0或负数不偷榜)
-
+    private IntegerModelField stealRankMinutes;
     private BooleanModelField useBigEaterTool;
     //private ChoiceModelField getFeedType;
     private SelectModelField getFeedList;
@@ -155,9 +155,11 @@ public class AntFarm extends ModelTask {
         modelFields.addField(donationType = new ChoiceModelField("donationType", "每日捐蛋 | 方式", DonationType.ZERO, DonationType.nickNames));
         modelFields.addField(donationAmount = new IntegerModelField("donationAmount", "每日捐蛋 | 倍数(每项)", 1));
         modelFields.addField(competition = new BooleanModelField("competition", "排位赛 | 自动捐蛋领奖", false));
-        modelFields.addField(competitionLeadEggs = new IntegerModelField("competitionLeadEggs", "排位赛 | 领先第1名捐蛋数", 2, 0, 100));
-        modelFields.addField(competitionDailyLimit = new IntegerModelField("competitionDailyLimit", "排位赛 | 每日捐蛋上限(0不限)", 10, 0, 10000));
-        modelFields.addField(competitionStealMinutes = new IntegerModelField("competitionStealMinutes", "排位赛 | 偷榜提前分钟数(0不偷榜，忽略捐蛋上限)", 30, 0, 240));
+        modelFields.addField(competitionStarNum = new IntegerModelField("competitionStarNum", "保底模式 | 目标星星数", 2, 0, 5));
+        modelFields.addField(competitionDailyLimit = new IntegerModelField("competitionDailyLimit", "自动捐蛋 | 每日捐蛋上限(0不限)", 10, 0, 1000));
+        modelFields.addField(competitionLeadEggs = new IntegerModelField("competitionLeadEggs", "激进模式 | 捐至榜首领先蛋数", 1, 0, 1000));
+        modelFields.addField(competitionStealMinutes = new IntegerModelField("competitionStealMinutes", "激进模式 | 霸榜提前分钟数(0不霸榜，1200为整天)", 0, 0, 1200));
+        modelFields.addField(stealRankMinutes = new IntegerModelField("stealRankMinutes", "激进模式 | 偷榜提前分钟数(0不偷榜)", 0, 0, 1200));
         modelFields.addField(family = new BooleanModelField("family", "亲密家庭 | 开启", false));
         modelFields.addField(familyOptions = new SelectModelField("familyOptions", "亲密家庭 | 选项", new LinkedHashSet<>(), CustomOption::getAntFarmFamilyOptions));
         modelFields.addField(notInviteList = new SelectModelField("notInviteList", "亲密家庭 | 不邀请列表", new LinkedHashSet<>(), AlipayUser::getList));
@@ -1029,30 +1031,53 @@ public class AntFarm extends ModelTask {
             if (!MessageUtil.checkMemo(TAG, jo)) {
                 return;
             }
+            if (!jo.has("activityInfos")) {
+                return;
+            }
+
             JSONArray activityInfos = jo.getJSONArray("activityInfos");
-            int canDonteItem = 0;
-            while (donateNum > 0) {
-                canDonteItem = 0;
-                for (int i = 0; i < activityInfos.length(); i++) {
-                    if (donateNum == 0) {
-                        break;
-                    }
-                    jo = activityInfos.getJSONObject(i);
-                    int donatedTargetNum = jo.getInt("donatedTargetNum");
-                    int targetNum = jo.getInt("targetNum");
-                    if (donatedTargetNum == targetNum) {
-                        canDonteItem++;
-                        continue;
-                    }
-                    String activityId = jo.getString("activityId");
-                    String projectName = jo.getString("projectName");
-                    if (donation(activityId, projectName, 1, 1)) {
-                        donateNum--;
+
+            // 收集可捐蛋项目
+            java.util.ArrayList<JSONObject> availableList = new java.util.ArrayList<>();
+            for (int i = 0; i < activityInfos.length(); i++) {
+                JSONObject activityInfo = activityInfos.getJSONObject(i);
+                int available = activityInfo.getInt("donationLimit") - activityInfo.getInt("donationTotal");
+                if (available > 0) {
+                    availableList.add(activityInfo);
+                }
+            }
+
+            if (availableList.isEmpty()) {
+                return;
+            }
+
+            // 平均分配
+            int remaining = donateNum;
+            int size = availableList.size();
+            for (int i = 0; i < size && remaining > 0; i++) {
+                JSONObject activityInfo = availableList.get(i);
+                int available = activityInfo.getInt("donationLimit") - activityInfo.getInt("donationTotal");
+
+                // 计算分配数量
+                int assign;
+                if (i == size - 1) {
+                    assign = remaining;
+                } else {
+                    assign = donateNum / size;
+                    if (i < donateNum % size) {
+                        assign++;
                     }
                 }
-                //没有项目可以捐蛋
-                if (canDonteItem == activityInfos.length()) {
-                    break;
+
+                // 不超过可捐限额和剩余数量
+                assign = Math.min(assign, available);
+                assign = Math.min(assign, remaining);
+
+                if (assign > 0) {
+                    String activityId = activityInfo.getString("activityId");
+                    String projectName = activityInfo.getString("projectName");
+                    donation(activityId, projectName, assign);
+                    remaining -= assign;
                 }
             }
         } catch (Throwable t) {
@@ -1100,127 +1125,311 @@ public class AntFarm extends ModelTask {
             if (!MessageUtil.checkMemo(TAG, jo)) {
                 return;
             }
-            boolean exitDonationCompetition = jo.optBoolean("exitDonationCompetition");
-            //关闭排位赛
-            if (!competition.getValue()) {
+            if (jo.has("exitDonationCompetition")) {
+                boolean exitDonationCompetition = jo.optBoolean("exitDonationCompetition");
+                //开启排位赛
                 if (exitDonationCompetition) {
-                    Log.record("捐蛋排位🥚未加入排位赛，跳过退出操作");
-                    return;
+                    JSONObject joOpen = new JSONObject(AntFarmRpcCall.setDonationCompetitionConf("OPEN"));
+                    if (MessageUtil.checkMemo(TAG, joOpen)) {
+                        String memo = joOpen.optString("memo");
+                        Log.farm("捐蛋排位🥚开启：" + memo);
+                    }
                 } else {
-                    AntFarmRpcCall.setDonationCompetitionConf("EXIT");
-                    Log.record("捐蛋排位🥚已退出");
+                    //Log.record("捐蛋排位🥚已在排位赛中，跳过加入操作");
+                }
+            }
+
+            receiveReward();
+            PreviousCompetitionInfo();
+
+            String desUserId = null;
+            String desNickName = null;
+            int desStarRank = 0;
+            int desDonation = 0;
+            int[] desDonationSub = new int[4];  // 少1~4颗星的捐蛋数
+            String[] desUserIdSub = new String[4];// 少1~4颗星的用户名
+            int desStarNum = competitionStarNum.getValue();
+            int dailyLimit = competitionDailyLimit.getValue();
+            int myDonation = 0;
+            int myRank = 0;
+            int myStar = 0;
+            boolean isNovDonation = false;
+            String CurrentUserId = UserIdMap.getCurrentUid();
+
+            if (!jo.has("donationRankHomeInfo")) {
+                Log.record("捐蛋排位🥚未查询到捐赠排行信息");
+                return;
+            }
+            JSONObject donationRankHomeInfo = jo.getJSONObject("donationRankHomeInfo");
+            if (!donationRankHomeInfo.has("userDonationRankList")) {
+                Log.record("捐蛋排位🥚未查询到捐赠排行信息");
+                return;
+            }
+            JSONArray userDonationRankList = donationRankHomeInfo.optJSONArray("userDonationRankList");
+            if (userDonationRankList == null || userDonationRankList.length() == 0) {
+                Log.record("捐蛋排位🥚奖励列表为空");
+                return;
+            }
+            if (desStarNum == 0) {
+                Log.record("捐蛋排位🥚目标星级为0跳过保底捐蛋逻辑");
+            } else {
+                for (int i = 0; i < userDonationRankList.length(); i++) {
+                    JSONObject userDonationRank = userDonationRankList.getJSONObject(i);
+                    String userId = userDonationRank.optString("userId");
+                    String nickName = userDonationRank.optString("nickName");
+                    int rewardStarNum = userDonationRank.optInt("rewardStarNum");
+                    int donationNum = userDonationRank.optInt("donationNum");
+                    int rankOrder = userDonationRank.optInt("rankOrder");
+                    if (CurrentUserId.equals(userId)) {
+                        myDonation = donationNum;
+                        myRank = rankOrder;
+                        myStar = rewardStarNum;
+                        Log.record("捐蛋排位🥚当前排名" + myRank + "已捐蛋" + myDonation + "预计星星" + myStar);
+                    }
+                    if (rewardStarNum == desStarNum) {
+                        desDonation = donationNum;
+                        desStarRank = rankOrder;
+                        desNickName = nickName;
+                        desUserId = userId;
+                    }
+                    // 整合：收集少1~4颗星的捐蛋数
+                    for (int j = 0; j < 4; j++) {
+                        int targetStar = desStarNum - (j + 1);
+                        if (targetStar > 0 && rewardStarNum == targetStar) {
+                            desDonationSub[j] = donationNum;
+                            desUserIdSub[j] = nickName;
+                        }
+                    }
+                }
+                if (!CurrentUserId.equals(desUserId)) {
+                    Log.record("捐蛋排位🥚保底模式目标星级" + desStarNum + "[" + desNickName + "]" + "已捐蛋" + desDonation);
+                }
+
+                // 每天20:01-23:59不执行
+                java.util.Calendar now = java.util.Calendar.getInstance();
+                int hour = now.get(java.util.Calendar.HOUR_OF_DAY);
+                int minute = now.get(java.util.Calendar.MINUTE);
+                if (hour > 20 || (hour == 20 && minute >= 1)) {
+                    Log.record("捐蛋排位🥚每日20:01后不执行捐蛋操作");
                     return;
                 }
-            } else {
+                //根据目标星星排名最后的捐蛋数及每日捐蛋上限捐蛋
+                if (myRank > desStarRank && desDonation > 0) {
+                    int DonationEggNum = desDonation - myDonation + 1;
+                    if (desDonation < dailyLimit) {
+                        if (DonationEggNum > 0) {
+                            Log.farm("捐蛋排位🥚目标星级捐蛋" + desDonation + "当前捐蛋" + myDonation + "尝试再捐蛋" + DonationEggNum);
+                            competitionDonation("养老保底模式", DonationEggNum);
+                            isNovDonation = true;
+                        }
+
+                    } else if (dailyLimit == 0) {
+                        if (DonationEggNum > 0) {
+                            Log.farm("捐蛋排位🥚目标星级捐蛋" + desDonation + "当前捐蛋" + myDonation + "(无捐蛋上限)尝试再捐蛋" + DonationEggNum);
+                            competitionDonation("养老保底模式", DonationEggNum);
+                            isNovDonation = true;
+                        }
+                    } else {
+                        if (dailyLimit > myDonation) {
+                            Log.record("捐蛋排位🥚目标星级捐蛋" + desDonation + ",当前捐蛋限制" + dailyLimit + "尝试减少目标星星捐蛋");
+                            // 整合：遍历少1~4颗星的选项
+                            for (int j = 0; j < 4; j++) {
+                                if (desDonationSub[j] > 0 && desDonationSub[j] < dailyLimit && (4 - j) > myStar) {
+                                    DonationEggNum = desDonationSub[j] - myDonation + 1;
+                                    if (DonationEggNum < 1) {
+                                        continue;
+                                    }
+                                    Log.farm("捐蛋排位🥚在捐蛋上限" + dailyLimit + "范围内，比目标星级" + desStarNum + "少" + (j + 1) + "颗星的[" + desUserIdSub[j] + "]捐了" + desDonationSub[j] + ",当前捐蛋" + myDonation + "尝试再捐蛋" + DonationEggNum);
+                                    competitionDonation("养老保底模式", DonationEggNum);
+                                    isNovDonation = true;
+                                    break;
+                                }
+                            }
+                            if (!isNovDonation) {
+                                Log.record("捐蛋排位🥚目标星级捐蛋" + desDonation + ",捐蛋限制" + dailyLimit + "(停止捐蛋)");
+                            }
+                        } else {
+                            Log.record("捐蛋排位🥚目标星级捐蛋" + desDonation + ",您的账号已捐蛋" + myDonation + "捐蛋限制" + dailyLimit + "(停止捐蛋)");
+
+                        }
+                    }
+                }
+            }
+            int leadEggs = competitionLeadEggs.getValue();
+            int stealMinutes = competitionStealMinutes.getValue();
+            //霸榜时间
+            if (isStealRankTime(stealMinutes)) {
+                stealRank(stealMinutes, "霸榜");
+            }
+
+            //设置偷榜时间定时执行
+            int minutes = stealRankMinutes.getValue();
+            if (minutes > 0) {
+                // 计算今天 20:00 的时间戳
+                java.util.Calendar targetTime = java.util.Calendar.getInstance();
+                targetTime.set(java.util.Calendar.HOUR_OF_DAY, 20);
+                targetTime.set(java.util.Calendar.MINUTE, 0);
+                targetTime.set(java.util.Calendar.SECOND, 0);
+                targetTime.set(java.util.Calendar.MILLISECOND, 0);
+
+                // 偷榜时间 = 20:00 - minutes
+                long stealRankTime = targetTime.getTimeInMillis() - minutes * 60 * 1000L;
+                long now = System.currentTimeMillis();
+
+                // 如果偷榜时间已过，设置为明天
+                if (stealRankTime <= now) {
+                    targetTime.add(java.util.Calendar.DAY_OF_MONTH, 1);
+                    stealRankTime = targetTime.getTimeInMillis() - minutes * 60 * 1000L;
+                }
+
+                // 添加定时任务
+                String taskId = "stealRank_" + minutes;
+                if (!hasChildTask(taskId)) {
+                    addChildTask(new ChildModelTask(taskId, "STEALRANK", () -> stealRank(minutes, "偷榜"), stealRankTime));
+                    Log.record("捐蛋排位🥚已设置偷榜定时任务，将在 " + new java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(stealRankTime) + " 执行");
+                }
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "competition err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    //偷榜捐蛋
+    private void stealRank(int stealRankMinutes, String worKType) {
+        try {
+            JSONObject jo = new JSONObject(AntFarmRpcCall.enterDonationCompetitionRank());
+            if (!MessageUtil.checkMemo(TAG, jo)) {
+                return;
+            }
+            if (jo.has("exitDonationCompetition")) {
+                boolean exitDonationCompetition = jo.optBoolean("exitDonationCompetition");
+                //开启排位赛
                 if (exitDonationCompetition) {
-                    jo = new JSONObject(AntFarmRpcCall.setDonationCompetitionConf("OPEN"));
-                    if (MessageUtil.checkMemo(TAG, jo)) {
-                        String memo = jo.optString("memo");
-                        Log.record("捐蛋排位🥚开启：" + memo);
+                    JSONObject joOpen = new JSONObject(AntFarmRpcCall.setDonationCompetitionConf("OPEN"));
+                    if (MessageUtil.checkMemo(TAG, joOpen)) {
+                        String memo = joOpen.optString("memo");
+                        Log.farm("捐蛋排位🥚开启：" + memo);
                     }
                 } else {
                     Log.record("捐蛋排位🥚已在排位赛中，跳过加入操作");
                 }
             }
-
-            jo = new JSONObject(AntFarmRpcCall.queryCompetitionEntranceInfo());
+            int myDonation = 0;
+            int myRank = 0;
+            int myStar = 0;
+            int dailyLimit = competitionDailyLimit.getValue();
+            String CurrentUserId = UserIdMap.getCurrentUid();
+            int firstDonation = 0;
+            int secondDonation = 0;
+            jo = new JSONObject(AntFarmRpcCall.enterDonationCompetitionRank());
             if (!MessageUtil.checkMemo(TAG, jo)) {
                 return;
             }
-
-            JSONObject animationInfo = jo.optJSONObject("animationInfo");
-            if (animationInfo == null) {
-                Log.record("捐蛋排位🥚活动信息为空");
+            if (!jo.has("donationRankHomeInfo")) {
+                Log.record("捐蛋排位🥚未查询到捐赠排行信息");
                 return;
             }
-
+            JSONObject donationRankHomeInfo = jo.getJSONObject("donationRankHomeInfo");
+            if (!donationRankHomeInfo.has("userDonationRankList")) {
+                Log.record("捐蛋排位🥚未查询到捐赠排行信息");
+                return;
+            }
+            JSONArray userDonationRankList = donationRankHomeInfo.optJSONArray("userDonationRankList");
+            if (userDonationRankList == null || userDonationRankList.length() == 0) {
+                Log.record("捐蛋排位🥚奖励列表为空");
+                return;
+            }
+            for (int i = 0; i < userDonationRankList.length(); i++) {
+                JSONObject userDonationRank = userDonationRankList.getJSONObject(i);
+                String userId = userDonationRank.optString("userId");
+                int rewardStarNum = userDonationRank.optInt("rewardStarNum");
+                int donationNum = userDonationRank.optInt("donationNum");
+                int rankOrder = userDonationRank.optInt("rankOrder");
+                if (rankOrder == 1) {
+                    firstDonation = donationNum;
+                }
+                if (rankOrder == 2) {
+                    secondDonation = donationNum;
+                }
+                if (CurrentUserId.equals(userId)) {
+                    myDonation = donationNum;
+                    myRank = rankOrder;
+                    myStar = rewardStarNum;
+                }
+            }
             int leadEggs = competitionLeadEggs.getValue();
-            int dailyLimit = competitionDailyLimit.getValue();
-            int myDonation = 0;
-            int firstDonation = 0;
-            int secondDonation = 0;
-            int myRank = 0;
-            boolean hasUnReceivedAward = animationInfo.optBoolean("hasUnReceivedAward");
-            JSONObject previousUserRankInfo = animationInfo.optJSONObject("previousUserRankInfo");
-            String previousUserId = UserIdMap.getCurrentUid();
-            int previousRankOrder = 0;
-            int previousRewardStarNum = 0;
-            if (previousUserRankInfo != null) {
-                previousRankOrder = previousUserRankInfo.optInt("rankOrder", 0);
-                previousRewardStarNum = previousUserRankInfo.optInt("rewardStarNum", 0);
-                Log.record("捐蛋排位🥚上期排名:" + previousRankOrder + ",奖励星星:" + previousRewardStarNum);
-            }
-            JSONArray todayRankInfo = animationInfo.optJSONArray("todayRankInfo");
-
-            if (todayRankInfo != null && todayRankInfo.length() > 0) {
-                for (int i = 0; i < todayRankInfo.length(); i++) {
-                    JSONObject rankItem = todayRankInfo.getJSONObject(i);
-                    String userId = rankItem.optString("userId");
-                    int donationNum = rankItem.optInt("donationNum", 0);
-                    int rankOrder = rankItem.optInt("rankOrder", 0);
-                    if (previousUserId.equals(userId)) {
-                        myDonation = donationNum;
-                        myRank = rankOrder;
-                        Log.record("捐蛋排位🥚当前排名:" + rankOrder + ",已捐蛋:" + myDonation);
-                    }
-                    if (rankOrder == 1) {
-                        firstDonation = donationNum;
-                        Log.record("捐蛋排位🥚第1名捐蛋:" + firstDonation);
-                    }
-                    if (rankOrder == 2) {
-                        secondDonation = donationNum;
-                    }
-                }
-            }
-            int stealMinutes = competitionStealMinutes.getValue();
-            boolean needSteal = isStealRankTime(stealMinutes) && myRank != 1;
-            int needDonate = (myRank == 1 ? secondDonation : firstDonation) - myDonation + leadEggs;
-            if (needDonate > 0) {
-                int actualDonate = needDonate;
-                if (!needSteal && dailyLimit > 0) {
-                    int canDonateToday = dailyLimit - myDonation;
-                    if (canDonateToday <= 0) {
-                        Log.record("捐蛋排位🥚今日已捐蛋:" + myDonation + "枚，已达上限:" + dailyLimit + "枚，无需捐蛋");
-                    } else {
-                        actualDonate = Math.min(needDonate, canDonateToday);
-                        Log.farm("捐蛋排位🥚今日已捐蛋:" + myDonation + "枚，还可捐:" + canDonateToday + "枚，需要捐:" + needDonate + "枚，调整为:" + actualDonate + "枚");
-                        int currentEgg = (int) harvestBenevolenceScore;
-                        if (currentEgg <= 0) {
-                            Log.record("捐蛋排位🥚当前无蛋可捐");
-                        } else {
-                            int donateNum = Math.min(actualDonate, currentEgg);
-                            Log.farm("捐蛋排位🥚开始捐蛋:" + donateNum + "枚");
-                            donation(donateNum);
-                            TimeUtil.sleep(1000);
-                        }
-                    }
+            //第1名时判断领先第2名捐蛋数
+            if (myRank == 1) {
+                if (myDonation - secondDonation >= leadEggs) {
+                    Log.record("捐蛋排位🥚" + worKType + "时间段(提前" + stealRankMinutes + "分钟)目前排名" + myRank + "捐蛋" + myDonation + ",第2名捐蛋" + secondDonation + ",满足领先" + leadEggs + "条件,不用捐蛋");
                 } else {
-                    if (needSteal) {
-                        Log.record("捐蛋排位🥚偷榜时间(提前" + stealMinutes + "分钟)，当前排名第" + myRank + "，强制捐蛋");
-                    }
-                    int currentEgg = (int) harvestBenevolenceScore;
-                    if (currentEgg <= 0) {
-                        Log.record("捐蛋排位🥚当前无蛋可捐");
+                    int DonationEggNum = secondDonation + leadEggs - myDonation;
+                    if (dailyLimit == 0) {
+                        Log.record("捐蛋排位🥚" + worKType + "时间段(提前" + stealRankMinutes + "分钟)目前排名" + myRank + "捐蛋" + myDonation + ",第2名捐蛋" + secondDonation + ",满足领先" + leadEggs + "条件且无捐蛋上限尝试再捐蛋" + DonationEggNum);
+                        competitionDonation("激进模式", DonationEggNum);
+                    } else if (DonationEggNum + myDonation > dailyLimit) {
+                        Log.record("捐蛋排位🥚" + worKType + "时间段(提前" + stealRankMinutes + "分钟)目前排名" + myRank + "捐蛋" + myDonation + ",第2名捐蛋" + secondDonation + ",满足领先" + leadEggs + "需再捐蛋" + DonationEggNum + "捐蛋限制" + dailyLimit + "(停止捐蛋)");
                     } else {
-                        int donateNum = Math.min(needDonate, currentEgg);
-                        if (needSteal) {
-                            Log.record("捐蛋排位🥚偷榜时间(提前" + stealMinutes + "分钟)，当前排名第" + myRank + "，强制捐蛋:" + donateNum + "枚");
-                        } else {
-                            Log.farm("捐蛋排位🥚开始捐蛋:" + donateNum + "枚");
-                        }
-                        donation(donateNum);
-                        TimeUtil.sleep(1000);
+                        Log.record("捐蛋排位🥚" + worKType + "时间段(提前" + stealRankMinutes + "分钟)目前排名" + myRank + "捐蛋" + myDonation + ",第2名捐蛋" + secondDonation + ",满足领先" + leadEggs + "条件尝试再捐蛋" + DonationEggNum);
+                        competitionDonation("激进模式", DonationEggNum);
                     }
                 }
-            } else {
-                Log.record("捐蛋排位🥚已领先" + (-needDonate + leadEggs) + "枚蛋，无需捐蛋");
+            }
+            //非第1名判断领先目前第1名捐蛋数
+            else {
+                int DonationEggNum = firstDonation + leadEggs - myDonation;
+                if (dailyLimit == 0) {
+                    Log.record("捐蛋排位🥚" + worKType + "时间段(提前" + stealRankMinutes + "分钟)目前排名" + myRank + "捐蛋" + myDonation + ",第1名捐蛋" + firstDonation + ",满足领先" + leadEggs + "条件且无捐蛋上限尝试再捐蛋" + DonationEggNum);
+                    competitionDonation("激进模式", DonationEggNum);
+                } else if (DonationEggNum + myDonation > dailyLimit) {
+                    Log.record("捐蛋排位🥚" + worKType + "时间段(提前" + stealRankMinutes + "分钟)目前排名" + myRank + "捐蛋" + myDonation + ",第1名捐蛋" + firstDonation + ",满足领先" + leadEggs + "需再捐蛋" + DonationEggNum + "捐蛋限制" + dailyLimit + "(停止捐蛋)");
+                } else {
+                    Log.record("捐蛋排位🥚" + worKType + "时间段(提前" + stealRankMinutes + "分钟)目前排名" + myRank + "捐蛋" + myDonation + ",第1名捐蛋" + firstDonation + ",满足领先" + leadEggs + "条件还需尝试捐蛋" + DonationEggNum);
+                    competitionDonation("激进模式", DonationEggNum);
+                }
             }
 
-            //没有奖励，跳过
-            if (!hasUnReceivedAward) {
-                return;
+        } catch (Throwable t) {
+            Log.i(TAG, "stealRank err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    private boolean isStealRankTime(int stealMinutes) {
+        if (stealMinutes <= 0) {
+            return false;
+        }
+        java.util.Calendar calendar = java.util.Calendar.getInstance();
+        int hour = calendar.get(java.util.Calendar.HOUR_OF_DAY);
+        int minute = calendar.get(java.util.Calendar.MINUTE);
+        int totalMinutes = hour * 60 + minute;
+        int targetTime = 20 * 60;
+        int startTime = targetTime - stealMinutes;
+        return totalMinutes >= startTime && totalMinutes < targetTime;
+    }
+
+    private void competitionDonation(String competitionType, int DonationEggNum) {
+
+        if (DonationEggNum > 0) {
+            int currentEgg = (int) harvestBenevolenceScore;
+            if (currentEgg <= 0) {
+                Log.record("捐蛋排位🥚当前无蛋可捐");
+            } else {
+                if (DonationEggNum > harvestBenevolenceScore) {
+                    Log.record("捐蛋排位🥚满足" + competitionType + "需捐蛋" + DonationEggNum + "当前可捐" + harvestBenevolenceScore + "放弃捐蛋");
+                } else {
+                    Log.farm("捐蛋排位🥚" + competitionType + "开始捐蛋" + DonationEggNum + "枚");
+                    donation(DonationEggNum);
+                }
             }
-            jo = new JSONObject(AntFarmRpcCall.enterCompetitionAwardPage());
+        }
+    }
+
+    private void receiveReward() {
+        try {
+            //领取奖励
+            JSONObject jo = new JSONObject(AntFarmRpcCall.enterCompetitionAwardPage());
             if (!MessageUtil.checkMemo(TAG, jo)) {
                 return;
             }
@@ -1251,25 +1460,35 @@ public class AntFarm extends ModelTask {
                         Log.farm("捐蛋排位🥚领取" + levelName + "段位奖励" + awardNum + awardName);
                     }
                 }
-                TimeUtil.sleep(1000);
+                TimeUtil.sleep(500);
             }
         } catch (Throwable t) {
-            Log.i(TAG, "competition err:");
+            Log.i(TAG, "receiveReward err:");
             Log.printStackTrace(TAG, t);
         }
     }
 
-    private boolean isStealRankTime(int stealMinutes) {
-        if (stealMinutes <= 0) {
-            return false;
+    private void PreviousCompetitionInfo() {
+
+        try {
+            //查询上期比赛情况
+            //JSONObject joPrevious = new JSONObject(AntFarmRpcCall.queryCompetitionEntranceInfo());
+            JSONObject joPrevious = new JSONObject(AntFarmRpcCall.enterDonationCompetitionRank());
+            if (MessageUtil.checkMemo(TAG, joPrevious)) {
+                JSONObject previousRoundSettleAwardInfo = joPrevious.optJSONObject("previousRoundSettleAwardInfo");
+                if (previousRoundSettleAwardInfo == null) {
+                    Log.record("捐蛋排位🥚无法获取上期排名");
+                } else {
+                    String levelName = previousRoundSettleAwardInfo.optString("levelName");
+                    int previousRankOrder = previousRoundSettleAwardInfo.optInt("rankOrder", 0);
+                    int previousRewardStarNum = previousRoundSettleAwardInfo.optInt("rewardStarNum", 0);
+                    Log.record("捐蛋排位🥚上期排名" + previousRankOrder + "奖励星星" + previousRewardStarNum + "段位等级[" + levelName + "]");
+                }
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "PreviousCompetitionInfo err:");
+            Log.printStackTrace(TAG, t);
         }
-        java.util.Calendar calendar = java.util.Calendar.getInstance();
-        int hour = calendar.get(java.util.Calendar.HOUR_OF_DAY);
-        int minute = calendar.get(java.util.Calendar.MINUTE);
-        int totalMinutes = hour * 60 + minute;
-        int targetTime = 20 * 60;
-        int startTime = targetTime - stealMinutes;
-        return totalMinutes >= startTime && totalMinutes < targetTime;
     }
 
     private int getProjectDonationNum(String projectId) {

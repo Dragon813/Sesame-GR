@@ -276,7 +276,7 @@ public class MessageUtil {
                 case "MemberCreditSesameTaskList":
                     if (jo.has("resultView")) {
                         String resultView = jo.optString("resultView");
-                        if (resultView.contains("不是有效的入参")) {
+                        if (resultView.contains("不是有效的入参") || resultView.contains("存在进行中的生活记录")) {
                             canAddBlackList = true;
                         }
                     }

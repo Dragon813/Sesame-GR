@@ -655,11 +655,13 @@ public class AntForestV2 extends ModelTask {
                 }
 
                 //1V1能量挑战
-                updateUserConfigEnergyPvp(energyPvp.getValue());
                 if (energyPvp.getValue()) {
-                    receivePvpRewards();
-                }
+                    if(updateUserConfigEnergyPvp()){
+                        queryPvpHomeInfo();
+                        receivePvpRewards();
+                    }
 
+                }
                 ForestEnergyInfo();
 
             }
@@ -3804,48 +3806,90 @@ public class AntForestV2 extends ModelTask {
         }
     }
 
-
-    private static boolean queryUserTag(Boolean needReturn) {
+    private static boolean updateUserConfigEnergyPvp() {
         try {
             String Str = AntForestRpcCall.queryUserTag();
             JSONObject Jo = new JSONObject(Str);
             if (!MessageUtil.checkResultCode(TAG, Jo)) {
-                Log.record("queryUserTag 返回异常");
-                return needReturn;
+                Log.record("queryUserTag 查询1V1状态返回异常");
+                return false;
             }
             if (Jo.has("tagMap")) {
                 JSONObject tagMap = Jo.getJSONObject("tagMap");
                 if (!tagMap.has("energyPvp")) {
-                    return needReturn;
+                    Log.record("查询1V1无状态返回无法参加,若出现标识立马为大人开启");
+                    return false;
                 }
                 String energyPvp = tagMap.getString("energyPvp");
-                return "Y".equals(energyPvp);
+                if (energyPvp.equals("Y")) {
+                    return true;
+                }
             }
-        } catch (Throwable th) {
-            Log.i(TAG, "queryUserTag err:");
-            Log.printStackTrace(TAG, th);
-        }
-        return needReturn;
-    }
-
-
-    private static void updateUserConfigEnergyPvp(Boolean needReturn) {
-        //需要设置的状态和返回状态相同，跳过
-        if (queryUserTag(needReturn) == needReturn) {
-            return;
-        }
-        try {
-            String updateStr = AntForestRpcCall.updateUserConfigEnergyPvp(needReturn);
+            //自动开启挑战
+            String updateStr = AntForestRpcCall.updateUserConfigEnergyPvp(true);
             JSONObject updateJo = new JSONObject(updateStr);
             if (!MessageUtil.checkResultCode(TAG, updateJo)) {
                 Log.record("updateUserConfigEnergyPvp 返回异常");
             } else {
-                Log.record("1V1能量挑战切换成功：" + (needReturn ? "开启" : "关闭"));
+                //Log.record("1V1能量挑战切换成功：" + (needReturn ? "开启" : "关闭"));
+                Log.forest("比赛情况🆚1V1能量挑战成功开启");
+                return true;
             }
+            return false;
         } catch (Throwable th) {
             Log.i(TAG, "updateUserConfigEnergyPvp err:");
             Log.printStackTrace(TAG, th);
         }
+        return false;
+    }
+
+    private static void queryPvpHomeInfo() {
+        try {
+            JSONObject jo = new JSONObject(AntForestRpcCall.queryPvpHomeInfo());
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            if (jo.has("currentEnergyPvpBattleRecord")) {
+                JSONObject currentEnergyPvpBattleRecord = jo.getJSONObject("currentEnergyPvpBattleRecord");
+                //获取1v1比赛情况
+                String attackerDisplayName = currentEnergyPvpBattleRecord.optString("attackerDisplayName");
+                int attackerEnergy = currentEnergyPvpBattleRecord.optInt("attackerEnergy");
+                int attackerWinCount = currentEnergyPvpBattleRecord.optInt("attackerWinCount");
+                String battleType = currentEnergyPvpBattleRecord.optString("battleType");
+                String defenderDisplayName = currentEnergyPvpBattleRecord.optString("defenderDisplayName");
+                int defenderEnergy = currentEnergyPvpBattleRecord.optInt("defenderEnergy");
+                int defenderWinCount = currentEnergyPvpBattleRecord.optInt("defenderWinCount");
+                String battleStatus = currentEnergyPvpBattleRecord.optString("battleStatus");
+                Log.record("比赛情况🆚" + battleType + "赛" + battleStatus + "[" + attackerDisplayName + "]" + attackerWinCount + "胜(" + attackerEnergy + "g)VS[" + defenderDisplayName + "]" + attackerWinCount + "胜(" + defenderEnergy + "g)");
+                //领取奖励
+                if (currentEnergyPvpBattleRecord.optBoolean("hasReward")) {
+                    jo = new JSONObject(AntForestRpcCall.receivePvpRewards());
+                    if (!MessageUtil.checkResultCode(TAG, jo)) {
+                        return;
+                    }
+                    if (jo.has("receivedRewards")) {
+                        JSONArray receivedRewards = jo.getJSONArray("receivedRewards");
+                        for (int i = 0; i < receivedRewards.length(); i++) {
+                            JSONObject reward = receivedRewards.getJSONObject(i);
+                            String rewardName = reward.getString("rewardName");
+                            String rewardType = reward.getString("rewardType");
+                            if ("energy".equals(rewardType)) {
+                                int energy = reward.getInt("energy");
+                                Log.forest("领取奖励🎖️1V1[" + rewardName + "]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                                Statistics.addData(Statistics.DataType.COLLECTED, energy);
+                            } else {
+                                Log.forest("领取奖励🎖️1V1[" + rewardName + "]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                            }
+                        }
+                    }
+
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "queryPvpHomeInfo err:");
+            Log.printStackTrace(TAG, th);
+        }
+
     }
 
     private static void receivePvpRewards() {
@@ -3858,6 +3902,7 @@ public class AntForestV2 extends ModelTask {
                 JSONObject combineHandlerVOMap = jo.getJSONObject("combineHandlerVOMap");
                 if (combineHandlerVOMap.has("energyPvpInfo")) {
                     JSONObject energyPvpInfo = combineHandlerVOMap.getJSONObject("energyPvpInfo");
+                    //领取奖励
                     if (energyPvpInfo.optBoolean("hasReward")) {
                         jo = new JSONObject(AntForestRpcCall.receivePvpRewards());
                         if (!MessageUtil.checkResultCode(TAG, jo)) {
@@ -3885,7 +3930,6 @@ public class AntForestV2 extends ModelTask {
             Log.i(TAG, "receivePvpRewards err:");
             Log.printStackTrace(TAG, th);
         }
-
     }
 
 

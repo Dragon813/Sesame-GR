@@ -49,7 +49,7 @@ public class AntSports extends ModelTask {
     
     private int tmpStepCount = -1;
     private BooleanModelField walk;
-    private SelectModelField PathThemeMapList;
+    private ChoiceModelField PathThemeMapList;
     private BooleanModelField receiveCoinAsset;
     private ChoiceModelField donateCharityCoinType;
     private IntegerModelField donateCharityCoinAmount;
@@ -109,7 +109,10 @@ public class AntSports extends ModelTask {
     public ModelFields getFields() {
         ModelFields modelFields = new ModelFields();
         modelFields.addField(walk = new BooleanModelField("walk", "行走路线 | 开启", false));
-        modelFields.addField(PathThemeMapList = new SelectModelField("PathThemeMapList", "行走路线 | 路线主题", new LinkedHashSet<>(), WalkPathThemeMapList::getList, "请选择要行走的主题，选择多条则随机走其中一个主题下的路线"));
+        // modelFields.addField(PathThemeMapList = new SelectModelField("PathThemeMapList", "行走路线 | 路线主题", new LinkedHashSet<>(), WalkPathThemeMapList::getList, "请选择要行走的主题，选择多条则随机走其中一个主题下的路线"));
+        // 确保 nickNames 和 values 已初始化
+        WalkPathThemeMapList.getList();
+        modelFields.addField(PathThemeMapList = new ChoiceModelField("PathThemeMapList", "行走路线 | 路线主题", 0, WalkPathThemeMapList.nickNames));
         //modelFields.addField(walkCustomPathIdList = new SelectModelField("walkCustomPathIdList", "行走路线 | 自定义路线列表", new LinkedHashSet<>(), WalkPath::getThemeListFromRpc, "请选择要行走的路线，选择多条则随机走其中一条"));
         modelFields.addField(sportsTasks = new BooleanModelField("sportsTasks", "运动任务", false));
         modelFields.addField(AutoAntSportsTaskList = new BooleanModelField("AutoAntSportsTaskList", "运动任务 | 自动黑白名单", true));
@@ -209,10 +212,10 @@ public class AntSports extends ModelTask {
             }
 
             //初始化行走主题列表
-            //if (!Status.hasFlagToday("WalkPathTheme::init")) {
+            if (!Status.hasFlagToday("WalkPathTheme::init")) {
                 initWalkPathThemeMap();
-            //    Status.flagToday("WalkPathTheme::init");
-            //}
+                Status.flagToday("WalkPathTheme::init");
+            }
             
             if (donateCharityCoinType.getValue() != DonateCharityCoinType.ZERO) {
                 queryProjectList();
@@ -371,7 +374,7 @@ public class AntSports extends ModelTask {
                 }
             }
             PathThemeMapListMap.save();
-            Log.record("同步路线主题:" + PathThemeMapListMap.getMap());
+            Log.record("同步路线主题" + PathThemeMapListMap.getMap());
 
         } catch (Throwable t) {
             Log.i(TAG, "initWalkPathThemeMap err:");
@@ -835,12 +838,11 @@ public class AntSports extends ModelTask {
         String pathId = null;
 
         try {
-            Set<String> selectedThemes = PathThemeMapList.getValue();
-            if (selectedThemes == null || selectedThemes.isEmpty()) {
+            int index = PathThemeMapList.getValue();
+            if (index < 0 || index >= WalkPathThemeMapList.values.length) {
                 return pathId;
             }
-            java.util.List<String> themeList = new java.util.ArrayList<>(selectedThemes);
-            String themeId = themeList.get((int) (Math.random() * themeList.size()));
+            String themeId = WalkPathThemeMapList.values[index];
             JSONObject theme = queryWorldMap(themeId);
             if (theme == null) {
                 return pathId;
