@@ -7,8 +7,6 @@ on:
 
 jobs:
   build:
-    # 仅在同步上游(合并 origin/main)时触发
-    if: contains(github.event.head_commit.message, 'origin/main')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
