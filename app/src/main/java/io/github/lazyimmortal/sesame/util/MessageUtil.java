@@ -260,6 +260,12 @@ public class MessageUtil {
                             canAddBlackList = true;
                         }
                     }
+                    if (jo.has("errorMsg")) {
+                        String errorMsg = jo.optString("errorMsg");
+                        if (errorMsg.contains("海豚活动触发不可重试错误")) {
+                            canAddBlackList = true;
+                        }
+                    }
                     if (canAddBlackList) {
                         MarkTaskBlackList("AntSports", listTitle, "运动任务", taskTitle);
                     }

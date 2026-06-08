@@ -195,6 +195,7 @@ public class AntForestV2 extends ModelTask {
     private BooleanModelField AutoAntForestVitalityTaskList;
     private SelectModelField AntForestVitalityTaskList;
     private ChoiceModelField waterFriendType;
+    private BooleanModelField waterFriendEnergySendChat;
     private SelectAndCountModelField waterFriendList;
 
     private SelectAndCountModelField wateredFriendList;
@@ -286,6 +287,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(returnWater33 = new IntegerModelField("returnWater33", "返水 | 33克需收能量" + "(关闭:0)", 0));
         modelFields.addField(waterFriendType = new ChoiceModelField("waterFriendType", "浇水 | 动作", WaterFriendType.WATER_00, WaterFriendType.nickNames));
         modelFields.addField(waterFriendList = new SelectAndCountModelField("waterFriendList", "浇水 | 好友列表", new LinkedHashMap<>(), AlipayUser::getList, "请填写浇水次数(每日)"));
+        modelFields.addField(waterFriendEnergySendChat = new BooleanModelField("waterFriendEnergySendChat", "浇水 | 发送已浇水提醒", false));
         modelFields.addField(doubleWaterFriendEnergy = new BooleanModelField("doubleWaterFriendEnergy", "浇水 | 强制检查重复一次", false));
         modelFields.addField(helpFriendCollectType = new ChoiceModelField("helpFriendCollectType", "复活能量 | 动作", HelpFriendCollectType.NONE, HelpFriendCollectType.nickNames));
         modelFields.addField(helpFriendCollectList = new SelectModelField("helpFriendCollectList", "复活能量 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
@@ -2008,7 +2010,7 @@ public class AntForestV2 extends ModelTask {
             int energyId = getEnergyId(waterEnergy);
             label:
             for (int waterCount = 1; waterCount <= count; waterCount++) {
-                s = AntForestRpcCall.transferEnergy(userId, bizNo, energyId);
+                s = AntForestRpcCall.transferEnergy(userId, bizNo, energyId,waterFriendEnergySendChat.getValue()? "Y":"N");
                 TimeUtil.sleep(1500);
                 jo = new JSONObject(s);
 

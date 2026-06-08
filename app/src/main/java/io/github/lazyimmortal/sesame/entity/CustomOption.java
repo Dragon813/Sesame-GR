@@ -41,7 +41,7 @@ public class CustomOption extends IdAndName {
         list.add(new CustomOption("familyFeed", "帮喂成员"));
         list.add(new CustomOption("familyEatTogether", "美食请客"));
         list.add(new CustomOption("familyClaimReward", "领取奖励"));
-        //list.add(new CustomOption("deliverMsgSend", "道早安"));
+        list.add(new CustomOption("deliverMsgSend", "道早安"));
         list.add(new CustomOption("assignRights", "顶梁柱"));
         list.add(new CustomOption("shareToFriends", "分享给好友"));
         return list;

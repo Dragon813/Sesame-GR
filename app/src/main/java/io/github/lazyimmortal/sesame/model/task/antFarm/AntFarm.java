@@ -5,6 +5,7 @@ import android.os.Build;
 import io.github.lazyimmortal.sesame.entity.AlipayAntFarmDoFarmTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntFarmDrawMachineTaskList;
 import io.github.lazyimmortal.sesame.entity.GameCenterMallItem;
+import io.github.lazyimmortal.sesame.model.task.antForest.AntForestRpcCall;
 import io.github.lazyimmortal.sesame.model.task.antGame.GameTask;
 import io.github.lazyimmortal.sesame.util.idMap.AntFarmDoFarmTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.AntFarmDrawMachineTaskListMap;
@@ -489,6 +490,8 @@ public class AntFarm extends ModelTask {
             blackList.add("【限时】玩游戏得3次机会");
             blackList.add("伸出援手，点亮希望");
             blackList.add("限时玩游戏得新机会");
+            blackList.add("【限时】开宝箱得2次机会");
+            blackList.add("【限时】开宝箱得3次机会");
 
             whiteList = new HashSet<>();// 从黑名单中移除该任务
             //whiteList.add("逛一逛树");
@@ -1213,6 +1216,8 @@ public class AntFarm extends ModelTask {
                     Log.record("捐蛋排位🥚每日20:01后不执行捐蛋操作");
                     return;
                 }
+
+
                 //根据目标星星排名最后的捐蛋数及每日捐蛋上限捐蛋
                 if (myRank > desStarRank && desDonation > 0) {
                     int DonationEggNum = desDonation - myDonation + 1;
@@ -1231,7 +1236,7 @@ public class AntFarm extends ModelTask {
                         }
                     } else {
                         if (dailyLimit > myDonation) {
-                            Log.record("捐蛋排位🥚目标星级捐蛋" + desDonation + ",当前捐蛋限制" + dailyLimit + "尝试减少目标星星捐蛋");
+                            Log.record("捐蛋排位🥚目标星级捐蛋" + desDonation + "当前捐蛋限制" + dailyLimit + "尝试减少目标星级捐蛋");
                             // 整合：遍历少1~4颗星的选项
                             for (int j = 0; j < 4; j++) {
                                 if (desDonationSub[j] > 0 && desDonationSub[j] < dailyLimit && (4 - j) > myStar) {
@@ -1239,23 +1244,27 @@ public class AntFarm extends ModelTask {
                                     if (DonationEggNum < 1) {
                                         continue;
                                     }
-                                    Log.farm("捐蛋排位🥚在捐蛋上限" + dailyLimit + "范围内，比目标星级" + desStarNum + "少" + (j + 1) + "颗星的[" + desUserIdSub[j] + "]捐了" + desDonationSub[j] + ",当前捐蛋" + myDonation + "尝试再捐蛋" + DonationEggNum);
+                                    Log.farm("捐蛋排位🥚[在捐蛋上限" + dailyLimit + "范围内]比目标星级" + desStarNum + "少" + (j + 1) + "颗星的[" + desUserIdSub[j] + "]捐了" + desDonationSub[j] + "当前捐蛋" + myDonation + "尝试再捐蛋" + DonationEggNum);
                                     competitionDonation("养老保底模式", DonationEggNum);
                                     isNovDonation = true;
                                     break;
                                 }
                             }
                             if (!isNovDonation) {
-                                Log.record("捐蛋排位🥚目标星级捐蛋" + desDonation + ",捐蛋限制" + dailyLimit + "(停止捐蛋)");
+                                Log.record("捐蛋排位🥚目标星级捐蛋" + desDonation + "捐蛋限制" + dailyLimit + "(停止捐蛋)");
                             }
                         } else {
-                            Log.record("捐蛋排位🥚目标星级捐蛋" + desDonation + ",您的账号已捐蛋" + myDonation + "捐蛋限制" + dailyLimit + "(停止捐蛋)");
+                            Log.record("捐蛋排位🥚目标星级捐蛋" + desDonation + "您的账号已捐蛋" + myDonation + "捐蛋限制" + dailyLimit + "(停止捐蛋)");
 
                         }
                     }
                 }
+                //在每日凌晨目标星级还没有人达到且自己捐蛋也为0
+                if (myDonation == 0 && desDonation == 0) {
+                    Log.farm("捐蛋排位🥚目标星级捐蛋" + desDonation + "当前捐蛋" + myDonation + "尝试首次捐蛋1");
+                    competitionDonation("养老保底模式", 1);
+                }
             }
-            int leadEggs = competitionLeadEggs.getValue();
             int stealMinutes = competitionStealMinutes.getValue();
             //霸榜时间
             if (isStealRankTime(stealMinutes)) {
@@ -2528,6 +2537,49 @@ public class AntFarm extends ModelTask {
         }
     }
 
+    //乐园限定活动
+    private void queryOptionalPlay() {
+        try {
+            JSONObject jo = new JSONObject(AntFarmRpcCall.queryOptionalPlay());
+            if (!MessageUtil.checkSuccess(TAG, jo)) {
+                return;
+            }
+            if (!jo.has("taskTriggerPlayInfo")) {
+                return;
+            }
+            JSONObject taskTriggerPlayInfo = jo.optJSONObject("taskTriggerPlayInfo");
+            if (!taskTriggerPlayInfo.has("taskList")) {
+                return;
+            }
+            JSONArray taskList = taskTriggerPlayInfo.getJSONArray("taskList");
+            for (int j = 0; j < taskList.length(); j++) {
+                JSONObject task = taskList.getJSONObject(j);
+                String taskType = task.getString("taskType");
+                String taskStatus = task.getString("taskStatus");
+                String sceneCode = task.getString("sceneCode");
+                int alreadyReceiveAwardCount = task.optInt("alreadyReceiveAwardCount");
+                int awardCount = task.optInt("awardCount");
+                int awardCountForReceive = awardCount - alreadyReceiveAwardCount;
+                JSONObject bizInfo = task.getJSONObject("bizInfo");
+                String title = bizInfo.getString("title");
+                if (taskStatus.equals("FINISHED")) {
+                    if (awardCountForReceive > 0) {
+                        JSONObject joReceived = new JSONObject(AntFarmRpcCall.receiveTaskAwardantfarm(awardCountForReceive, sceneCode, taskType));
+                        if (MessageUtil.checkSuccess(TAG, joReceived)) {
+                            int incAwardCount = joReceived.optInt("incAwardCount");
+                            JSONObject taskConfigResultVO = joReceived.optJSONObject("taskConfigResultVO");
+                            String awardType = taskConfigResultVO.getString("awardType");
+                            Log.farm("小鸡乐园🎖️领取[" + title + "]奖励[" + awardType + "*" + incAwardCount + "]");
+                        }
+                    }
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "queryOptionalPlay err:");
+            Log.printStackTrace(TAG, th);
+        }
+    }
+
     //小鸡乐园兑奖
     // skuId, sku
     Map<String, JSONObject> skuInfo = new HashMap<>();
@@ -2546,6 +2598,7 @@ public class AntFarm extends ModelTask {
                     TimeUtil.sleep(3000);
                 }
             }
+            queryOptionalPlay();
         } catch (Throwable t) {
             Log.i(TAG, "gameCenterBuyMallItem err:");
             Log.printStackTrace(TAG, t);
@@ -2772,6 +2825,12 @@ public class AntFarm extends ModelTask {
                 String taskStatus = jo.getString("taskStatus");
                 String title = jo.getString("title");
                 if (TaskStatus.RECEIVED.name().equals(taskStatus)) {
+                    continue;
+                }
+                if (TaskStatus.FINISHED.name().equals(taskStatus)) {
+                    String taskId = jo.getString("taskId");
+                    String awardType = jo.getString("awardType");
+                    receiveFarmDrawTaskAward(taskId, title, awardType, taskSceneCode);
                     continue;
                 }
                 //黑名单任务跳过
@@ -3202,8 +3261,9 @@ public class AntFarm extends ModelTask {
             } else {
                 Log.i(TAG, "queryGameList falsed result: " + jo.toString());
             }
+
         } catch (Throwable t) {
-            Log.i(TAG, "queryChickenDiaryList err:");
+            Log.i(TAG, "drawGameCenterAward err:");
             Log.printStackTrace(TAG, t);
         }
     }
@@ -3387,13 +3447,14 @@ public class AntFarm extends ModelTask {
             boolean feedFriendLimit = joenterFamily.optBoolean("feedFriendLimit", false);
             JSONArray familyAnimals = joenterFamily.getJSONArray("animals");
             JSONArray EatTogetherUserIds = new JSONArray();
-            JSONArray familyAnimalsExceptUser = familyAnimals;
-            for (int i = familyAnimalsExceptUser.length() - 1; i >= 0; i--) {
-                jo = familyAnimalsExceptUser.getJSONObject(i);
+            // 修复：创建新的 JSONArray 副本，避免修改原始 familyAnimals
+            JSONArray familyAnimalsExceptUser = new JSONArray();
+            for (int i = 0; i < familyAnimals.length(); i++) {
+                jo = familyAnimals.getJSONObject(i);
                 String userId = jo.getString("userId");
                 EatTogetherUserIds.put(userId);
-                if (userId.equals(UserIdMap.getCurrentUid())) {
-                    familyAnimalsExceptUser.remove(i);
+                if (!userId.equals(UserIdMap.getCurrentUid())) {
+                    familyAnimalsExceptUser.put(jo);
                 }
             }
             // 获取家庭成员ID列表
@@ -3463,9 +3524,9 @@ public class AntFarm extends ModelTask {
             }
 
             // 道早安
-            //if (familyOptions.getValue().contains("deliverMsgSend")) {
-            //deliverMsgSend(familyAnimalsExceptUser,familyUserIds);
-            //}
+            if (familyOptions.getValue().contains("deliverMsgSend")) {
+                deliverMsgSend(familyAnimalsExceptUser, familyUserIds);
+            }
 
             // 分享给好友
             if (familyOptions.getValue().contains("shareToFriends")) {
@@ -3632,7 +3693,7 @@ public class AntFarm extends ModelTask {
             endTime.set(Calendar.MILLISECOND, 0);
 
             if (now.before(startTime) || now.after(endTime)) {
-                Log.record("家庭任务🏠道早安#当前时间不在 06:00-10:00，跳过");
+                //Log.record("家庭任务🏠道早安#当前时间不在 06:00-10:00，跳过");
                 return;
             }
 
@@ -3643,7 +3704,7 @@ public class AntFarm extends ModelTask {
 
             // 本地去重：一天只发送一次
             if (Status.hasFlagToday("antFarm::deliverMsgSend")) {
-                Log.record("家庭任务🏠道早安#今日已在本地发送过，跳过");
+                //Log.record("家庭任务🏠道早安#今日已在本地发送过，跳过");
                 return;
             }
 
@@ -3742,7 +3803,7 @@ public class AntFarm extends ModelTask {
             // 最终发送早安消息
             JSONObject resp4 = new JSONObject(AntFarmRpcCall.deliverMsgSend(ownerGroupId, userIds, content, deliverId));
             if (MessageUtil.checkMemo(TAG, resp4)) {
-                Log.farm("家庭任务🏠道早安: " + content + " 🌈");
+                Log.farm("家庭任务🌈[道早安]" + content);
                 Status.flagToday("antFarm::deliverMsgSend");
             }
         } catch (Throwable t) {

@@ -219,6 +219,8 @@ public class ForestChouChouLe {
                             if (prizeName.contains("g能量")) {
                                 Statistics.addData(Statistics.DataType.COLLECTED, prizeNum);
                             }
+                        }else{
+                            blance--;
                         }
                     }
                 }
