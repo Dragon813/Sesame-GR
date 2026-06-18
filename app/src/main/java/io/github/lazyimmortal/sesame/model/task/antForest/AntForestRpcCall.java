@@ -127,7 +127,12 @@ public class AntForestRpcCall {
     public static String vitalitySign() {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.vitalitySign", "[{\"source" + "\":\"chInfo_ch_appcenter__chsub_9patch\"}]");
     }
-    
+
+    public static String queryCommonSign(String sceneCode) {
+        String args = "[{\"bizType\":\""+sceneCode+"\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"withEntity\":true}]";
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.queryCommonSign", args);
+    }
+
     public static String antiepSign(String entityId, String userId, String sceneCode) {
         String args = "[{\"entityId\":\"" + entityId + "\",\"requestType\":\"rpc\",\"sceneCode\":\"" + sceneCode + "\",\"source\":\"ANTFOREST\",\"userId\":\"" + userId + "\"}]";
         return ApplicationHook.requestString("com.alipay.antiep.sign", args);
@@ -860,5 +865,10 @@ public class AntForestRpcCall {
     public static String queryPvpHomeInfo() {
         String args = "[{\"queryWaitToReceive\":true,\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]";
         return ApplicationHook.requestString("alipay.antforest.forest.h5.queryPvpHomeInfo", args);
+    }
+
+    public static String queryOptionalPlay() {
+        String args1 = "[{\"bizType\":\"ANTFOREST\",\"commonDegradeFilterRequest\":{\"appMode\":\"normal\",\"deviceLevel\":\"high\",\"platform\":\"Android\",\"unityDeviceLevel\":\"high\"},\"playTypeList\":[\"TASK_TRIGGER\",\"TOP_UP_COUPON\"],\"recentAppRecordList\":[],\"requestType\":\"RPC\",\"sceneCode\":\"ANTFOREST_COMMON\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"version\":\"" + VERSION + "\"}]";
+        return ApplicationHook.requestString("com.alipay.charitygamecenter.queryOptionalPlay", args1);
     }
 }

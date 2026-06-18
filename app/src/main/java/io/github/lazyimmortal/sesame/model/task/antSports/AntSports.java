@@ -120,9 +120,9 @@ public class AntSports extends ModelTask {
         modelFields.addField(AutoAntSportsTaskList = new BooleanModelField("AutoAntSportsTaskList", "运动任务 | 自动黑白名单", true));
         modelFields.addField(AntSportsTaskList = new SelectModelField("AntSportsTaskList", "运动任务 | 黑名单列表", new LinkedHashSet<>(), AlipayAntSportsTaskList::getList));
         modelFields.addField(receiveCoinAsset = new BooleanModelField("receiveCoinAsset", "收运动币", false));
-        modelFields.addField(donateCharityCoinType = new ChoiceModelField("donateCharityCoinType", "捐运动币 | 方式", DonateCharityCoinType.ZERO, DonateCharityCoinType.nickNames));
-        modelFields.addField(donateCharityCoinAmount = new IntegerModelField("donateCharityCoinAmount", "捐运动币 | 数量" + "(每次)", 100));
-        modelFields.addField(coinExchangeDoubleCard = new BooleanModelField("coinExchangeDoubleCard", "运动币兑换限时能量双击卡", false));
+        //modelFields.addField(donateCharityCoinType = new ChoiceModelField("donateCharityCoinType", "捐运动币 | 方式", DonateCharityCoinType.ZERO, DonateCharityCoinType.nickNames));
+        //modelFields.addField(donateCharityCoinAmount = new IntegerModelField("donateCharityCoinAmount", "捐运动币 | 数量" + "(每次)", 100));
+        //modelFields.addField(coinExchangeDoubleCard = new BooleanModelField("coinExchangeDoubleCard", "运动币兑换限时能量双击卡", false));
         modelFields.addField(club = new BooleanModelField("club", "抢好友 | 开启", false));
         modelFields.addField(clubTrainItemType = new ChoiceModelField("clubTrainItemType", "抢好友 | 训练动作", TrainItemType.NONE, TrainItemType.nickNames));
         modelFields.addField(clubTradeMemberType = new ChoiceModelField("clubTradeMemberType", "抢好友 | 抢购动作", TradeMemberType.NONE, TradeMemberType.nickNames));
@@ -154,9 +154,10 @@ public class AntSports extends ModelTask {
             XposedHelpers.findAndHookMethod("com.alibaba.health.pedometer.core.datasource.PedometerAgent", classLoader, "readDailyStep", new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) {
+                    int hour = Integer.parseInt(Log.getFormatTime().split(":")[0]);
                     int originStep = (Integer) param.getResult();
                     int step = tmpStepCount();
-                    if (TaskCommon.IS_AFTER_6AM && originStep < step) {
+                    if (!Status.hasFlagToday("sport::syncStep") && hour >= earliestSyncStepTime.getValue() && originStep < step) {
                         param.setResult(step);
                     }
                 }
@@ -181,21 +182,28 @@ public class AntSports extends ModelTask {
     public void run() {
         try {
             int hour = Integer.parseInt(Log.getFormatTime().split(":")[0]);
+            //if (!Status.hasFlagToday("sport::syncStep")) {
             if (!Status.hasFlagToday("sport::syncStep") && hour >= earliestSyncStepTime.getValue()) {
-                //if (!Status.hasFlagToday("sport::syncStep")) {
+                JSONObject jo = new JSONObject(AntSportsRpcCall.queryWalkStep());
+                if (!MessageUtil.checkResultCode(TAG, jo)) {
+                    return;
+                }
+                int stepCount = jo.optInt("stepCount");
                 addChildTask(new ChildModelTask("syncStep", () -> {
                     int step = tmpStepCount();
-                    try {
-                        ClassLoader classLoader = ApplicationHook.getClassLoader();
-                        if ((Boolean) XposedHelpers.callMethod(XposedHelpers.callStaticMethod(classLoader.loadClass("com.alibaba.health.pedometer.intergation.rpc.RpcManager"), "a"), "a", new Object[]{step, Boolean.FALSE, "system"})) {
-                            Toast.show("同步步数🏃🏻‍♂️[" + step + "步]");
-                            Log.other("同步步数🏃🏻‍♂️[" + step + "步]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
-                            Status.flagToday("sport::syncStep");
-                        } else {
-                            Log.record("同步运动步数失败:" + step);
+                    if (stepCount < step) {
+                        try {
+                            ClassLoader classLoader = ApplicationHook.getClassLoader();
+                            if ((Boolean) XposedHelpers.callMethod(XposedHelpers.callStaticMethod(classLoader.loadClass("com.alibaba.health.pedometer.intergation.rpc.RpcManager"), "a"), "a", new Object[]{step, Boolean.FALSE, "system"})) {
+                                Toast.show("同步步数🏃🏻‍♂️[" + step + "步]");
+                                Log.other("同步步数🏃🏻‍♂️[" + step + "步]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                                Status.flagToday("sport::syncStep");
+                            } else {
+                                Log.record("同步运动步数失败:" + step);
+                            }
+                        } catch (Throwable t) {
+                            Log.printStackTrace(TAG, t);
                         }
-                    } catch (Throwable t) {
-                        Log.printStackTrace(TAG, t);
                     }
                 }));
             }
@@ -203,7 +211,6 @@ public class AntSports extends ModelTask {
             if (walk.getValue()) {
                 walk(syncStepCount.getValue());
             }
-
 
             //初始任务列表
             if (!Status.hasFlagToday("BlackList::initAntSports")) {
@@ -217,13 +224,13 @@ public class AntSports extends ModelTask {
                 Status.flagToday("WalkPathTheme::init");
             }
 
-            if (donateCharityCoinType.getValue() != DonateCharityCoinType.ZERO) {
-                queryProjectList();
-            }
+            //if (donateCharityCoinType.getValue() != DonateCharityCoinType.ZERO) {
+            //    queryProjectList();
+            //}
 
-            if (coinExchangeDoubleCard.getValue()) {
-                coinExchangeItem("AMS2024032927086104");
-            }
+            //if (coinExchangeDoubleCard.getValue()) {
+            //    coinExchangeItem("AMS2024032927086104");
+           // }
 
             if (minExchangeCount.getValue() > 0) {
                 queryWalkStep();
@@ -591,7 +598,7 @@ public class AntSports extends ModelTask {
                                         String pathId = cityPath.getString("pathId");
                                         String queryCityPathName = cityPath.getString("name");
                                         int completeCount = cityPath.optInt("completeCount");
-                                        boolean locked = cityPath.optBoolean("locked",true);
+                                        boolean locked = cityPath.optBoolean("locked", true);
                                         if (!inited && !locked) {
                                             minCompleteCount = completeCount;
                                             minThemeName = themeName;
@@ -2125,7 +2132,7 @@ public class AntSports extends ModelTask {
                 }
                 JSONObject jsonResult = new JSONObject(AntSportsRpcCall.queryItemList(page));
                 String errorMessage = jsonResult.optString("errorMessage");
-                if (errorMessage.equals("系统繁忙，请稍后再试。") ) {
+                if (errorMessage.equals("系统繁忙，请稍后再试。")) {
                     Status.flagToday("sport::exchangeBenefits_ERROR");
                     return;
                 }

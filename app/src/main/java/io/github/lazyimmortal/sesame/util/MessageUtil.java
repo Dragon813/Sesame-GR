@@ -259,6 +259,7 @@ public class MessageUtil {
                         if (errorCode.contains("TASK_ID_INVALID")) {
                             canAddBlackList = true;
                         }
+
                     }
                     if (jo.has("errorMsg")) {
                         String errorMsg = jo.optString("errorMsg");

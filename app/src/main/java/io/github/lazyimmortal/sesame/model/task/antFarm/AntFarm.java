@@ -1223,20 +1223,20 @@ public class AntFarm extends ModelTask {
                     int DonationEggNum = desDonation - myDonation + 1;
                     if (desDonation < dailyLimit) {
                         if (DonationEggNum > 0) {
-                            Log.farm("捐蛋排位🥚目标星级捐蛋" + desDonation + "当前捐蛋" + myDonation + "尝试再捐蛋" + DonationEggNum);
+                            Log.farm("捐蛋排位🥚目标星级" + desStarNum + "捐蛋" + desDonation + "当前捐蛋" + myDonation + "尝试再捐蛋" + DonationEggNum);
                             competitionDonation("养老保底模式", DonationEggNum);
                             isNovDonation = true;
                         }
 
                     } else if (dailyLimit == 0) {
                         if (DonationEggNum > 0) {
-                            Log.farm("捐蛋排位🥚目标星级捐蛋" + desDonation + "当前捐蛋" + myDonation + "(无捐蛋上限)尝试再捐蛋" + DonationEggNum);
+                            Log.farm("捐蛋排位🥚目标星级" + desStarNum + "捐蛋" + desDonation + "当前捐蛋" + myDonation + "(无捐蛋上限)尝试再捐蛋" + DonationEggNum);
                             competitionDonation("养老保底模式", DonationEggNum);
                             isNovDonation = true;
                         }
                     } else {
                         if (dailyLimit > myDonation) {
-                            Log.record("捐蛋排位🥚目标星级捐蛋" + desDonation + "当前捐蛋限制" + dailyLimit + "尝试减少目标星级捐蛋");
+                            Log.record("捐蛋排位🥚目标星级" + desStarNum + "捐蛋" + desDonation + "当前捐蛋限制" + dailyLimit + "尝试减少目标星级捐蛋");
                             // 整合：遍历少1~4颗星的选项
                             for (int j = 0; j < 4; j++) {
                                 if (desDonationSub[j] > 0 && desDonationSub[j] < dailyLimit && (4 - j) > myStar) {
@@ -1251,17 +1251,17 @@ public class AntFarm extends ModelTask {
                                 }
                             }
                             if (!isNovDonation) {
-                                Log.record("捐蛋排位🥚目标星级捐蛋" + desDonation + "捐蛋限制" + dailyLimit + "(停止捐蛋)");
+                                Log.record("捐蛋排位🥚目标星级" + desStarNum + "捐蛋" + desDonation + "捐蛋限制" + dailyLimit + "(停止捐蛋)");
                             }
                         } else {
-                            Log.record("捐蛋排位🥚目标星级捐蛋" + desDonation + "您的账号已捐蛋" + myDonation + "捐蛋限制" + dailyLimit + "(停止捐蛋)");
+                            Log.record("捐蛋排位🥚目标星级" + desStarNum + "捐蛋" + desDonation + "您的账号已捐蛋" + myDonation + "捐蛋限制" + dailyLimit + "(停止捐蛋)");
 
                         }
                     }
                 }
                 //在每日凌晨目标星级还没有人达到且自己捐蛋也为0
                 if (myDonation == 0 && desDonation == 0) {
-                    Log.farm("捐蛋排位🥚目标星级捐蛋" + desDonation + "当前捐蛋" + myDonation + "尝试首次捐蛋1");
+                    Log.farm("捐蛋排位🥚目标星级" + desStarNum + "捐蛋" + desDonation + "当前捐蛋" + myDonation + "尝试首次捐蛋1");
                     competitionDonation("养老保底模式", 1);
                 }
             }
@@ -1296,6 +1296,49 @@ public class AntFarm extends ModelTask {
                 if (!hasChildTask(taskId)) {
                     addChildTask(new ChildModelTask(taskId, "STEALRANK", () -> stealRank(minutes, "偷榜"), stealRankTime));
                     Log.record("捐蛋排位🥚已设置偷榜定时任务，将在 " + new java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(stealRankTime) + " 执行");
+                }
+            }
+            // 先解析赛季捐蛋数
+            int seasonDonationNum = 0;
+            if (jo.has("seasonDonationProgress")) {
+                JSONObject seasonDonationProgress = jo.getJSONObject("seasonDonationProgress");
+                seasonDonationNum = seasonDonationProgress.optInt("seasonDonationNum");
+            }
+            
+            // 复用前面已获取的 userDonationRankList，解析当前用户的数据
+            if (userDonationRankList != null && userDonationRankList.length() > 0) {
+                for (int i = 0; i < userDonationRankList.length(); i++) {
+                    JSONObject userDonationRank = userDonationRankList.optJSONObject(i);
+                    if (userDonationRank != null) {
+                        String userId = userDonationRank.optString("userId");
+                        if (CurrentUserId.equals(userId)) {
+                            String nickName = userDonationRank.optString("nickName");
+                            int totalStarNum = userDonationRank.optInt("totalStarNum");
+                            String levelName = userDonationRank.optString("levelName");
+                            int donationTotal = userDonationRank.optInt("donationTotal");
+                            Log.record("捐蛋排位🥚[" + nickName + "]星星数" + totalStarNum + "等级[" + levelName + "]累计捐蛋" + donationTotal + "赛季捐蛋" + seasonDonationNum);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // 检查领取赛季进度奖励
+            if (jo.has("seasonDonationProgress")) {
+                JSONObject seasonDonationProgress = jo.getJSONObject("seasonDonationProgress");
+                JSONArray nodes = seasonDonationProgress.optJSONArray("nodes");
+                boolean hasUnreceived = false;
+                if (nodes != null) {
+                    for (int i = 0; i < nodes.length(); i++) {
+                        JSONObject node = nodes.optJSONObject(i);
+                        if (node != null && "UNRECEIVED".equals(node.optString("status"))) {
+                            hasUnreceived = true;
+                            break;
+                        }
+                    }
+                }
+                if (hasUnreceived) {
+                    receiveDonationCompetitionProgressAward();
                 }
             }
         } catch (Throwable t) {
@@ -1473,6 +1516,35 @@ public class AntFarm extends ModelTask {
             }
         } catch (Throwable t) {
             Log.i(TAG, "receiveReward err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    private void receiveDonationCompetitionProgressAward() {
+        try {
+            //领取捐蛋对应星星数进度奖励
+            JSONObject jo = new JSONObject(AntFarmRpcCall.receiveDonationCompetitionProgressAward());
+            if (!MessageUtil.checkMemo(TAG, jo)) {
+                return;
+            }
+            if (jo.has("totalAddStarNum")) {
+                int totalAddStarNum = jo.optInt("totalAddStarNum");
+                Log.farm("捐蛋排位🥚累计领取进度奖励星星" + totalAddStarNum);
+            }
+            
+            // 提取 userStarNum 变化
+            JSONObject beforeLevelInfo = jo.optJSONObject("beforeLevelInfo");
+            JSONObject afterLevelInfo = jo.optJSONObject("afterLevelInfo");
+            if (beforeLevelInfo != null && afterLevelInfo != null) {
+                int beforeStarNum = beforeLevelInfo.optInt("userStarNum");
+                int afterStarNum = afterLevelInfo.optInt("userStarNum");
+                String beforeLevelName = beforeLevelInfo.optString("levelName");
+                String afterLevelName = afterLevelInfo.optString("levelName");
+                int starChange = afterStarNum - beforeStarNum;
+                Log.farm("捐蛋排位🥚排位情况["+beforeLevelName+"]("+beforeStarNum + ")→["+afterLevelName+"](" + afterStarNum + ")(+"+starChange+")");
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "receiveDonationCompetitionProgressAward err:");
             Log.printStackTrace(TAG, t);
         }
     }
@@ -2003,6 +2075,9 @@ public class AntFarm extends ModelTask {
 
     private Boolean feedFriendAnimal(String friendFarmId, String groupId) {
         try {
+            if (!Status.hasFlagToday("farm::feedFriendAnimalLimit")) {
+                return false;
+            }
             JSONObject jo = new JSONObject(AntFarmRpcCall.feedFriendAnimal(friendFarmId, groupId));
             if (!MessageUtil.checkMemo(TAG, jo)) {
                 if (Objects.equals("391", jo.optString("resultCode"))) {
@@ -2779,7 +2854,15 @@ public class AntFarm extends ModelTask {
                                 }
                                 String activityId = activity.optString("activityId");
                                 if (!activityId.isEmpty()) {
-                                    IPexchangeBenefit(activityId);
+                                    //IPexchangeBenefit选择某种类型商品兑换
+                                    //返回false表示有兑换的或碎片不足，返回true表示全部兑换完毕
+                                    if (IPexchangeBenefit(activityId, "DRESS")) {
+                                        if (IPexchangeBenefit(activityId, "REISSUE_CARD")) {
+                                            if (IPexchangeBenefit(activityId, "DELICIOUS_FOOD")) {
+                                                IPexchangeBenefit(activityId, "ANTFARM_IP_DRAW_MALL");
+                                            }
+                                        }
+                                    }
                                 }
                             } catch (Throwable t) {
                                 Log.i(TAG, "drawMachine err:");
@@ -2901,7 +2984,8 @@ public class AntFarm extends ModelTask {
         return false;
     }
 
-    public void IPexchangeBenefit(String activityId) {
+    //返回false表示有兑换的或碎片不足，返回true表示全部兑换完毕
+    public boolean IPexchangeBenefit(String activityId, String labelType) {
         try {
             String response = AntFarmRpcCall.getItemList(activityId, 10, 0);
             JSONObject respJson = new JSONObject(response);
@@ -2918,13 +3002,27 @@ public class AntFarm extends ModelTask {
                 //Log.record("当前持有总碎片:" + (totalCent / 100));
                 JSONArray itemVOList = respJson.optJSONArray("itemInfoVOList");
                 if (itemVOList == null) {
-                    return;
+                    return true;
                 }
 
                 List<JSONObject> allSkus = new ArrayList<>();
                 for (int i = 0; i < itemVOList.length(); i++) {
                     JSONObject item = itemVOList.optJSONObject(i);
                     if (item == null) {
+                        continue;
+                    }
+                    JSONArray labelTypeList = item.optJSONArray("labelTypeList");
+                    if (labelTypeList == null) {
+                        continue;
+                    }
+                    boolean isRightItem = false;
+                    for (int j = 0; j < labelTypeList.length(); j++) {
+                        String itemLabelType = labelTypeList.optString(j);
+                        if (itemLabelType.contains(labelType)) {
+                            isRightItem = true;
+                        }
+                    }
+                    if (!isRightItem) {
                         continue;
                     }
                     boolean itemReachedLimit = isReachedLimit(item);
@@ -2968,8 +3066,8 @@ public class AntFarm extends ModelTask {
                     String skuName = sku.optString("skuName");
 
                     if (isNoEnoughPoint(sku) || (cent > 0 && totalCent < cent)) {
-                        Log.record("兑换最高价值[" + skuName + "]碎片不足(持有" + (totalCent / 100) + "需" + (cent / 100) + ")");
-                        return;
+                        Log.record("兑换[" + labelType + "]类最高价值[" + skuName + "]碎片不足(持有" + (totalCent / 100) + "需" + (cent / 100) + ")");
+                        return false;
                     }
                     break;
                 }
@@ -2987,8 +3085,8 @@ public class AntFarm extends ModelTask {
 
                     // 【核心逻辑】：如果当前项买不起，直接 return 停止，不再尝试后续更便宜的项目
                     if (isNoEnoughPoint(sku) || (cent > 0 && totalCent < cent)) {
-                        Log.record("剩余碎片不足以兑换优先级项 [" + skuName + "] (需 " + (cent / 100) + ")，停止后续兑换任务");
-                        return;
+                        Log.record("剩余碎片不足以兑换[" + labelType + "]类优先级项 [" + skuName + "] (需 " + (cent / 100) + ")，停止后续兑换任务");
+                        return false;
                     }
 
                     int sessionExchangedCount = 0;
@@ -3006,10 +3104,10 @@ public class AntFarm extends ModelTask {
                         if ("SUCCESS".equals(resultCode)) {
                             sessionExchangedCount++;
                             totalCent -= cent; // 减去花费
-                            Log.farm("兑换装扮👔[" + skuName + "]#剩余碎片" + (totalCent / 100));
+                            Log.farm("兑换装扮👔[" + labelType + "]类[" + skuName + "]#剩余碎片" + (totalCent / 100));
                             TimeUtil.sleep(800);
                         } else if ("NO_ENOUGH_POINT".equals(resultCode)) {
-                            return;
+                            return false;
                         } else if (resultCode.contains("LIMIT") || resultCode.contains("MAX")) {
                             break;
                         } else {
@@ -3017,10 +3115,14 @@ public class AntFarm extends ModelTask {
                         }
                     }
                 }
+                return true;
+            } else {
+                return false;
             }
         } catch (Exception e) {
             Log.printStackTrace("自动兑换异常", e);
         }
+        return false;
     }
 
     private boolean isReachedLimit(JSONObject jo) {

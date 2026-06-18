@@ -1082,7 +1082,15 @@ public class AntStall extends ModelTask {
     
     private void collectManure() {
         try {
+            if (Status.hasFlagToday("stall::queryManureInfo")) {
+                    return;
+            }
             JSONObject jo = new JSONObject(AntStallRpcCall.queryManureInfo());
+            if(jo.optString("errorMessage").equals("系统繁忙，请稍后再试。"))
+            {
+                Log.record("新村queryManureInfo有点黑了，今天不再尝试");
+                Status.flagToday("stall::queryManureInfo");
+            }
             if (!MessageUtil.checkResultCode(TAG, jo)) {
                 return;
             }
