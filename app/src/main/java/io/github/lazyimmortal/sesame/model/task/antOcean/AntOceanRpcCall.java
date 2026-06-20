@@ -22,6 +22,34 @@ public class AntOceanRpcCall {
         return String.valueOf(System.currentTimeMillis()) + RandomUtil.nextLong();
     }
     
+    /**
+     * 海洋摸鱼专用 uniqueId 生成
+     * 格式：8位随机字母数字 + "mql" + 4位随机字母数字
+     * 例如：ih4tq6q5mql40hnc
+     */
+    public static String getAntfishUniqueId() {
+        // 生成随机字母数字字符串
+        String chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder sb = new StringBuilder();
+        
+        // 前8位随机
+        for (int i = 0; i < 8; i++) {
+            int index = (int) (Math.random() * chars.length());
+            sb.append(chars.charAt(index));
+        }
+        
+        // 中间固定 "mql"
+        sb.append("mql");
+        
+        // 后4位随机
+        for (int i = 0; i < 4; i++) {
+            int index = (int) (Math.random() * chars.length());
+            sb.append(chars.charAt(index));
+        }
+        
+        return sb.toString();
+    }
+    
     public static String queryOceanStatus() {
         return ApplicationHook.requestString("alipay.antocean.ocean.h5.queryOceanStatus", "[{\"source" + "\":\"chInfo_ch_appcenter__chsub_9patch\"}]");
     }
@@ -171,5 +199,72 @@ public class AntOceanRpcCall {
     
     public static String useUniversalPiece(JSONArray assetsDetails) {
         return usePropByType("UNIVERSAL_PIECE", "UNIVERSAL_PIECE", assetsDetails);
+    }
+    
+    // ========== 摸鱼==========
+    
+    /**
+     * 获取海洋状态
+     */
+    public static String antfishStatus() {
+        return ApplicationHook.requestString("alipay.antaifish.h5.status", 
+            "[{\"source\":\"chInfo_ch_appcollect__chsub_my-recentlyUsed\",\"uniqueId\":\"" + getAntfishUniqueId() + "\"}]");
+    }
+    
+    /**
+     * 获取海洋主页
+     */
+    public static String antfishHomepage() {
+        return ApplicationHook.requestString("alipay.antaifish.h5.homepage", 
+            "[{\"source\":\"ANT_OCEAN\",\"uniqueId\":\"" + getAntfishUniqueId() + "\"}]");
+    }
+    
+    /**
+     * 摸鱼（触摸鱼）
+     */
+    public static String drawFish(String imgId, String imgUrl) {
+        return ApplicationHook.requestString("alipay.antaifish.h5.drawFish", 
+            "[{\"imgId\":\"" + imgId + "\",\"imgUrl\":\"" + imgUrl + "\",\"source\":\"ANT_OCEAN\",\"uniqueId\":\"" + getAntfishUniqueId() + "\"}]");
+    }
+    
+    /**
+     * 通知接口
+     */
+    public static String antfishNotice() {
+        return ApplicationHook.requestString("alipay.antaifish.h5.notice", 
+            "[{\"noticeReqList\":[{\"extInfo\":\"\",\"needDetail\":true,\"noticeType\":\"fish_rescued_or_restored\"}],\"source\":\"ANT_OCEAN\",\"uniqueId\":\"" + getAntfishUniqueId() + "\"}]");
+    }
+    
+    /**
+     * 获取任务列表（场景：ANTAIFISH）
+     */
+    public static String antfishListTask() {
+        return ApplicationHook.requestString("com.alipay.antieptask.listTaskopengreen", 
+            "[{\"extend\":{\"appMode\":\"normal\"},\"requestType\":\"RPC\",\"sceneCode\":\"ANTAIFISH\",\"source\":\"ANTAIFISH\",\"uniqueId\":\"" + getAntfishUniqueId() + "\"}]");
+    }
+    
+    /**
+     * 完成任务
+     */
+    public static String antfishFinishTask(String taskType) {
+        String outBizNo = taskType + "_" + RandomUtil.nextDouble();
+        return ApplicationHook.requestString("com.alipay.antiep.finishTask",
+            "[{\"outBizNo\":\""+outBizNo+"\",\"requestType\":\"H5\",\"sceneCode\":\"ANTAIFISH\",\"source\":\"ANTAIFISH\",\"taskType\":\""+taskType+"\"}]");
+    }
+    
+    /**
+     * 领取任务奖励
+     */
+    public static String antfishReceiveTaskAward(String taskType) {
+        return ApplicationHook.requestString("com.alipay.antieptask.receiveTaskAwardopengreen", 
+            "[{\"ignoreLimit\":false,\"requestType\":\"RPC\",\"sceneCode\":\"ANTAIFISH\",\"source\":\"ANTAIFISH\",\"taskType\":\"" + taskType + "\",\"uniqueId\":\"" + getAntfishUniqueId() + "\"}]");
+    }
+    
+    /**
+     * 执行摸鱼（使用摸鱼次数）
+     */
+    public static String antfishTouchfish() {
+        return ApplicationHook.requestString("alipay.antaifish.h5.touchfish", 
+            "[{\"source\":\"ANT_OCEAN\",\"uniqueId\":\"" + getAntfishUniqueId() + "\"}]");
     }
 }
