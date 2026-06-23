@@ -85,6 +85,10 @@ public class MainActivity extends BaseActivity {
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // 必须在 super.onCreate() 之前设置夜间模式，否则 DayNight 不会生效
+        int darkMode = AppConfig.INSTANCE.getDarkMode() != null ? AppConfig.INSTANCE.getDarkMode() : 0;
+        applyDarkMode(darkMode);
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -251,6 +255,36 @@ public class MainActivity extends BaseActivity {
                 if (AppConfig.save()) {
                     LanguageUtil.setLocal(this);
                     recreate();
+                }
+            });
+        }
+
+        // 设置Tab - 主题模式开关
+        Switch swDarkMode = findViewById(R.id.sw_dark_mode);
+        Switch swFollowSystem = findViewById(R.id.sw_follow_system);
+        if (swDarkMode != null && swFollowSystem != null) {
+            int darkMode = AppConfig.INSTANCE.getDarkMode() != null ? AppConfig.INSTANCE.getDarkMode() : 0;
+            boolean followSystem = (darkMode == 0);
+            boolean isDark = (darkMode == 2);
+
+            swFollowSystem.setChecked(followSystem);
+            swDarkMode.setChecked(isDark);
+            swDarkMode.setEnabled(!followSystem);
+
+            swFollowSystem.setOnCheckedChangeListener((btn, checked) -> {
+                int mode = checked ? 0 : (swDarkMode.isChecked() ? 2 : 1);
+                AppConfig.INSTANCE.setDarkMode(mode);
+                swDarkMode.setEnabled(!checked);
+                if (AppConfig.save()) {
+                    applyRuntimeTheme(mode);
+                }
+            });
+
+            swDarkMode.setOnCheckedChangeListener((btn, checked) -> {
+                int mode = checked ? 2 : 1;
+                AppConfig.INSTANCE.setDarkMode(mode);
+                if (AppConfig.save()) {
+                    applyRuntimeTheme(mode);
                 }
             });
         }
@@ -632,5 +666,30 @@ public class MainActivity extends BaseActivity {
             intent.putExtra("userName", userNameArray[index]);
         }
         startActivity(intent);
+    }
+
+    private void applyDarkMode(int mode) {
+        int nightMode;
+        switch (mode) {
+            case 0: nightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM; break;
+            case 2: nightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES; break;
+            default: nightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO; break;
+        }
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(nightMode);
+    }
+
+    /** 运行时切换主题：setLocalNightMode + applyDayNight 直接刷新当前Activity */
+    private void applyRuntimeTheme(int mode) {
+        int nightMode;
+        switch (mode) {
+            case 0: nightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM; break;
+            case 2: nightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES; break;
+            default: nightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO; break;
+        }
+        // 同时更新全局默认值（后续新Activity使用）
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(nightMode);
+        // 给当前Activity设置本地模式并立即刷新
+        getDelegate().setLocalNightMode(nightMode);
+        getDelegate().applyDayNight();
     }
 }

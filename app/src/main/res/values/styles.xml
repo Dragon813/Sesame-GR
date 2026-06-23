@@ -2,7 +2,7 @@
 <resources>
 
     <!-- ============ MIUIX App Theme ============ -->
-    <style name="AppTheme" parent="@style/Theme.AppCompat.Light">
+    <style name="AppTheme" parent="@style/Theme.AppCompat.DayNight">
         <!-- Toolbar / AppBar -->
         <item name="colorPrimary">@color/miuix_primary</item>
         <item name="colorPrimaryDark">@color/miuix_button_main_bg_pressed</item>
@@ -33,7 +33,7 @@
         <item name="alertDialogTheme">@style/MiuixDialog</item>
     </style>
 
-    <style name="MiuixDialog" parent="Theme.AppCompat.Light.Dialog.Alert">
+    <style name="MiuixDialog" parent="Theme.AppCompat.DayNight.Dialog.Alert">
         <item name="android:windowBackground">@drawable/miuix_dialog_bg</item>
         <item name="android:textColorPrimary">@color/miuix_on_background</item>
         <item name="android:colorAccent">@color/miuix_primary</item>

@@ -14,7 +14,9 @@ import io.github.lazyimmortal.sesame.model.normal.base.BaseModel;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -118,32 +120,41 @@ public class Log {
                     .flattener(new PatternFlattener("{d HH:mm:ss.SSS} {t}: {m}"))
                     .build()).build();
 
-    // 开关文件路径（仅用于持久化）
+    // 开关文件路径 + 内存缓存（唯一真相源是文件）
     private static final File SWITCH_FILE = new File(FileUtil.LOG_DIRECTORY_FILE, "log_switches.prop");
+    private static final Map<String, Boolean> switchCache = new ConcurrentHashMap<>();
+    private static volatile boolean switchesLoaded = false;
 
-    static {
-        // 启动时从文件加载一次开关（持久化恢复）
-        if (SWITCH_FILE.exists()) {
-            Properties props = new Properties();
-            try (FileInputStream fis = new FileInputStream(SWITCH_FILE)) {
-                props.load(fis);
-                for (String key : props.stringPropertyNames()) {
-                    System.setProperty("sesame." + key, props.getProperty(key));
-                }
-            } catch (Throwable ignored) {}
+    private static void ensureSwitchesLoaded() {
+        if (switchesLoaded) return;
+        synchronized (switchCache) {
+            if (switchesLoaded) return;
+            if (SWITCH_FILE.exists()) {
+                Properties props = new Properties();
+                try (FileInputStream fis = new FileInputStream(SWITCH_FILE)) {
+                    props.load(fis);
+                    for (String key : props.stringPropertyNames()) {
+                        switchCache.put(key, "true".equals(props.getProperty(key)));
+                    }
+                } catch (Throwable ignored) {}
+            }
+            switchesLoaded = true;
         }
     }
 
     public static boolean isLogOn(String key) {
-        return !"false".equals(System.getProperty("sesame." + key));
+        ensureSwitchesLoaded();
+        // 如果从未保存过开关状态，默认所有日志打开（首次使用全量记录）
+        return switchCache.getOrDefault(key, true);
     }
 
     /**
-     * 保存开关状态（MainActivity 调用）
+     * 保存开关状态（MainActivity 调用），先写文件再更新缓存（文件为唯一真相源）
      */
     public static void saveSwitchState(String key, boolean on) {
-        System.setProperty("sesame." + key, String.valueOf(on));
-        // 异步写文件持久化
+        // 先更新内存缓存（即时生效）
+        switchCache.put(key, on);
+        // 写文件持久化
         try {
             Properties props = new Properties();
             if (SWITCH_FILE.exists()) {

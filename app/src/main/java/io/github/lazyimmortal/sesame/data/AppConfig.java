@@ -27,6 +27,9 @@ public class AppConfig {
     private Boolean newUI = true;
     private Boolean languageSimplifiedChinese = true;
 
+    // 主题模式: 0=跟随系统, 1=浅色, 2=深色
+    private Integer darkMode = 0;
+
     // 日志记录开关
     private Boolean log_forest = true;
     private Boolean log_farm = true;
