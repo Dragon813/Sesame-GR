@@ -165,10 +165,10 @@ public class FileUtil {
     public static void backupConfigV2WithRolling(String userId) {
         BACKUP_MAX_COUNT = getBackupMaxCountFromConfig();
         // 1. 校验：当天已备份则跳过
-        //if (isConfigV2BackedUpTodayForUser(userId)) {
-         //   Log.record(FileUtil.class.getSimpleName()+"#用户[" + (StringUtil.isEmpty(userId) ? "default" : userId) + "]当天已备份，跳过");
-          //  return;
-        //}
+        if (isConfigV2BackedUpTodayForUser(userId)) {
+            Log.record(FileUtil.class.getSimpleName()+"#用户[" + (StringUtil.isEmpty(userId) ? "default" : userId) + "]当天已备份，跳过");
+            return;
+        }
         
         // 2. 获取原配置文件
         File originalFile = StringUtil.isEmpty(userId) ? getDefaultConfigV2File() : getConfigV2File(userId);
@@ -177,13 +177,7 @@ public class FileUtil {
             return;
         }
         
-        // 3. 检查配置是否为默认配置，如果是则不备份
-        if (io.github.lazyimmortal.sesame.data.ConfigV2.isCurrentConfigDefault(originalFile)) {
-            Log.record("配置是默认配置，跳过备份");
-            return;
-        }
-        
-        // 4. 找到该用户下一个要使用的备份文件（按A→B→C顺序）
+        // 3. 找到该用户下一个要使用的备份文件（按A→B→C顺序）
         File targetFile = findNextBackupFileForUser(userId); // 替换为新的方法
         
         // 5. 执行备份（覆盖目标文件）
@@ -549,6 +543,14 @@ public class FileUtil {
     
     public static File getAntOceanAntiepTaskListMapFile() {
         File file = new File(MAIN_DIRECTORY_FILE, "AntOceanAntiepTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+
+    public static File getAntOceanFishBlackListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "AntOceanFishBlack.json");
         if (file.exists() && file.isDirectory()) {
             file.delete();
         }

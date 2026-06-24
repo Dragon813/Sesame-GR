@@ -11,8 +11,10 @@ import io.github.lazyimmortal.sesame.data.modelFieldExt.ChoiceModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectModelField;
 import io.github.lazyimmortal.sesame.data.task.ModelTask;
 import io.github.lazyimmortal.sesame.entity.AlipayAntOceanAntiepTaskList;
+import io.github.lazyimmortal.sesame.entity.AlipayAntOceanFishBlackList;
 import io.github.lazyimmortal.sesame.entity.AlipayUser;
 import io.github.lazyimmortal.sesame.hook.ApplicationHook;
+import io.github.lazyimmortal.sesame.hook.Toast;
 import io.github.lazyimmortal.sesame.model.base.TaskCommon;
 import io.github.lazyimmortal.sesame.model.task.antFarm.AntFarm.TaskStatus;
 import io.github.lazyimmortal.sesame.model.task.antForest.AntForestRpcCall;
@@ -23,6 +25,7 @@ import io.github.lazyimmortal.sesame.util.Status;
 import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
 import io.github.lazyimmortal.sesame.util.idMap.AntOceanAntiepTaskListMap;
+import io.github.lazyimmortal.sesame.util.idMap.AntOceanFishBlackListMap;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
 import java.util.*;
@@ -58,6 +61,8 @@ public class AntOcean extends ModelTask {
     private BooleanModelField queryTaskList;
     private BooleanModelField AutoAntOceanAntiepTaskList;
     private SelectModelField AntOceanAntiepTaskList;
+    private BooleanModelField AutoAntOceanFishBlackList;  // 自动添加摸鱼黑名单
+    private SelectModelField AntOceanFishBlackList;  // 摸鱼黑名单列表
     private ChoiceModelField cleanOceanType;
     private SelectModelField cleanOceanList;
     private BooleanModelField exchangeUniversalPiece;
@@ -80,6 +85,8 @@ public class AntOcean extends ModelTask {
         modelFields.addField(replica = new BooleanModelField("replica", "潘多拉海域", false));
         modelFields.addField(antfishEnable = new BooleanModelField("antfishEnable", "海洋摸鱼 | 开启摸鱼", false));
         modelFields.addField(antfishAutoTask = new BooleanModelField("antfishAutoTask", "海洋摸鱼 | 摸鱼任务", false));
+        modelFields.addField(AutoAntOceanFishBlackList = new BooleanModelField("AutoAntOceanFishBlackList", "海洋摸鱼 | 自动黑名单", true));
+        modelFields.addField(AntOceanFishBlackList = new SelectModelField("AntOceanFishBlackList", "摸鱼任务 | 黑名单列表", new LinkedHashSet<>(), AlipayAntOceanFishBlackList::getList));
         return modelFields;
     }
 
@@ -101,9 +108,10 @@ public class AntOcean extends ModelTask {
 
             //初始任务列表
             if (!Status.hasFlagToday("BlackList::initAntOceanAntiep")) {
-                initAntOceanAntiepTaskListMap(AutoAntOceanAntiepTaskList.getValue(), queryTaskList.getValue());
+                initAntOceanAntiepTaskListMap(AutoAntOceanAntiepTaskList.getValue(), queryTaskList.getValue(),AutoAntOceanFishBlackList.getValue(),antfishAutoTask.getValue());
                 Status.flagToday("BlackList::initAntOceanAntiep");
             }
+
             queryHomePage();
 
             if (queryTaskList.getValue()) {
@@ -158,7 +166,7 @@ public class AntOcean extends ModelTask {
         return false;
     }
 
-    public static void initAntOceanAntiepTaskListMap(boolean AutoAntOceanAntiepTaskList, boolean queryTaskList) {
+    public static void initAntOceanAntiepTaskListMap(boolean AutoAntOceanAntiepTaskList, boolean queryTaskList,boolean AutoAntOceanFishBlackList,boolean antfishAutoTask) {
         try {
             //初始化AntOceanAntiepTaskListMap
             AntOceanAntiepTaskListMap.load();
@@ -221,6 +229,76 @@ public class AntOcean extends ModelTask {
                         Log.record("黑白名单🈲海洋普通任务自动设置: " + AntOceanAntiepTaskList.getValue());
                     } else {
                         Log.record("神奇海洋普通任务黑白名单设置失败");
+                    }
+                }
+            }
+
+            //初始化AntOceanFishBlackListMap
+            AntOceanFishBlackListMap.load();
+            // 1. 定义黑名单（需要添加的任务）和白名单（需要移除的任务）
+            blackList = new HashSet<>();
+            blackList.add("玩一玩向僵尸开炮");
+            // 可继续添加更多黑名单任务
+            whiteList = new HashSet<>();// 从黑名单中移除该任务
+            //whiteList.add("逛一芝麻树");
+            // 可继续添加更多白名单任务
+            for (String task : blackList) {
+                AntOceanFishBlackListMap.add(task, task);
+            }
+
+            //初始化AntOceanFishBlackListMap
+            if (antfishAutoTask) {
+                JSONObject jo = new JSONObject(AntOceanRpcCall.antfishListTask());
+                    if (!MessageUtil.checkResultCode(TAG, jo)) {
+                        return;
+                    }
+                    JSONArray taskInfoList = jo.optJSONArray("taskInfoList");
+                    if (taskInfoList == null || taskInfoList.length() == 0) {
+                        return;
+                    }
+                    for (int i = 0; i < taskInfoList.length(); i++) {
+                        JSONObject taskInfo = taskInfoList.optJSONObject(i);
+                        if (taskInfo == null) continue;
+                        JSONObject taskBaseInfo = taskInfo.optJSONObject("taskBaseInfo");
+                        if (taskBaseInfo == null) continue;
+                        JSONObject bizInfo = new JSONObject(taskBaseInfo.optString("bizInfo", "{}"));
+                        String taskTitle = bizInfo.getString("taskTitle");
+                        AntOceanFishBlackListMap.add(taskTitle, taskTitle);
+                    }
+
+                AntOceanFishBlackListMap.save();
+                Log.record("同步任务🉑海洋去摸鱼任务列表");
+                //自动按模块初始化设定调整黑名单和白名单
+                if (AutoAntOceanFishBlackList) {
+                    // 初始化黑白名单（使用集合统一操作）
+                    ConfigV2 config = ConfigV2.INSTANCE;
+                    ModelFields AntForestV2 = config.getModelFieldsMap().get("AntOcean");
+                    SelectModelField AntOceanFishBlackList = (SelectModelField) AntForestV2.get("AntOceanFishBlackList");
+                    if (AntOceanFishBlackList == null) {
+                        return;
+                    }
+
+                    // 2. 批量添加黑名单任务（确保存在）
+                    Set<String> currentValues = AntOceanFishBlackList.getValue();//该处直接返回列表地址
+                    if (currentValues != null) {
+                        for (String task : blackList) {
+                            if (!currentValues.contains(task)) {
+                                AntOceanFishBlackList.add(task, 0);
+                            }
+                        }
+
+                        // 3. 批量移除白名单任务（从现有列表中删除）
+                        for (String task : whiteList) {
+                            if (currentValues.contains(task)) {
+                                currentValues.remove(task);
+                            }
+                        }
+                    }
+                    // 4. 保存配置
+                    if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
+                        Log.record("黑白名单🈲海洋去摸鱼任务自动设置: " + AntOceanFishBlackList.getValue());
+                    } else {
+                        Log.record("海洋去摸鱼任务黑白名单设置失败");
                     }
                 }
             }
@@ -683,6 +761,7 @@ public class AntOcean extends ModelTask {
                 JSONObject friend = allRankingList.getJSONObject(pos);
                 String userId = friend.optString("userId", "");
                 if (userId.equals(UserIdMap.getCurrentUid()) || userId.isEmpty()) {
+                    pos++;
                     continue;
                 }
                 idList.add(userId);
@@ -1130,9 +1209,11 @@ public class AntOcean extends ModelTask {
                 String projectName = "";
                 String region = "";
                 String fishLevelName = "";
+                String fishInteractStatus= "";
                 String nickName = "";
                 int touchEnergy = 0;
                 int touchTotal = 0;
+                int remainTouchChance = 0;
                 JSONObject currentSeasonInfo = jo.optJSONObject("currentSeasonInfo");
                 if (currentSeasonInfo != null) {
                     seasonId = currentSeasonInfo.optString("seasonId", "");
@@ -1166,11 +1247,26 @@ public class AntOcean extends ModelTask {
                     }
                     JSONObject interactVO = myFish.optJSONObject("interactVO");
                     if (interactVO != null) {
-                        //remainTouchChance = interactVO.optInt("remainTouchChance", 0);
                         touchTotal = interactVO.optInt("touchTotal", 0);
+                        fishInteractStatus = interactVO.optString("fishInteractStatus", "");
+                        remainTouchChance = interactVO.optInt("remainTouchChance", 0);
+                        
+                        // 解析鱼主人信息
+                        JSONObject owner = interactVO.optJSONObject("owner");
+                        if (owner != null) {
+                            String ownerNickName = owner.optString("nickName", "");
+                            String ownerUserId = owner.optString("userId", "");
+                            if (!ownerNickName.isEmpty()) {
+                                Log.record("海洋摸鱼🐟当前鱼状态["+ fishInteractStatus +"]主人[" + ownerNickName + "](" + ownerUserId + ")");
+                            }
+                        }
                     }
                 }
-                Log.record("海洋摸鱼🐟当前赛季[" + seasonTitle + "](" + seasonId + ")项目[" + projectName + "](" + region + ")用户[" + nickName + "]等级[" + fishLevelName + "]累计摸鱼" + touchTotal + "累计获得能量" + touchEnergy + "g(总"+energy+"g)");
+                Log.record("海洋摸鱼🐟当前赛季[" + seasonTitle + "](" + seasonId + ")项目[" + projectName + "](" + region + ")用户[" + nickName + "]鱼状态["+ fishInteractStatus +"]等级[" + fishLevelName + "]可摸鱼"+remainTouchChance+"累计摸" + touchTotal + "累计获得能量" + touchEnergy + "g(总"+energy+"g)");
+                //鱼被困了，解救鱼
+                if("CAPTURED".equals(fishInteractStatus)){
+                    rescueFish();
+                }
             }
         } catch (Throwable t) {
             Log.i(TAG, "antfishQueryHomePage err:");
@@ -1203,6 +1299,7 @@ public class AntOcean extends ModelTask {
 
             if (MessageUtil.checkResultCode(TAG, jo)) {
                 Log.forest("开通摸鱼🐟提交画鱼成功");
+                Toast.show("开通摸鱼🐟提交画鱼成功");
                 return true;
             }
         } catch (Throwable t) {
@@ -1212,6 +1309,37 @@ public class AntOcean extends ModelTask {
         return false;
     }
 
+    //解救鱼
+    private boolean rescueFish() {
+        try {
+            String result = AntOceanRpcCall.rescueFish();
+            JSONObject jo = new JSONObject(result);
+            if (MessageUtil.checkResultCode(TAG, jo)) {
+                // 解析解救后的状态
+                JSONObject myFish = jo.optJSONObject("myFish");
+                if (myFish != null) {
+                    JSONObject interactVO = myFish.optJSONObject("interactVO");
+                    if (interactVO != null) {
+                        String fishInteractStatus = interactVO.optString("fishInteractStatus", "");
+                        int remainChance = interactVO.optInt("remainTouchChance", 0);
+                        int touchTotal = interactVO.optInt("touchTotal", 0);
+                        
+                        Log.forest("摸鱼解救🐟解救成功[" + fishInteractStatus + "]可摸鱼次数" + remainChance + "累计摸鱼" + touchTotal);
+                        Toast.show("摸鱼解救🐟解救成功[" + fishInteractStatus + "]");
+                    } else {
+                        Log.forest("摸鱼任务🐟解救成功");
+                    }
+                } else {
+                    Log.forest("摸鱼任务🐟解救成功");
+                }
+                return true;
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "rescueFish err:");
+            Log.printStackTrace(TAG, t);
+        }
+        return false;
+    }
 
     /**
      * 处理任务（查询并完成任务获取摸鱼次数）
@@ -1253,21 +1381,22 @@ public class AntOcean extends ModelTask {
                 JSONObject taskRights = taskInfo.optJSONObject("taskRights");
                 int awardCount = taskRights != null ? taskRights.optInt("awardCount", 0) : 0;
 
-                //Log.forest("海洋摸鱼🐟任务[" + taskTitle + "] type=" + taskType + ", status=" + taskStatus);
-
                 // 已完成任务领取奖励
                 if ("FINISHED".equals(taskStatus)) {
                     if (antfishReceiveTaskAward(taskType)) {
-                        Log.forest("摸鱼奖励🐟领取[" + taskTitle + "]获得摸鱼次数*" + awardCount);
+                        Log.forest("摸鱼任务🎖️领取[" + taskTitle + "]获得摸鱼次数*" + awardCount);
                     }
                     continue;
                 }
-
+                //黑名单任务跳过
+                if (AntOceanFishBlackList.getValue().contains(taskTitle)) {
+                    continue;
+                }
                 // 处理其他 TODO 状态任务
                 if ("TODO".equals(taskStatus)) {
                     if (antfishFinishTask(taskTitle, taskType)) {
                         if (antfishReceiveTaskAward(taskType)) {
-                            Log.forest("摸鱼奖励🐟领取[" + taskTitle + "]获得摸鱼次数*" + awardCount);
+                            Log.forest("摸鱼任务🎖️领取[" + taskTitle + "]获得摸鱼次数*" + awardCount);
                         }
                     }
                 }
@@ -1285,9 +1414,9 @@ public class AntOcean extends ModelTask {
         try {
             String result = AntOceanRpcCall.antfishFinishTask(taskType);
             JSONObject jo = new JSONObject(result);
-
+            MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOceanFishBlackList", taskTitle, jo);
             if (MessageUtil.checkResultCode(TAG, jo)) {
-                Log.forest("摸鱼任务🐟完成[" + taskTitle + "]");
+                Log.forest("摸鱼任务🧾完成[" + taskTitle + "]");
                 return true;
             }
         } catch (Throwable t) {
@@ -1405,8 +1534,10 @@ public class AntOcean extends ModelTask {
                         String captureUserId = captureInfoVO.optString("userId", "未知ID");
                         String displayName = captureNickName.isEmpty() ? captureUserId : captureNickName;
                         Log.forest("海洋摸鱼🐟摸到了[" + displayName + "]的鱼获得" + popup.optInt("rightsNums", 0) + "g能量");
+                        Toast.show("海洋摸鱼🐟获得" + popup.optInt("rightsNums", 0) + "g能量");
                     } else {
                         Log.forest("海洋摸鱼🐟[" + popup.optString("name", "") + "]" + popup.optInt("rightsNums", 0) + "g");
+                        Toast.show("海洋摸鱼🐟获得" + popup.optInt("rightsNums", 0) + "g能量");
                     }
 
                     totalEnergy += energyGain;
@@ -1424,7 +1555,8 @@ public class AntOcean extends ModelTask {
             }
 
             if (touchCount > 0) {
-                Log.record("海洋摸鱼🐟本次共摸鱼" + touchCount + "次获得" + totalEnergy + "g能量");
+                Log.forest("海洋摸鱼🐟本次共摸鱼" + touchCount + "次获得" + totalEnergy + "g能量");
+                Toast.show("海洋摸鱼🐟获得" + totalEnergy + "g能量");
             }
 
         } catch (Throwable t) {

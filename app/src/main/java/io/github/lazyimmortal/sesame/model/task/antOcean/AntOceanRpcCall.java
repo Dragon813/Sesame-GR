@@ -226,7 +226,13 @@ public class AntOceanRpcCall {
         return ApplicationHook.requestString("alipay.antaifish.h5.drawFish", 
             "[{\"imgId\":\"" + imgId + "\",\"imgUrl\":\"" + imgUrl + "\",\"source\":\"ANT_OCEAN\",\"uniqueId\":\"" + getAntfishUniqueId() + "\"}]");
     }
-    
+
+
+    //解救鱼
+    public static String rescueFish() {
+        return ApplicationHook.requestString("alipay.antaifish.h5.rescueFish",
+                "[{\"source\":\"ANT_OCEAN\",\"uniqueId\":\"" + getAntfishUniqueId() + "\"}]");
+    }
     /**
      * 通知接口
      */
