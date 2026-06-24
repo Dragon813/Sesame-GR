@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/dialog_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxHeight="280dp"
+        android:scrollbars="vertical"
+        android:fadeScrollbars="false"
+        android:text="@string/start_message"
+        android:textSize="14sp"
+        android:textColor="@color/miuix_on_background_variant"
+        android:lineSpacingExtra="2dp" />
+
+    <CheckBox
+        android:id="@+id/cb_no_more"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/no_more_reminder"
+        android:textSize="14sp"
+        android:textColor="@color/miuix_on_background_variant"
+        android:buttonTint="@color/miuix_primary"
+        android:minWidth="0dp"
+        android:minHeight="0dp" />
+</LinearLayout>

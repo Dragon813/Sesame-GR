@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="start_check_energy">Start check energy</string>
-    <color name="color_alpha">#00000000</color>
-    <color name="color_btn_down">#F0F0F0</color>
 
     <string name="base_configuration">BASE CONFIGURATION</string>
     <string name="immediate_effect">Enable</string>

@@ -1,185 +1,747 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              xmlns:app="http://schemas.android.com/apk/res-auto"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:orientation="vertical">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/miuix_background">
 
-    <include layout="@layout/base_title"/>
+    <FrameLayout
+        android:id="@+id/content_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
-    <LinearLayout
+        <!-- ==================== 首页 ==================== -->
+        <ScrollView
+            android:id="@+id/tab_home"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="6dp"
-            android:gravity="center_horizontal"
-            android:background="@color/background">
+            android:layout_height="match_parent">
 
-        <TextView
-                android:id="@+id/tv_statistics"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="15dp"
-                android:lineSpacingMultiplier="1.5"
-                android:gravity="center"
-                android:textAppearance="?android:attr/textAppearanceSmall"
-                android:textColor="#FF000000" />
-
-        <ImageView
-                android:id="@+id/btn_test"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_margin="50dp"
-                android:layout_weight="1"
-                android:contentDescription="@string/the_image_of_main"
-                android:gravity="center"
-                android:onClick="onClick"
-                android:scaleType="centerInside"
-                app:srcCompat="@drawable/main" />
-
-        <LinearLayout
-                android:id="@+id/lyt_bottom1"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="bottom"
-                android:baselineAligned="false"
-                android:gravity="center"
-                android:orientation="horizontal">
+                android:orientation="vertical"
+                android:paddingStart="@dimen/miuix_spacing_16"
+                android:paddingEnd="@dimen/miuix_spacing_16"
+                android:paddingBottom="@dimen/miuix_spacing_16">
 
-            <Button
-                    android:id="@+id/btn_forest_log"
-                    style="@android:style/Widget.DeviceDefault.Button.Borderless"
+                <View android:layout_width="match_parent" android:layout_height="24dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sesame"
+                    android:textSize="34sp"
+                    android:textColor="@color/miuix_on_background"
+                    android:fontFamily="sans-serif-medium"
+                    android:layout_marginTop="48dp"
+                    android:layout_marginBottom="20dp" />
+
+                <!-- 绿色状态卡片 -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_margin="6dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/button_main"
-                    android:drawableTop="@drawable/forest"
-                    android:drawablePadding="5dp"
-                    android:gravity="center"
-                    android:onClick="onClick"
-                    android:orientation="vertical"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:text="@string/forest_log"
-                    android:textAlignment="gravity"
-                    android:textColor="@color/main_button_text"
-                    android:textSize="14sp" />
+                    android:background="@drawable/miuix_status_card_bg"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="@dimen/miuix_spacing_16"
+                    android:layout_marginBottom="@dimen/miuix_spacing_16">
 
-            <Button
-                    android:id="@+id/btn_farm_log"
-                    style="@android:style/Widget.DeviceDefault.Button.Borderless"
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView android:id="@+id/tv_status"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="已激活" android:textSize="24sp" android:textColor="#FF2E7D32"
+                            android:fontFamily="sans-serif-medium" />
+                        <TextView android:id="@+id/tv_version"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="2.0.3 (7716)" android:textSize="14sp" android:textColor="#FF558B2F"
+                            android:layout_marginTop="4dp" />
+                        <TextView android:id="@+id/tv_api"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="API 89" android:textSize="14sp" android:textColor="#FF558B2F" />
+                    </LinearLayout>
+                    <ImageView android:id="@+id/iv_status_icon"
+                        android:layout_width="48dp" android:layout_height="48dp"
+                        android:src="@drawable/ic_check_circle"
+                        android:layout_marginStart="@dimen/miuix_spacing_12" />
+                </LinearLayout>
+
+                <!-- 信息卡片 -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_margin="6dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/button_main"
-                    android:drawableTop="@drawable/farm"
-                    android:drawablePadding="5dp"
-                    android:gravity="center"
-                    android:onClick="onClick"
+                    android:background="@drawable/miuix_card_bg"
                     android:orientation="vertical"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:text="@string/farm_log"
-                    android:textAlignment="gravity"
-                    android:textColor="@color/main_button_text"
-                    android:textSize="14sp" />
+                    android:paddingTop="4dp" android:paddingBottom="4dp"
+                    android:layout_marginBottom="@dimen/miuix_spacing_12">
 
-            <Button
-                    android:id="@+id/btn_other_log"
-                    style="@android:style/Widget.DeviceDefault.Button.Borderless"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="6dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/button_main"
-                    android:drawableTop="@drawable/other"
-                    android:drawablePadding="5dp"
-                    android:gravity="center"
-                    android:onClick="onClick"
-                    android:orientation="vertical"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:text="@string/other_log"
-                    android:textAlignment="gravity"
-                    android:textColor="@color/main_button_text"
-                    android:textSize="14sp" />
+                    <View android:layout_width="match_parent" android:layout_height="0dp" />
+                    <LinearLayout android:id="@+id/row_module_status"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:paddingStart="@dimen/miuix_spacing_16" android:paddingEnd="@dimen/miuix_spacing_16"
+                        android:paddingTop="8dp" android:paddingBottom="8dp">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="模块状态"
+                            android:textSize="15sp" android:textColor="@color/miuix_on_background" />
+                        <TextView android:id="@+id/tv_module_status"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="已激活" android:textSize="13sp" android:textColor="@color/miuix_on_background_variant" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:paddingStart="@dimen/miuix_spacing_16" android:paddingEnd="@dimen/miuix_spacing_16"
+                        android:paddingTop="8dp" android:paddingBottom="8dp">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="版本"
+                            android:textSize="15sp" android:textColor="@color/miuix_on_background" />
+                        <TextView android:id="@+id/tv_info_version"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="011047" android:textSize="13sp" android:textColor="@color/miuix_on_background_variant" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:paddingStart="@dimen/miuix_spacing_16" android:paddingEnd="@dimen/miuix_spacing_16"
+                        android:paddingTop="8dp" android:paddingBottom="8dp">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="SDK API"
+                            android:textSize="15sp" android:textColor="@color/miuix_on_background" />
+                        <TextView android:id="@+id/tv_sdk_api"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="89" android:textSize="13sp" android:textColor="@color/miuix_on_background_variant" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:paddingStart="@dimen/miuix_spacing_16" android:paddingEnd="@dimen/miuix_spacing_16"
+                        android:paddingTop="8dp" android:paddingBottom="8dp">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="设备"
+                            android:textSize="15sp" android:textColor="@color/miuix_on_background" />
+                        <TextView android:id="@+id/tv_device"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Android" android:textSize="13sp" android:textColor="@color/miuix_on_background_variant" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:paddingStart="@dimen/miuix_spacing_16" android:paddingEnd="@dimen/miuix_spacing_16"
+                        android:paddingTop="8dp" android:paddingBottom="8dp">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="系统架构"
+                            android:textSize="15sp" android:textColor="@color/miuix_on_background" />
+                        <TextView android:id="@+id/tv_arch"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="arm64-v8a" android:textSize="13sp" android:textColor="@color/miuix_on_background_variant" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- 收取记录表格 -->
+                <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:background="@drawable/miuix_card_bg" android:orientation="vertical"
+                    android:padding="4dp"
+                    android:layout_marginBottom="@dimen/miuix_spacing_12">
+
+                    <!-- 表头行 -->
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:paddingTop="8dp"
+                        android:paddingBottom="4dp" android:paddingStart="4dp" android:paddingEnd="4dp">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1.2" android:text="" android:textSize="13sp" />
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="今日" android:textSize="13sp"
+                            android:textColor="@color/miuix_on_background_variant"
+                            android:fontFamily="sans-serif-medium" android:gravity="center" />
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="本月" android:textSize="13sp"
+                            android:textColor="@color/miuix_on_background_variant"
+                            android:fontFamily="sans-serif-medium" android:gravity="center" />
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="今年" android:textSize="13sp"
+                            android:textColor="@color/miuix_on_background_variant"
+                            android:fontFamily="sans-serif-medium" android:gravity="center" />
+                    </LinearLayout>
+
+                    <!-- 分隔线 -->
+                    <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                        android:background="@color/miuix_divider_line" />
+
+                    <!-- 收 -->
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:padding="12dp"
+                        android:gravity="center_vertical">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1.2" android:text="收" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:fontFamily="sans-serif-medium" />
+                        <TextView android:id="@+id/tv_stat_collected_day"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:gravity="center" />
+                        <TextView android:id="@+id/tv_stat_collected_month"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:gravity="center" />
+                        <TextView android:id="@+id/tv_stat_collected_year"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:gravity="center" />
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                        android:background="@color/miuix_divider_line"
+                        android:layout_marginStart="12dp" android:layout_marginEnd="12dp" />
+
+                    <!-- 帮 -->
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:padding="12dp"
+                        android:gravity="center_vertical">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1.2" android:text="帮" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:fontFamily="sans-serif-medium" />
+                        <TextView android:id="@+id/tv_stat_helped_day"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:gravity="center" />
+                        <TextView android:id="@+id/tv_stat_helped_month"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:gravity="center" />
+                        <TextView android:id="@+id/tv_stat_helped_year"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:gravity="center" />
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                        android:background="@color/miuix_divider_line"
+                        android:layout_marginStart="12dp" android:layout_marginEnd="12dp" />
+
+                    <!-- 浇 -->
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:padding="12dp"
+                        android:gravity="center_vertical">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1.2" android:text="浇" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:fontFamily="sans-serif-medium" />
+                        <TextView android:id="@+id/tv_stat_watered_day"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:gravity="center" />
+                        <TextView android:id="@+id/tv_stat_watered_month"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:gravity="center" />
+                        <TextView android:id="@+id/tv_stat_watered_year"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:gravity="center" />
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                        android:background="@color/miuix_divider_line"
+                        android:layout_marginStart="12dp" android:layout_marginEnd="12dp" />
+
+                    <!-- 被水 -->
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:padding="12dp"
+                        android:gravity="center_vertical">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1.2" android:text="被水" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:fontFamily="sans-serif-medium" />
+                        <TextView android:id="@+id/tv_stat_wateredcount_day"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:gravity="center" />
+                        <TextView android:id="@+id/tv_stat_wateredcount_month"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:gravity="center" />
+                        <TextView android:id="@+id/tv_stat_wateredcount_year"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:gravity="center" />
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                        android:background="@color/miuix_divider_line"
+                        android:layout_marginStart="12dp" android:layout_marginEnd="12dp" />
+
+                    <!-- 浇水 -->
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:padding="12dp"
+                        android:gravity="center_vertical">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1.2" android:text="浇水" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:fontFamily="sans-serif-medium" />
+                        <TextView android:id="@+id/tv_stat_wateringcount_day"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:gravity="center" />
+                        <TextView android:id="@+id/tv_stat_wateringcount_month"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:gravity="center" />
+                        <TextView android:id="@+id/tv_stat_wateringcount_year"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:textSize="15sp"
+                            android:textColor="@color/miuix_on_background" android:gravity="center" />
+                    </LinearLayout>
+                </LinearLayout>
+
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ==================== 日志 ==================== -->
+        <ScrollView android:id="@+id/tab_logs"
+            android:layout_width="match_parent" android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="@dimen/miuix_spacing_16"
+                android:paddingEnd="@dimen/miuix_spacing_16"
+                android:paddingBottom="@dimen/miuix_spacing_16">
+
+                <View android:layout_width="match_parent" android:layout_height="24dp" />
+
+                <TextView
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="日志"
+                    android:textSize="34sp" android:textColor="@color/miuix_on_background"
+                    android:fontFamily="sans-serif-medium"
+                    android:layout_marginTop="48dp"
+                    android:layout_marginBottom="20dp" />
+
+                <!-- 分类记录 -->
+                <TextView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="分类记录" style="@style/MiuixGroupTitle" />
+
+                <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:background="@drawable/miuix_card_bg" android:orientation="vertical"
+                    android:layout_marginBottom="@dimen/miuix_spacing_12">
+
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:padding="@dimen/miuix_spacing_16">
+                        <TextView android:id="@+id/tv_forest_log"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="森林记录"
+                            android:textSize="16sp" android:textColor="@color/miuix_on_background"
+                            android:fontFamily="sans-serif" android:onClick="onLogClick" />
+                        <Switch android:id="@+id/sw_forest_log"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:thumb="@drawable/miuix_switch_thumb"
+                            android:track="@drawable/miuix_switch_track"
+                            android:switchMinWidth="40dp" android:switchPadding="2dp" />
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                        android:background="@color/miuix_divider_line"
+                        android:layout_marginStart="@dimen/miuix_spacing_16" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:padding="@dimen/miuix_spacing_16">
+                        <TextView android:id="@+id/tv_farm_log"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="庄园记录"
+                            android:textSize="16sp" android:textColor="@color/miuix_on_background"
+                            android:fontFamily="sans-serif" android:onClick="onLogClick" />
+                        <Switch android:id="@+id/sw_farm_log"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:thumb="@drawable/miuix_switch_thumb"
+                            android:track="@drawable/miuix_switch_track"
+                            android:switchMinWidth="40dp" android:switchPadding="2dp" />
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                        android:background="@color/miuix_divider_line"
+                        android:layout_marginStart="@dimen/miuix_spacing_16" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:padding="@dimen/miuix_spacing_16">
+                        <TextView android:id="@+id/tv_other_log"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="其他记录"
+                            android:textSize="16sp" android:textColor="@color/miuix_on_background"
+                            android:fontFamily="sans-serif" android:onClick="onLogClick" />
+                        <Switch android:id="@+id/sw_other_log"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:thumb="@drawable/miuix_switch_thumb"
+                            android:track="@drawable/miuix_switch_track"
+                            android:switchMinWidth="40dp" android:switchPadding="2dp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- 系统记录 -->
+                <TextView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="系统记录" style="@style/MiuixGroupTitle" />
+
+                <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:background="@drawable/miuix_card_bg" android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:padding="@dimen/miuix_spacing_16">
+                        <TextView android:id="@+id/tv_all_record"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="全部记录"
+                            android:textSize="16sp" android:textColor="@color/miuix_on_background"
+                            android:fontFamily="sans-serif" android:onClick="onLogClick" />
+                        <Switch android:id="@+id/sw_all_record"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:thumb="@drawable/miuix_switch_thumb"
+                            android:track="@drawable/miuix_switch_track"
+                            android:switchMinWidth="40dp" android:switchPadding="2dp" />
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                        android:background="@color/miuix_divider_line"
+                        android:layout_marginStart="@dimen/miuix_spacing_16" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:padding="@dimen/miuix_spacing_16">
+                        <TextView android:id="@+id/tv_debug_log"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="抓包记录"
+                            android:textSize="16sp" android:textColor="@color/miuix_on_background"
+                            android:fontFamily="sans-serif" android:onClick="onLogClick" />
+                        <Switch android:id="@+id/sw_debug_log"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:thumb="@drawable/miuix_switch_thumb"
+                            android:track="@drawable/miuix_switch_track"
+                            android:switchMinWidth="40dp" android:switchPadding="2dp" />
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                        android:background="@color/miuix_divider_line"
+                        android:layout_marginStart="@dimen/miuix_spacing_16" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:padding="@dimen/miuix_spacing_16">
+                        <TextView android:id="@+id/tv_error_log"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="查看异常日志"
+                            android:textSize="16sp" android:textColor="@color/miuix_on_background"
+                            android:fontFamily="sans-serif" android:onClick="onLogClick" />
+                        <Switch android:id="@+id/sw_error_log"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:thumb="@drawable/miuix_switch_thumb"
+                            android:track="@drawable/miuix_switch_track"
+                            android:switchMinWidth="40dp" android:switchPadding="2dp" />
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                        android:background="@color/miuix_divider_line"
+                        android:layout_marginStart="@dimen/miuix_spacing_16" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:padding="@dimen/miuix_spacing_16">
+                        <TextView android:id="@+id/tv_runtime_log"
+                            android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="查看运行日志"
+                            android:textSize="16sp" android:textColor="@color/miuix_on_background"
+                            android:fontFamily="sans-serif" android:onClick="onLogClick" />
+                        <Switch android:id="@+id/sw_runtime_log"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:thumb="@drawable/miuix_switch_thumb"
+                            android:track="@drawable/miuix_switch_track"
+                            android:switchMinWidth="40dp" android:switchPadding="2dp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ==================== 设置 ==================== -->
+        <ScrollView android:id="@+id/tab_settings"
+            android:layout_width="match_parent" android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="@dimen/miuix_spacing_16"
+                android:paddingEnd="@dimen/miuix_spacing_16"
+                android:paddingBottom="@dimen/miuix_spacing_16">
+
+                <View android:layout_width="match_parent" android:layout_height="24dp" />
+
+                <TextView
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="配置"
+                    android:textSize="34sp" android:textColor="@color/miuix_on_background"
+                    android:fontFamily="sans-serif-medium"
+                    android:layout_marginTop="48dp"
+                    android:layout_marginBottom="20dp" />
+
+                <TextView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="配置管理" style="@style/MiuixGroupTitle" />
+
+                <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:background="@drawable/miuix_card_bg" android:orientation="vertical">
+
+                    <Button android:id="@+id/btn_default_config"
+                        style="@style/MiuixButton.Text"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:gravity="start|center_vertical"
+                        android:padding="@dimen/miuix_spacing_16"
+                        android:onClick="onConfigClick" android:text="默认" />
+
+                    <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                        android:background="@color/miuix_divider_line"
+                        android:layout_marginStart="@dimen/miuix_spacing_16" />
+
+                    <LinearLayout android:id="@+id/container_user_configs"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ==================== 设置 ==================== -->
+        <ScrollView android:id="@+id/tab_other"
+            android:layout_width="match_parent" android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="@dimen/miuix_spacing_16"
+                android:paddingEnd="@dimen/miuix_spacing_16"
+                android:paddingBottom="@dimen/miuix_spacing_16">
+
+                <View android:layout_width="match_parent" android:layout_height="24dp" />
+
+                <TextView
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="设置"
+                    android:textSize="34sp" android:textColor="@color/miuix_on_background"
+                    android:fontFamily="sans-serif-medium"
+                    android:layout_marginTop="48dp"
+                    android:layout_marginBottom="20dp" />
+
+                <TextView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="功能设置" style="@style/MiuixGroupTitle" />
+
+                <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:background="@drawable/miuix_card_bg" android:orientation="vertical"
+                    android:layout_marginBottom="@dimen/miuix_spacing_12">
+
+                    <Button android:id="@+id/btn_friend_watch"
+                        style="@style/MiuixButton.Text"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:gravity="start|center_vertical"
+                        android:padding="@dimen/miuix_spacing_16"
+                        android:onClick="onClick" android:text="好友统计" />
+
+                    <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                        android:background="@color/miuix_divider_line"
+                        android:layout_marginStart="@dimen/miuix_spacing_16" />
+
+                    <Button android:id="@+id/btn_extensions"
+                        style="@style/MiuixButton.Text"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:gravity="start|center_vertical"
+                        android:padding="@dimen/miuix_spacing_16"
+                        android:onClick="onClick" android:text="扩展功能" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="系统设置" style="@style/MiuixGroupTitle" />
+
+                <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:background="@drawable/miuix_card_bg" android:orientation="vertical"
+                    android:layout_marginBottom="@dimen/miuix_spacing_12">
+
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:padding="@dimen/miuix_spacing_16">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="隐藏图标"
+                            android:textSize="16sp" android:textColor="@color/miuix_on_background"
+                            android:fontFamily="sans-serif" android:textStyle="normal" />
+                        <android.widget.Switch android:id="@+id/sw_hide_icon"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:thumb="@drawable/miuix_switch_thumb"
+                            android:track="@drawable/miuix_switch_track"
+                            android:switchMinWidth="40dp"
+                            android:switchPadding="2dp" />
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                        android:background="@color/miuix_divider_line"
+                        android:layout_marginStart="@dimen/miuix_spacing_16" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:padding="@dimen/miuix_spacing_16">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="始终使用中文"
+                            android:textSize="16sp" android:textColor="@color/miuix_on_background"
+                            android:fontFamily="sans-serif" android:textStyle="normal" />
+                        <android.widget.Switch android:id="@+id/sw_chinese"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:thumb="@drawable/miuix_switch_thumb"
+                            android:track="@drawable/miuix_switch_track"
+                            android:switchMinWidth="40dp"
+                            android:switchPadding="2dp" />
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                        android:background="@color/miuix_divider_line"
+                        android:layout_marginStart="@dimen/miuix_spacing_16" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:padding="@dimen/miuix_spacing_16">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="深色模式"
+                            android:textSize="16sp" android:textColor="@color/miuix_on_background"
+                            android:fontFamily="sans-serif" android:textStyle="normal" />
+                        <android.widget.Switch android:id="@+id/sw_dark_mode"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:thumb="@drawable/miuix_switch_thumb"
+                            android:track="@drawable/miuix_switch_track"
+                            android:switchMinWidth="40dp"
+                            android:switchPadding="2dp" />
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="0.5dp"
+                        android:background="@color/miuix_divider_line"
+                        android:layout_marginStart="@dimen/miuix_spacing_16" />
+
+                    <LinearLayout
+                        android:id="@+id/row_follow_system"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:padding="@dimen/miuix_spacing_16">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:text="跟随系统设置"
+                            android:textSize="16sp" android:textColor="@color/miuix_on_background"
+                            android:fontFamily="sans-serif" android:textStyle="normal" />
+                        <android.widget.Switch android:id="@+id/sw_follow_system"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:thumb="@drawable/miuix_switch_thumb"
+                            android:track="@drawable/miuix_switch_track"
+                            android:switchMinWidth="40dp"
+                            android:switchPadding="2dp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="关于" style="@style/MiuixGroupTitle" />
+
+                <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:background="@drawable/miuix_card_bg" android:orientation="vertical">
+
+                    <Button android:id="@+id/btn_about"
+                        style="@style/MiuixButton.Text"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:gravity="start|center_vertical"
+                        android:padding="@dimen/miuix_spacing_16"
+                        android:onClick="onClick" android:text="关于应用" />
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
+    </FrameLayout>
+
+    <!-- ==================== 底部导航栏 ==================== -->
+    <LinearLayout android:id="@+id/bottom_navigation"
+        android:layout_width="match_parent" android:layout_height="56dp"
+        android:background="@color/miuix_surface" android:orientation="horizontal"
+        android:elevation="8dp">
+
+        <!-- 首页 -->
+        <LinearLayout android:id="@+id/nav_home"
+            android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:orientation="vertical" android:gravity="center"
+            android:clickable="true" android:focusable="true"
+            android:background="?attr/selectableItemBackground" android:onClick="onNavClick">
+            <ImageView android:layout_width="24dp" android:layout_height="24dp"
+                android:src="@drawable/ic_home" android:tint="#FF000000" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="首页" android:textSize="12sp" android:textColor="#FF000000"
+                android:layout_marginTop="2dp" />
         </LinearLayout>
 
-        <LinearLayout
-                android:id="@+id/lyt_bottom2"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom"
-                android:baselineAligned="false"
-                android:gravity="center"
-                android:orientation="horizontal">
-
-            <Button
-                    android:id="@+id/btn_friend_watch"
-                    android:textAllCaps="false"
-                    style="@android:style/Widget.DeviceDefault.Button.Borderless"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="6dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/button_main"
-                    android:drawableTop="@drawable/friend"
-                    android:drawablePadding="5dp"
-                    android:gravity="center"
-                    android:onClick="onClick"
-                    android:orientation="vertical"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:text="@string/friend_watch"
-                    android:textAlignment="gravity"
-                    android:textColor="@color/main_button_text"
-                    android:textSize="14sp" />
-
-            <Button
-                    android:id="@+id/btn_github"
-                    android:textAllCaps="false"
-                    style="@android:style/Widget.DeviceDefault.Button.Borderless"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="6dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/button_main"
-                    android:drawableTop="@drawable/github"
-                    android:drawablePadding="5dp"
-                    android:gravity="center"
-                    android:onClick="onClick"
-                    android:orientation="vertical"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:text="@string/visit_github"
-                    android:textAlignment="gravity"
-                    android:textColor="@color/main_button_text"
-                    android:textSize="14sp" />
-
-            <Button
-                    android:id="@+id/btn_settings"
-                    android:textAllCaps="false"
-                    style="@android:style/Widget.DeviceDefault.Button.Borderless"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="6dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/button_main"
-                    android:drawableTop="@drawable/setting"
-                    android:drawablePadding="5dp"
-                    android:gravity="center"
-                    android:onClick="onClick"
-                    android:orientation="vertical"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:text="@string/settings"
-                    android:textAlignment="gravity"
-                    android:textColor="@color/main_button_text"
-                    android:textSize="14sp" />
+        <!-- 日志 -->
+        <LinearLayout android:id="@+id/nav_logs"
+            android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:orientation="vertical" android:gravity="center"
+            android:clickable="true" android:focusable="true"
+            android:background="?attr/selectableItemBackground" android:onClick="onNavClick">
+            <ImageView android:layout_width="24dp" android:layout_height="24dp"
+                android:src="@drawable/ic_nav_log" android:tint="@color/miuix_on_background_variant" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="日志" android:textSize="12sp" android:textColor="@color/miuix_on_background_variant"
+                android:layout_marginTop="2dp" />
         </LinearLayout>
 
+        <!-- 配置 -->
+        <LinearLayout android:id="@+id/nav_settings"
+            android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:orientation="vertical" android:gravity="center"
+            android:clickable="true" android:focusable="true"
+            android:background="?attr/selectableItemBackground" android:onClick="onNavClick">
+            <ImageView android:layout_width="24dp" android:layout_height="24dp"
+                android:src="@drawable/ic_nav_config" android:tint="@color/miuix_on_background_variant" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="配置" android:textSize="12sp" android:textColor="@color/miuix_on_background_variant"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <!-- 设置 -->
+        <LinearLayout android:id="@+id/nav_other"
+            android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:orientation="vertical" android:gravity="center"
+            android:clickable="true" android:focusable="true"
+            android:background="?attr/selectableItemBackground" android:onClick="onNavClick">
+            <ImageView android:layout_width="24dp" android:layout_height="24dp"
+                android:src="@drawable/ic_nav_settings" android:tint="@color/miuix_on_background_variant" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="设置" android:textSize="12sp" android:textColor="@color/miuix_on_background_variant"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>
-

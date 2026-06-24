@@ -118,7 +118,7 @@ public class ListDialog {
         listDialog.show();
         Button positiveButton = listDialog.getButton(DialogInterface.BUTTON_POSITIVE);
         if (positiveButton != null) {
-            positiveButton.setTextColor(ContextCompat.getColor(c, R.color.button));
+            positiveButton.setTextColor(ContextCompat.getColor(c, R.color.miuix_button_text_text));
         }
     }
     

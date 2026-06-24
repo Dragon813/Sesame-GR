@@ -8,7 +8,15 @@ import com.elvishew.xlog.printer.file.FilePrinter;
 import com.elvishew.xlog.printer.file.backup.NeverBackupStrategy;
 import com.elvishew.xlog.printer.file.clean.NeverCleanStrategy;
 import com.elvishew.xlog.printer.file.naming.FileNameGenerator;
+
 import io.github.lazyimmortal.sesame.model.normal.base.BaseModel;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -112,7 +120,59 @@ public class Log {
                     .flattener(new PatternFlattener("{d HH:mm:ss.SSS} {t}: {m}"))
                     .build()).build();
 
+    // 开关文件路径 + 内存缓存（唯一真相源是文件）
+    private static final File SWITCH_FILE = new File(FileUtil.LOG_DIRECTORY_FILE, "log_switches.prop");
+    private static final Map<String, Boolean> switchCache = new ConcurrentHashMap<>();
+    private static volatile boolean switchesLoaded = false;
+
+    private static void ensureSwitchesLoaded() {
+        if (switchesLoaded) return;
+        synchronized (switchCache) {
+            if (switchesLoaded) return;
+            if (SWITCH_FILE.exists()) {
+                Properties props = new Properties();
+                try (FileInputStream fis = new FileInputStream(SWITCH_FILE)) {
+                    props.load(fis);
+                    for (String key : props.stringPropertyNames()) {
+                        switchCache.put(key, "true".equals(props.getProperty(key)));
+                    }
+                } catch (Throwable ignored) {}
+            }
+            switchesLoaded = true;
+        }
+    }
+
+    public static boolean isLogOn(String key) {
+        ensureSwitchesLoaded();
+        // 如果从未保存过开关状态，默认所有日志打开（首次使用全量记录）
+        return switchCache.getOrDefault(key, true);
+    }
+
+    /**
+     * 保存开关状态（MainActivity 调用），先写文件再更新缓存（文件为唯一真相源）
+     */
+    public static void saveSwitchState(String key, boolean on) {
+        // 先更新内存缓存（即时生效）
+        switchCache.put(key, on);
+        // 写文件持久化
+        try {
+            Properties props = new Properties();
+            if (SWITCH_FILE.exists()) {
+                try (FileInputStream fis = new FileInputStream(SWITCH_FILE)) {
+                    props.load(fis);
+                } catch (Throwable ignored) {}
+            }
+            props.setProperty(key, String.valueOf(on));
+            File dir = SWITCH_FILE.getParentFile();
+            if (dir != null && !dir.exists()) dir.mkdirs();
+            try (FileOutputStream fos = new FileOutputStream(SWITCH_FILE)) {
+                props.store(fos, null);
+            }
+        } catch (Throwable ignored) {}
+    }
+
     public static void i(String s) {
+        if (!isLogOn("log_runtime")) return;
         runtimeLogger.i(s);
     }
 
@@ -121,10 +181,9 @@ public class Log {
     }
 
     public static void record(String str) {
-        runtimeLogger.i(str);
-        if (!BaseModel.getRecordLog().getValue()) {
-            return;
-        }
+        if (isLogOn("log_runtime")) runtimeLogger.i(str);
+        if (!BaseModel.getRecordLog().getValue()) return;
+        if (!isLogOn("log_all")) return;
         recordLogger.i(str);
     }
 
@@ -133,39 +192,43 @@ public class Log {
     }
 
     public static void debug(String s) {
+        if (!isLogOn("log_debug")) return;
         debugLogger.d(s);
     }
 
     public static void forest(String s) {
+        if (!isLogOn("log_forest")) return;
         record(s);
         forestLogger.i(s);
     }
 
     public static void farm(String s) {
+        if (!isLogOn("log_farm")) return;
         record(s);
         farmLogger.i(s);
     }
 
     public static void other(String s) {
+        if (!isLogOn("log_other")) return;
         record(s);
         otherLogger.i(s);
     }
 
     public static void error(String s) {
-        errorLogger.i(s);
-        i(s);
+        if (isLogOn("log_error")) errorLogger.i(s);
+        if (isLogOn("log_runtime")) runtimeLogger.i(s);
     }
 
     public static void printStackTrace(Throwable t) {
         String str = android.util.Log.getStackTraceString(t);
-        errorLogger.i(str);
-        i(str);
+        if (isLogOn("log_error")) errorLogger.i(str);
+        if (isLogOn("log_runtime")) runtimeLogger.i(str);
     }
 
     public static void printStackTrace(String tag, Throwable t) {
         String str = tag + ", " + android.util.Log.getStackTraceString(t);
-        errorLogger.i(str);
-        i(str);
+        if (isLogOn("log_error")) errorLogger.i(str);
+        if (isLogOn("log_runtime")) runtimeLogger.i(str);
     }
 
     public static String getLogFileName(String logName) {

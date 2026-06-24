@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.*;
@@ -23,27 +24,29 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class SettingsActivity extends BaseActivity {
-    
+
     private static final Integer EXPORT_REQUEST_CODE = 1;
-    
     private static final Integer IMPORT_REQUEST_CODE = 2;
-    
+
     private Context context;
-    private Boolean isDraw = false;
-    private TabHost tabHost;
-    private ScrollView svTabs;
     private String userId;
     private String userName;
-    //private GestureDetector gestureDetector;
-    
+    private LinearLayout tabList;
+    private LinearLayout contentPanel;
+    private List<TextView> tabViews = new ArrayList<>();
+    private List<ModelFields> tabContentModels = new ArrayList<>();
+    private int currentTab = 0;
+
     @Override
-    public String getBaseSubtitle() {
-        return getString(R.string.settings);
+    public void onContentChanged() {
+        // 不设置 Toolbar，使用自定义大标题
     }
-    
+
     @SuppressLint("MissingInflatedId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,162 +90,151 @@ public class SettingsActivity extends BaseActivity {
         AntMemberTaskListMap.load();
         ConfigV2.load(userId);
         setContentView(R.layout.activity_settings);
-        if (userName != null) {
-            setBaseSubtitle(getString(R.string.settings) + ": " + userName);
-        }
-        setBaseSubtitleTextColor(ContextCompat.getColor(this, R.color.textColorPrimary));
-        
+
         context = this;
-        tabHost = findViewById(R.id.tab_settings);
-        svTabs = findViewById(R.id.sv_tabs);
-        tabHost.setup();
-        
+        tabList = findViewById(R.id.tab_list);
+        contentPanel = findViewById(R.id.content_panel);
+
+        // 构建自定义 Tab
         Map<String, ModelConfig> modelConfigMap = ModelTask.getModelConfigMap();
+        int index = 0;
+        int tabTextColor = ContextCompat.getColor(this, R.color.miuix_on_background);
+        int tabPaddingH = (int) getResources().getDimension(R.dimen.miuix_spacing_12);
+        int tabPaddingV = (int) getResources().getDimension(R.dimen.miuix_spacing_12);
+        int density = (int) getResources().getDisplayMetrics().density;
+
         for (Map.Entry<String, ModelConfig> configEntry : modelConfigMap.entrySet()) {
-            String modelCode = configEntry.getKey();
             ModelConfig modelConfig = configEntry.getValue();
             ModelFields modelFields = modelConfig.getFields();
-            
-            tabHost.addTab(tabHost.newTabSpec(modelCode).setIndicator(modelConfig.getName()).setContent(new TabHost.TabContentFactory() {
-                @Override
-                public View createTabContent(String tag) {
-                    LinearLayout linearLayout = new LinearLayout(context);
-                    linearLayout.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-                    linearLayout.setGravity(Gravity.CENTER_HORIZONTAL);
-                    linearLayout.setOrientation(LinearLayout.VERTICAL);
-                    for (ModelField<?> modelField : modelFields.values()) {
-                        View view = modelField.getView(context);
-                        if (view != null) {
-                            linearLayout.addView(view);
-                        }
-                    }
-                    return linearLayout;
-                }
-            }));
-            
-        }
-        tabHost.setCurrentTab(0);
+            tabContentModels.add(modelFields);
 
-        /*int size = modelConfigMap.size() - 1;
-        gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
-            @Override
-            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-                if (Math.abs(e1.getX() - e2.getX()) > 250) {
-                    return false;
-                    }
-                int currentView = tabHost.getCurrentTab();
-                if (e1.getY() - e2.getY() > 120 && Math.abs(velocityY) > 200) {
-                    if (currentView < size) {
-                        currentView++;
-                    }
-                    tabHost.setCurrentTab(currentView);
-                } else if (e2.getY() - e1.getY() > 120 && Math.abs(velocityY) > 200) {
-                    if (currentView > 0) {
-                        currentView--;
-                    }
-                    tabHost.setCurrentTab(currentView);
-                }
-                return true;
+            // 创建左侧 Tab 按钮
+            final int tabIndex = index;
+            TextView tabBtn = new TextView(context);
+            tabBtn.setText(modelConfig.getName());
+            tabBtn.setTextSize(16);
+            tabBtn.setTextColor(tabTextColor);
+            tabBtn.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL));
+            tabBtn.setGravity(Gravity.CENTER);
+            tabBtn.setPadding(tabPaddingH, tabPaddingV, tabPaddingH, tabPaddingV);
+            tabBtn.setMinHeight(44 * density);
+            tabBtn.setSingleLine(true);
+            tabBtn.setOnClickListener(v -> switchTab(tabIndex));
+
+            // 分隔线（非第一项）
+            if (index > 0) {
+                View divider = new View(context);
+                divider.setLayoutParams(new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 1));
+                divider.setBackgroundColor(ContextCompat.getColor(context, R.color.miuix_divider_line));
+                tabList.addView(divider);
             }
-        });*/
+
+            tabList.addView(tabBtn);
+            tabViews.add(tabBtn);
+            index++;
+        }
+
+        // 默认选中第一个
+        if (tabViews.size() > 0) {
+            switchTab(0);
+        }
+
+        // 绑定大标题右侧按钮
+        ImageView btnExport = findViewById(R.id.btn_export_config);
+        ImageView btnImport = findViewById(R.id.btn_import_config);
+        ImageView btnDelete = findViewById(R.id.btn_delete_config);
+        if (btnExport != null) {
+            btnExport.setOnClickListener(v -> {
+                Intent exportIntent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                exportIntent.addCategory(Intent.CATEGORY_OPENABLE);
+                exportIntent.setType("*/*");
+                exportIntent.putExtra(Intent.EXTRA_TITLE,
+                        "[" + (userName != null ? userName : "默认") + "]-config_v2.json");
+                startActivityForResult(exportIntent, EXPORT_REQUEST_CODE);
+            });
+        }
+        if (btnImport != null) {
+            btnImport.setOnClickListener(v -> {
+                Intent importIntent = new Intent(Intent.ACTION_GET_CONTENT);
+                importIntent.addCategory(Intent.CATEGORY_OPENABLE);
+                importIntent.setType("*/*");
+                importIntent.putExtra(Intent.EXTRA_TITLE, "config_v2.json");
+                startActivityForResult(importIntent, IMPORT_REQUEST_CODE);
+            });
+        }
+        if (btnDelete != null) {
+            btnDelete.setOnClickListener(v -> {
+                new AlertDialog.Builder(context)
+                        .setTitle("警告")
+                        .setMessage(userName != null
+                                ? "确认删除用户[" + userName + "]的配置？"
+                                : "确认删除默认配置？")
+                        .setPositiveButton(R.string.ok, (dialog, id) -> {
+                            File userConfigDirectoryFile;
+                            if (StringUtil.isEmpty(userId)) {
+                                userConfigDirectoryFile = FileUtil.getDefaultConfigV2File();
+                            } else {
+                                userConfigDirectoryFile = FileUtil.getUserConfigDirectoryFile(userId);
+                            }
+                            if (FileUtil.deleteFile(userConfigDirectoryFile)) {
+                                ToastUtil.show(this, "配置删除成功");
+                            } else {
+                                ToastUtil.show(this, "配置删除失败");
+                            }
+                            finish();
+                        })
+                        .setNegativeButton(R.string.cancel, (dialog, id) -> dialog.dismiss())
+                        .create().show();
+            });
+        }
     }
-    
+
+    private void switchTab(int index) {
+        currentTab = index;
+
+        int primaryColor = ContextCompat.getColor(this, R.color.miuix_primary);
+        int textColor = ContextCompat.getColor(this, R.color.miuix_on_background);
+
+        // 更新左侧 Tab 选中状态
+        for (int i = 0; i < tabViews.size(); i++) {
+            TextView tv = tabViews.get(i);
+            if (i == index) {
+                tv.setTextColor(primaryColor);
+                tv.setBackgroundColor(0x1A3482FF);
+            } else {
+                tv.setTextColor(textColor);
+                tv.setBackgroundColor(Color.TRANSPARENT);
+            }
+        }
+
+        // 更新右侧内容区
+        contentPanel.removeAllViews();
+        ModelFields fields = tabContentModels.get(index);
+        for (ModelField<?> modelField : fields.values()) {
+            View view = modelField.getView(context);
+            if (view != null) {
+                contentPanel.addView(view);
+            }
+        }
+    }
+
     @Override
     public void onBackPressed() {
         super.onBackPressed();
         save();
     }
 
-    /*@Override
-    public boolean dispatchTouchEvent(MotionEvent event) {
-        if (gestureDetector.onTouchEvent(event)) {
-            event.setAction(MotionEvent.ACTION_CANCEL);
-        }
-        return super.dispatchTouchEvent(event);
-    }*/
-    
-    @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-        if (!isDraw && hasFocus) {
-            int width = svTabs.getWidth();
-            TabWidget tabWidget = tabHost.getTabWidget();
-            int childCount = tabWidget.getChildCount();
-            for (int i = 0; i < childCount; i++) {
-                tabWidget.getChildAt(i).getLayoutParams().width = width;
-            }
-            tabWidget.requestLayout();
-            isDraw = true;
-        }
-    }
-    
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        menu.add(0, 1, 1, "导出配置");
-        menu.add(0, 2, 2, "导入配置");
-        menu.add(0, 3, 3, "删除配置");
-        menu.add(0, 4, 4, "单向好友");
-        if (!"TEST".equals(ViewAppInfo.getAppVersion()) && LibraryUtil.loadLibrary("sesame")) {
-            menu.add(0, 5, 5, "切换至新UI");
-        }
-        return super.onCreateOptionsMenu(menu);
+        return true;
     }
-    
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case 1:
-                Intent exportIntent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-                exportIntent.addCategory(Intent.CATEGORY_OPENABLE);
-                exportIntent.setType("*/*");
-                exportIntent.putExtra(Intent.EXTRA_TITLE, "[" + userName + "]-config_v2.json");
-                startActivityForResult(exportIntent, EXPORT_REQUEST_CODE);
-                break;
-            case 2:
-                Intent importIntent = new Intent(Intent.ACTION_GET_CONTENT);
-                importIntent.addCategory(Intent.CATEGORY_OPENABLE);
-                importIntent.setType("*/*");
-                importIntent.putExtra(Intent.EXTRA_TITLE, "config_v2.json");
-                startActivityForResult(importIntent, IMPORT_REQUEST_CODE);
-                break;
-            case 3:
-                new AlertDialog.Builder(context).setTitle("警告").setMessage("确认删除该配置？").setPositiveButton(R.string.ok, (dialog, id) -> {
-                    File userConfigDirectoryFile;
-                    if (StringUtil.isEmpty(userId)) {
-                        userConfigDirectoryFile = FileUtil.getDefaultConfigV2File();
-                    }
-                    else {
-                        userConfigDirectoryFile = FileUtil.getUserConfigDirectoryFile(userId);
-                    }
-                    if (FileUtil.deleteFile(userConfigDirectoryFile)) {
-                        ToastUtil.show(this, "配置删除成功");
-                    }
-                    else {
-                        ToastUtil.show(this, "配置删除失败");
-                    }
-                    finish();
-                }).setNegativeButton(R.string.cancel, (dialog, id) -> dialog.dismiss()).create().show();
-                break;
-            case 4:
-                ListDialog.show(this, "单向好友列表", AlipayUser.getList(user -> user.getFriendStatus() != 1), SelectModelFieldFunc.newMapInstance(), false, ListDialog.ListType.SHOW);
-                break;
-            case 5:
-                AppConfig.INSTANCE.setNewUI(true);
-                if (AppConfig.save()) {
-                    Intent intent = new Intent(this, NewSettingsActivity.class);
-                    intent.putExtra("userId", userId);
-                    intent.putExtra("userName", userName);
-                    finish();
-                    startActivity(intent);
-                }
-                else {
-                    ToastUtil.show(this, "切换失败");
-                }
-                break;
-        }
         return super.onOptionsItemSelected(item);
     }
-    
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -253,38 +245,27 @@ public class SettingsActivity extends BaseActivity {
             Uri uri = data.getData();
             if (uri != null) {
                 try {
-                    File configV2File;
-                    if (StringUtil.isEmpty(userId)) {
-                        configV2File = FileUtil.getDefaultConfigV2File();
-                    }
-                    else {
-                        configV2File = FileUtil.getConfigV2File(userId);
-                    }
+                    File configV2File = StringUtil.isEmpty(userId)
+                            ? FileUtil.getDefaultConfigV2File()
+                            : FileUtil.getConfigV2File(userId);
                     FileInputStream inputStream = new FileInputStream(configV2File);
                     if (FileUtil.streamTo(inputStream, getContentResolver().openOutputStream(data.getData()))) {
                         ToastUtil.show(this, "导出成功！");
-                    }
-                    else {
+                    } else {
                         ToastUtil.show(this, "导出失败！");
                     }
-                }
-                catch (IOException e) {
+                } catch (IOException e) {
                     Log.printStackTrace(e);
                     ToastUtil.show(this, "导出失败！");
                 }
             }
-        }
-        else if (requestCode == IMPORT_REQUEST_CODE) {
+        } else if (requestCode == IMPORT_REQUEST_CODE) {
             Uri uri = data.getData();
             if (uri != null) {
                 try {
-                    File configV2File;
-                    if (StringUtil.isEmpty(userId)) {
-                        configV2File = FileUtil.getDefaultConfigV2File();
-                    }
-                    else {
-                        configV2File = FileUtil.getConfigV2File(userId);
-                    }
+                    File configV2File = StringUtil.isEmpty(userId)
+                            ? FileUtil.getDefaultConfigV2File()
+                            : FileUtil.getConfigV2File(userId);
                     FileOutputStream outputStream = new FileOutputStream(configV2File);
                     if (FileUtil.streamTo(getContentResolver().openInputStream(data.getData()), outputStream)) {
                         ToastUtil.show(this, "导入成功！");
@@ -293,27 +274,24 @@ public class SettingsActivity extends BaseActivity {
                                 Intent intent = new Intent("com.eg.android.AlipayGphone.sesame.restart");
                                 intent.putExtra("userId", userId);
                                 sendBroadcast(intent);
-                            }
-                            catch (Throwable th) {
+                            } catch (Throwable th) {
                                 Log.printStackTrace(th);
                             }
                         }
                         Intent intent = getIntent();
                         finish();
                         startActivity(intent);
-                    }
-                    else {
+                    } else {
                         ToastUtil.show(this, "导入失败！");
                     }
-                }
-                catch (IOException e) {
+                } catch (IOException e) {
                     Log.printStackTrace(e);
                     ToastUtil.show(this, "导入失败！");
                 }
             }
         }
     }
-    
+
     private void save() {
         if (ConfigV2.isModify(userId) && ConfigV2.save(userId, false)) {
             ToastUtil.show(this, "保存成功！");
@@ -322,8 +300,7 @@ public class SettingsActivity extends BaseActivity {
                     Intent intent = new Intent("com.eg.android.AlipayGphone.sesame.restart");
                     intent.putExtra("userId", userId);
                     sendBroadcast(intent);
-                }
-                catch (Throwable th) {
+                } catch (Throwable th) {
                     Log.printStackTrace(th);
                 }
             }
@@ -332,5 +309,5 @@ public class SettingsActivity extends BaseActivity {
             UserIdMap.save(userId);
         }
     }
-    
+
 }

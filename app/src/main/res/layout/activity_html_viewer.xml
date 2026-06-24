@@ -1,26 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:orientation="vertical">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/miuix_background">
 
-    <include layout="@layout/base_title"/>
+    <include layout="@layout/base_title" />
 
     <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
         <io.github.lazyimmortal.sesame.ui.MyWebView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:id="@+id/mwv_webview" />
+            android:id="@+id/mwv_webview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
 
         <ProgressBar
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:id="@+id/pgb_webview" />
+            android:id="@+id/pgb_webview"
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_alignParentTop="true"
+            android:progressTint="@color/miuix_primary" />
 
     </RelativeLayout>
 </LinearLayout>
-
