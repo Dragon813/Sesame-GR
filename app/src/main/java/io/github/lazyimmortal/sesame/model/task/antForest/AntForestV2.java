@@ -383,7 +383,6 @@ public class AntForestV2 extends ModelTask {
 
             //GameTask.Forest_sgbhsd.report("三国", 1);
 
-            vantiepSign();
 
             if (useEnergyRainLimit.getValue()) {
                 useEnergyRainCard();
@@ -404,6 +403,8 @@ public class AntForestV2 extends ModelTask {
             }
             //连续兑换使用道具卡片
             continuousUseCardOptions();
+
+            vantiepSign();
 
             JSONObject selfHomeObject = collectSelfEnergy();
             try {
