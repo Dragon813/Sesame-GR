@@ -383,6 +383,7 @@ public class AntForestV2 extends ModelTask {
 
             //GameTask.Forest_sgbhsd.report("三国", 1);
 
+
             if (useEnergyRainLimit.getValue()) {
                 useEnergyRainCard();
             }
@@ -390,6 +391,7 @@ public class AntForestV2 extends ModelTask {
             if (energyRain.getValue()) {
                 energyRain();
             }
+            
 
             if (ecoLife.getValue()) {
                 ecoLife();
@@ -401,6 +403,8 @@ public class AntForestV2 extends ModelTask {
             }
             //连续兑换使用道具卡片
             continuousUseCardOptions();
+
+            vantiepSign();
 
             JSONObject selfHomeObject = collectSelfEnergy();
             try {
@@ -2144,8 +2148,13 @@ public class AntForestV2 extends ModelTask {
         }
     }
 
-    private void vantiepSign(JSONArray forestSignVOList) {
+    private void vantiepSign() {
         try {
+            JSONObject jo = new JSONObject(AntForestRpcCall.queryTaskList());
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            JSONArray forestSignVOList = jo.getJSONArray("forestSignVOList");
             JSONObject forestSignVO = forestSignVOList.getJSONObject(0);
             String currentSignKey = forestSignVO.getString("currentSignKey"); // 当前签到的 key
             String signId = forestSignVO.getString("signId"); // 签到ID
@@ -2246,7 +2255,6 @@ public class AntForestV2 extends ModelTask {
                     return;
                 }
                 JSONArray forestSignVOList = jo.getJSONArray("forestSignVOList");
-                vantiepSign(forestSignVOList);
                 JSONArray forestTasksNew = jo.optJSONArray("forestTasksNew");
                 if (forestTasksNew == null) {
                     return;

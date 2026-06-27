@@ -199,7 +199,7 @@ public abstract class BaseCaptchaHandler {
         if (actualSlideDistance < minSlideDistance) {
             int minDistanceOffset = random.nextInt(7) - 3; // -3 到 3
             endX = startX + minSlideDistance + minDistanceOffset;
-            Log.record("滑动验证🆘调整滑动距离至最小要求:" + minSlideDistance + "px");
+            //Log.record("滑动验证🆘调整滑动距离至最小要求:" + minSlideDistance + "px");
         }
         
         float endY = startY; // 保持水平滑动
@@ -210,7 +210,7 @@ public abstract class BaseCaptchaHandler {
         Log.record("滑块信息: 位置=[" + sliderX + "," + sliderY + "], 尺寸=" + sliderWidth + "x" + sliderHeight);
         Log.record("计算结果: 起点=[" + startX + "," + startY + "], 终点=[" + endX + "," + endY + "], 滑动距离=" + (endX - startX) + "px");
         */
-        Log.record("滑动验证🆘屏幕信息:尺寸=" + screenWidth + "x" + screenHeight + ";" + "滑动区域信息:容器位置=[" + containerX + "," + containerY + "],尺寸=" + containerWidth + "x" + containerHeight + ";" + "滑块信息:位置=[" + sliderX + "," + sliderY + "],尺寸=" + sliderWidth + "x" + sliderHeight + ";" + "计算结果:起点=[" + startX + "," + startY + "],终点=[" + endX + "," + endY + "],滑动距离=" + (endX - startX) + "px.[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+        //Log.record("滑动验证🆘屏幕信息:尺寸=" + screenWidth + "x" + screenHeight + ";" + "滑动区域信息:容器位置=[" + containerX + "," + containerY + "],尺寸=" + containerWidth + "x" + containerHeight + ";" + "滑块信息:位置=[" + sliderX + "," + sliderY + "],尺寸=" + sliderWidth + "x" + sliderHeight + ";" + "计算结果:起点=[" + startX + "," + startY + "],终点=[" + endX + "," + endY + "],滑动距离=" + (endX - startX) + "px.[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
         // 生成滑动指令并发送广播
         long slideDuration = SLIDE_DURATION_MIN + RandomUtil.nextLong(SLIDE_DURATION_MAX,SLIDE_DURATION_MIN + 1);
         String swipeCmd = String.format("input swipe %d %d %d %d %d",

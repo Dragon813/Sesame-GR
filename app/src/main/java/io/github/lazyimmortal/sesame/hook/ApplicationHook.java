@@ -718,27 +718,7 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                 Log.record("开始加载");
                 ConfigV2.load(userId);
                 
-                // 检查配置是否为默认配置，如果是则尝试从备份恢复
                 boolean enableModule = Model.getModel(BaseModel.class).getEnableField().getValue();
-                if (!enableModule) {
-                    Log.record("检查配置是否为默认配置");
-                    java.io.File configV2File = StringUtil.isEmpty(userId) ? FileUtil.getDefaultConfigV2File() : FileUtil.getConfigV2File(userId);
-                    if (ConfigV2.isCurrentConfigDefault(configV2File)) {
-                        Log.record("配置是默认配置，尝试从备份恢复");
-                        if (ConfigV2.restoreFromBackup(userId)) {
-                            Log.record("从备份恢复配置成功");
-                            // 重新加载配置
-                            ConfigV2.load(userId);
-                            enableModule = Model.getModel(BaseModel.class).getEnableField().getValue();
-                        } else {
-                            Log.record("从备份恢复配置失败，所有备份都是默认配置或不存在");
-                            Toast.show("配置已重置，无有效备份可恢复");
-                        }
-                    } else {
-                        Log.record("配置不是默认配置，用户手动关闭模块");
-                    }
-                }
-                
                 if (!enableModule) {
                     Log.record("芝麻粒已禁用");
                     Toast.show("芝麻粒已禁用");
