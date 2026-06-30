@@ -35,7 +35,6 @@ public class AuthCodeHelper {
                 Log.error("Oauth2AuthCodeHelper 未初始化，请先调用 init 方法");
                 return null;
             }
-            
             // 1. 获取并实例化 Oauth2AuthCodeServiceImpl 类
             Class<?> oauth2AuthCodeServiceImplClass = XposedHelpers.findClass(
                     "com.alibaba.ariver.rpc.biz.proxy.Oauth2AuthCodeServiceImpl",
@@ -73,7 +72,8 @@ public class AuthCodeHelper {
             appExtInfo.put("channel", "tinyapp");
             appExtInfo.put("clientAppId", appId);
             XposedHelpers.callMethod(authSkipRequestModel, "setAppExtInfo", appExtInfo);
-            
+
+            //Log.other("getAuthCode 请求体 -> " + authSkipRequestModel.toString());
             // 4. 调用 getAuthSkipResult 方法获取授权结果
             Object authSkipResult = XposedHelpers.callMethod(
                     oauth2AuthCodeServiceImpl,
@@ -85,9 +85,12 @@ public class AuthCodeHelper {
             
             // 5. 解析返回结果中的授权码
             if (authSkipResult != null) {
+                //Log.other("getAuthCode 响应 -> " + authSkipResult.toString());
                 Object authExecuteResult = XposedHelpers.callMethod(authSkipResult, "getAuthExecuteResult");
                 if (authExecuteResult != null) {
+                //    Log.other("getAuthCode authExecuteResult -> " + authExecuteResult.toString());
                     Object authCodeObj = XposedHelpers.callMethod(authExecuteResult, "getAuthCode");
+                //    Log.other("getAuthCode authCode -> " + (authCodeObj != null ? authCodeObj : "null"));
                     return authCodeObj instanceof String ? (String) authCodeObj : null;
                 }
             }

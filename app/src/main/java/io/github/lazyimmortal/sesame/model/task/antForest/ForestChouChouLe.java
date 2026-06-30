@@ -84,6 +84,7 @@ public class ForestChouChouLe {
                         JSONObject taskBaseInfo = taskInfo.getJSONObject("taskBaseInfo");
                         JSONObject bizInfo = new JSONObject(taskBaseInfo.getString("bizInfo"));
                         String taskName = bizInfo.getString("title");
+                        String desc = bizInfo.getString("desc");
 
                         String taskSceneCode = taskBaseInfo.getString("sceneCode");
                         String taskStatus = taskBaseInfo.getString("taskStatus");
@@ -187,6 +188,19 @@ public class ForestChouChouLe {
                             else {
                                 result = new JSONObject(AntForestRpcCall.finishTaskopengreen(taskType, taskSceneCode));
                             }
+                            //检查并标记黑名单任务
+                            MessageUtil.checkResultCodeAndMarkTaskBlackList("AntForestHuntTaskList", taskName,result);
+                            if (MessageUtil.checkSuccess(TAG, result)) {
+                                Log.forest("森林寻宝🧾完成[" + taskName + "]");
+                                doublecheck = true;
+                            }
+                        }
+
+
+                        // 处理浏览类游戏任务
+                        if ((taskName.contains("玩") || desc.contains("浏览")) && taskStatus.equals("TODO")) {
+                            TimeUtil.sleep(1000);
+                            JSONObject result = new JSONObject(AntForestRpcCall.finishTaskopengreen(taskType, taskSceneCode));
                             //检查并标记黑名单任务
                             MessageUtil.checkResultCodeAndMarkTaskBlackList("AntForestHuntTaskList", taskName,result);
                             if (MessageUtil.checkSuccess(TAG, result)) {

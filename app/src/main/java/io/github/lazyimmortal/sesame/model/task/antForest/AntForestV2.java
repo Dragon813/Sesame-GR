@@ -197,6 +197,8 @@ public class AntForestV2 extends ModelTask {
     private SelectModelField AntForestVitalityTaskList;
     private ChoiceModelField waterFriendType;
     private BooleanModelField waterFriendEnergySendChat;
+
+    private BooleanModelField waterFriendEnergyFirst;
     private SelectAndCountModelField waterFriendList;
 
     private SelectAndCountModelField wateredFriendList;
@@ -292,6 +294,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(waterFriendType = new ChoiceModelField("waterFriendType", "浇水 | 动作", WaterFriendType.WATER_00, WaterFriendType.nickNames));
         modelFields.addField(waterFriendList = new SelectAndCountModelField("waterFriendList", "浇水 | 好友列表", new LinkedHashMap<>(), AlipayUser::getList, "请填写浇水次数(每日)"));
         modelFields.addField(waterFriendEnergySendChat = new BooleanModelField("waterFriendEnergySendChat", "浇水 | 发送已浇水提醒", false));
+        modelFields.addField(waterFriendEnergyFirst = new BooleanModelField("waterFriendEnergyFirst", "浇水 | 每次首先执行", false));
         modelFields.addField(doubleWaterFriendEnergy = new BooleanModelField("doubleWaterFriendEnergy", "浇水 | 强制检查重复一次", false));
         modelFields.addField(helpFriendCollectType = new ChoiceModelField("helpFriendCollectType", "复活能量 | 动作", HelpFriendCollectType.NONE, HelpFriendCollectType.nickNames));
         modelFields.addField(helpFriendCollectList = new SelectModelField("helpFriendCollectList", "复活能量 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
@@ -381,7 +384,10 @@ public class AntForestV2 extends ModelTask {
             selfId = UserIdMap.getCurrentUid();
             hasErrorWait = false;
 
-            //GameTask.Forest_sgbhsd.report("三国", 1);
+            //GameTask.Orchard_ncscc.report("农场上车车", 1);
+            if(waterFriendEnergyFirst.getValue()){
+                waterFriendEnergy();
+            }
 
 
             if (useEnergyRainLimit.getValue()) {
@@ -391,7 +397,6 @@ public class AntForestV2 extends ModelTask {
             if (energyRain.getValue()) {
                 energyRain();
             }
-            
 
             if (ecoLife.getValue()) {
                 ecoLife();
@@ -404,7 +409,9 @@ public class AntForestV2 extends ModelTask {
             //连续兑换使用道具卡片
             continuousUseCardOptions();
 
-            vantiepSign();
+            if (receiveForestTaskAward.getValue()) {
+                vantiepSign();
+            }
 
             JSONObject selfHomeObject = collectSelfEnergy();
             try {
@@ -573,10 +580,10 @@ public class AntForestV2 extends ModelTask {
                     if (!Status.hasFlagToday("Forest::doubleWaterFriendEnergy")) {
                         doubleWaterFriendEnergy();
                     }
-
                 }
 
                 waterFriendEnergy();
+
                 if (pkEnergy.getValue()) {
                     collectPKEnergy();
                 }
@@ -994,9 +1001,9 @@ public class AntForestV2 extends ModelTask {
                 userName = UserIdMap.getMaskName(userId);
                 isCollectEnergy = collectEnergy.getValue() && !dontCollectMap.contains(userId);
             }
-            Log.record("进入[" + userName + "]的蚂蚁森林");
 
             if (isSelf) {
+                Log.record("进入[" + userName + "]的蚂蚁森林");
                 updateUsingPropsEndTime(userHomeObject);
             } else {
                 if (isCollectEnergy) {
@@ -1005,7 +1012,7 @@ public class AntForestV2 extends ModelTask {
                         JSONObject joProp = jaProps.getJSONObject(i);
                         if (Objects.equals("shield", joProp.getString("propGroup"))) {
                             if (joProp.getLong("endTime") > serverTime) {
-                                Log.record("[" + userName + "]被能量罩保护着哟");
+                                Log.record("[" + userName + "]能量罩保护到[" + TimeUtil.getCommonDateS(joProp.getLong("endTime")) + "]");
                                 isCollectEnergy = false;
                                 JSONArray jaBubbles = userHomeObject.getJSONArray("bubbles");
                                 for (int ii = 0; ii < jaBubbles.length(); ii++) {
@@ -1693,7 +1700,15 @@ public class AntForestV2 extends ModelTask {
             AntForestVitalityTaskListMap.load();
             // 1. 定义黑名单（需要添加的任务）和白名单（需要移除的任务）
             Set<String> blackList = new HashSet<>();
-            //blackList.add("【限时】玩游戏得2次机会");
+            blackList.add("去蚂蚁阿福健康问答");
+            blackList.add("邀请1位好友助力");
+            blackList.add("三国大冒险过1关征战");
+            blackList.add("添加组件及时收能量");
+            blackList.add("去淘宝花花乐领红包");
+            blackList.add("到店支付得50g能量");
+            blackList.add("践行绿色行为");
+            blackList.add("连续7天收自己能量");
+
             // 可继续添加更多黑名单任务
 
             Set<String> whiteList = new HashSet<>();// 从黑名单中移除该任务
@@ -2189,7 +2204,7 @@ public class AntForestV2 extends ModelTask {
                 return;
             }
             if (!jo.has("forestSignVO")) {
-                if (!Status.hasFlagToday("forest::CommonSign")){
+                if (!Status.hasFlagToday("forest::CommonSign")) {
                     Status.flagToday("forest::CommonSign");
                     Log.forest("森林签到📆尚未检测到[森林7日签到数据]若出现数据立马为大人领取");
                 }
@@ -2212,8 +2227,8 @@ public class AntForestV2 extends ModelTask {
                     TimeUtil.sleep(300); // 等待300毫秒
                     if (MessageUtil.checkSuccess(TAG + "森林7日签到:", joSign)) {
                         int continuousCount = joSign.getInt("continuousCount");
-                        Log.forest("森林签到📆第" + continuousCount + "天#7日签到[" + awardName +"*"+ awardCount + "]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
-                        if(awardType.equals("ENERGY")){
+                        Log.forest("森林签到📆第" + continuousCount + "天#7日签到[" + awardName + "*" + awardCount + "]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                        if (awardType.equals("ENERGY")) {
                             Statistics.addData(Statistics.DataType.COLLECTED, awardCount);
                         }
                         // return awardCount;
@@ -2279,7 +2294,28 @@ public class AntForestV2 extends ModelTask {
                             if (AntForestVitalityTaskList.getValue().contains(taskTitle)) {
                                 continue;
                             }
-                            if (bizInfo.optBoolean("autoCompleteTask", false) || AntForestTaskTypeSet.contains(taskType) || taskType.endsWith("_JIASUQI") || taskType.endsWith("_BAOHUDI") || taskType.startsWith("GYG")) {
+
+                            if ("TEST_LEAF_TASK".equals(taskType)) {
+                                JSONArray childTaskTypeList = taskInfo.optJSONArray("childTaskTypeList");
+                                if (childTaskTypeList != null && childTaskTypeList.length() > 0) {
+                                    doChildTask(childTaskTypeList, taskTitle);
+                                    doubleCheck = true;
+                                }
+                            }
+
+                            if ("DAKA_GROUP".equals(taskType)) {
+                                JSONArray childTaskTypeList = taskInfo.optJSONArray("childTaskTypeList");
+                                if (childTaskTypeList != null && childTaskTypeList.length() > 0) {
+                                    doChildTask(childTaskTypeList, taskTitle);
+                                }
+                            }
+
+                            if (finishTask(sceneCode, taskType, taskTitle)) {
+                                doubleCheck = true;
+                            }
+
+                            /*
+                            if (bizInfo.optBoolean("autoCompleteTask", false) || AntForestTaskTypeSet.contains(taskType) || taskType.endsWith("_JIASUQI") || taskType.endsWith("_BAOHUDI") || taskType.startsWith("GYG") || taskType.startsWith("CAIFU_") || taskType.startsWith("SLZBJ_") || taskType.startsWith("SYH_GAME_")) {
                                 if (finishTask(sceneCode, taskType, taskTitle)) {
                                     doubleCheck = true;
                                 }
@@ -2295,10 +2331,20 @@ public class AntForestV2 extends ModelTask {
                                     doubleCheck = true;
                                 }
                             }
+                            if ("ENERGY_XUANJIAO".equals(taskType)) {
+                                JSONArray childTaskTypeList = taskInfo.optJSONArray("childTaskTypeList");
+                                if (childTaskTypeList != null && childTaskTypeList.length() > 0) {
+                                    doChildTask(childTaskTypeList, taskTitle);
+                                }
+                            }
+                            */
                         }
                     }
                 }
             }
+            //可能是触发限时挑战奖励的
+            AntForestRpcCall.listTaskopengreen();
+            AntForestRpcCall.batchQueryAndTouchopengreen();
         } catch (Throwable t) {
             Log.i(TAG, "queryTaskList err:");
             Log.printStackTrace(TAG, t);
@@ -2364,7 +2410,7 @@ public class AntForestV2 extends ModelTask {
                 Log.forest("森林任务🧾️完成[" + taskTitle + "]");
                 return true;
             }
-            Log.record("完成任务" + taskTitle + "失败,");
+            Log.record("完成任务[" + taskTitle + "]失败");
         } catch (Throwable t) {
             Log.i(TAG, "finishTask err:");
             Log.printStackTrace(TAG, t);
@@ -2654,45 +2700,66 @@ public class AntForestV2 extends ModelTask {
     //乐园限定活动
     private void queryOptionalPlay() {
         try {
-            JSONObject jo = new JSONObject(AntForestRpcCall.queryOptionalPlay());
-            if (!MessageUtil.checkSuccess(TAG, jo)) {
-                return;
-            }
-            if (!jo.has("taskTriggerPlayInfo")) {
-                return;
-            }
-            JSONObject taskTriggerPlayInfo = jo.optJSONObject("taskTriggerPlayInfo");
-            if (!taskTriggerPlayInfo.has("taskList")) {
-                return;
-            }
-            JSONArray taskList = taskTriggerPlayInfo.getJSONArray("taskList");
-            for (int j = 0; j < taskList.length(); j++) {
-                JSONObject task = taskList.getJSONObject(j);
-                String taskStatus = task.getString("taskStatus");
-                int alreadyReceiveAwardCount = task.optInt("alreadyReceiveAwardCount");
-                int awardCount = task.optInt("awardCount");
-                int awardCountForReceive = awardCount - alreadyReceiveAwardCount;
-                String awardType = task.optString("awardType", "能量");
-                JSONObject bizInfo = task.getJSONObject("bizInfo");
-                String title = bizInfo.getString("title");
-                String source = task.optString("source", "ch_appcenter__chsub_9patch");
-                String sceneCode = task.optString("sceneCode", "");
-                String taskType = task.optString("taskType", "");
-                // 记录任务状态
-                if (taskStatus.equals("FINISHED")) {
-                    if (awardCountForReceive > 0) {
-                        // 领取奖励
-                        JSONObject joReceived = new JSONObject(AntForestRpcCall.receiveTaskAwardopengreen(source, sceneCode, taskType));
-                        if (MessageUtil.checkSuccess(TAG, joReceived)) {
-                            int incAwardCount = joReceived.optInt("incAwardCount");
-                            JSONObject taskConfigResultVO = joReceived.optJSONObject("taskConfigResultVO");
-                            if (taskConfigResultVO != null) {
-                                awardType = taskConfigResultVO.optString("awardType", awardType);
+            boolean doubleCheck = true;
+            while (doubleCheck) {
+                doubleCheck = false;
+                JSONObject jo = new JSONObject(AntForestRpcCall.queryOptionalPlay());
+                if (!MessageUtil.checkSuccess(TAG, jo)) {
+                    return;
+                }
+                if (!jo.has("taskTriggerPlayInfo")) {
+                    return;
+                }
+                JSONObject taskTriggerPlayInfo = jo.optJSONObject("taskTriggerPlayInfo");
+                if (!taskTriggerPlayInfo.has("taskList")) {
+                    return;
+                }
+                JSONArray taskList = taskTriggerPlayInfo.getJSONArray("taskList");
+                for (int j = 0; j < taskList.length(); j++) {
+                    JSONObject task = taskList.getJSONObject(j);
+                    String taskStatus = task.getString("taskStatus");
+                    int alreadyReceiveAwardCount = task.optInt("alreadyReceiveAwardCount");
+                    int awardCount = task.optInt("awardCount");
+                    int awardCountForReceive = awardCount - alreadyReceiveAwardCount;
+                    int rightsTimesLimit = task.optInt("rightsTimesLimit");
+                    int rightsTimes = task.optInt("rightsTimes");
+                    String awardType = task.optString("awardType", "能量");
+                    JSONObject bizInfo = task.getJSONObject("bizInfo");
+                    String title = bizInfo.getString("title");
+                    String source = task.optString("source", "ch_appcenter__chsub_9patch");
+                    String sceneCode = task.optString("sceneCode", "");
+                    String taskType = task.optString("taskType", "");
+                    // 记录任务状态
+                    if (taskStatus.equals("FINISHED")) {
+                        if (awardCountForReceive > 0) {
+                            // 领取奖励
+                            JSONObject joReceived = new JSONObject(AntForestRpcCall.receiveTaskAwardopengreen(source, sceneCode, taskType));
+                            if (MessageUtil.checkSuccess(TAG, joReceived)) {
+                                int incAwardCount = joReceived.optInt("incAwardCount");
+                                JSONObject taskConfigResultVO = joReceived.optJSONObject("taskConfigResultVO");
+                                if (taskConfigResultVO != null) {
+                                    awardType = taskConfigResultVO.optString("awardType", awardType);
+                                }
+                                Log.forest("森林乐园🎖️领取[" + title + "]奖励[" + awardType + "*" + incAwardCount + "]");
+                                // 能量统计
+                                if ("能量".equals(awardType)) {
+                                    Statistics.addData(Statistics.DataType.COLLECTED, incAwardCount);
+                                }
                             }
-                            Log.forest("森林乐园🎖️领取[" + title + "]奖励[" + awardType + "*" + incAwardCount + "]");
-                            // 能量统计
-                            if ("能量".equals(awardType)) {
-                                Statistics.addData(Statistics.DataType.COLLECTED, incAwardCount);
+                        }
+                    }
+                    if (TaskStatus.TODO.name().equals(taskStatus) || rightsTimes < rightsTimesLimit) {
+                        //黑名单任务跳过
+                        if (AntForestVitalityTaskList.getValue().contains(title)) {
+                            continue;
+                        }
+                        if (TaskStatus.FINISHED.name().equals(taskStatus)) {
+                            if (finishTask(sceneCode, taskType, title+"("+(rightsTimes+1)+"/"+rightsTimesLimit + ")")) {
+                                doubleCheck = true;
+                            }
+                        } else {
+                            if (finishTask(sceneCode, taskType, title)) {
+                                doubleCheck = true;
                             }
                         }
                     }

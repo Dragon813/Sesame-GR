@@ -1,5 +1,7 @@
 package io.github.lazyimmortal.sesame.model.task.antGame;
 
+import static io.github.lazyimmortal.sesame.hook.AlipayMiniMarkHelper.getAlipayMiniMark;
+
 import io.github.lazyimmortal.sesame.hook.AlipayMiniMarkHelper;
 import io.github.lazyimmortal.sesame.hook.ApplicationHook;
 import io.github.lazyimmortal.sesame.hook.AuthCodeHelper;
@@ -15,6 +17,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * 游戏任务上报工具类
@@ -25,8 +28,11 @@ public enum GameTask {
     Orchard_ncscc("农场上车车", "2060170000356601", "zfb_ncscc", "ncscc_game_kaiche_every_10", "nongchangleyuan", "1.0.2", 2),
     Farm_ddply("对对碰乐园", "2021004149679303", "zfb_ddply", "ddply_game_xiaochu_every_5", "zhuangyuan", "1.0.14", 2),
     Forest_slxcc("森林小车车", "2060170000363691", "zfb_slxcc", "slxcc_game_kaiche_every_10", "lianyun_senlin_leyuan", "1.0.1", 3),
-    Forest_sljyd("森林救援队(能量雨)", "2021005113684028", "zfb_sljydx", "sljyd_game_xiaochu_every_10", "lianyun_senlin_leyuan", "1.0.1", 3),
-    Forest_sgbhsd("三国冰河时代", "2021004173661702", "zfb_sgbhsd", "mysl_mc_wkmryi05", "lianyun_senlin_leyuan", "1.0.1", 1);
+    Forest_sljyd("森林救援队(能量雨)", "2021005113684028", "zfb_sljydx", "sljyd_game_xiaochu_every_10", "lianyun_senlin_leyuan", "1.0.1", 3);
+    //Forest_sgbhsd("三国冰河时代", "2021004173661702", "zfb_sgbhsd", "cclyx_sgbhsd_3c_zm10c", "lianyun_senlin_leyuan", "0.94.1", 3);
+
+    //Farm_lhs("灵画师", "2021005122634802", "lhs", "lhs", "lianyun_zhuangyuan_v2", "0.0.89", 3);
+
 
     private final String title;
     private final String appId;
@@ -56,7 +62,7 @@ public enum GameTask {
     private String login() {
         try {
             String authCode = AuthCodeHelper.getAuthCode(appId);
-            String mark = AlipayMiniMarkHelper.getAlipayMiniMark(appId, version);
+            String mark = getAlipayMiniMark(appId, version);
             String reqId = System.currentTimeMillis() + "_" + new Random().nextInt(350) + 1;
 
             JSONObject bodyJson = new JSONObject();
@@ -67,6 +73,8 @@ public enum GameTask {
             bodyJson.put("gid", gid);
             bodyJson.put("version", version);
             String body = bodyJson.toString();
+
+            //Log.other("login 请求体 -> " + body);
 
             // 建立HTTP连接
             URL url = new URL("https://gamesapi2.aslk2018.com/v2/game/login");
@@ -96,6 +104,8 @@ public enum GameTask {
             }
             reader.close();
             conn.disconnect();
+
+            //Log.other("login 响应 -> HTTP " + respCode + " " + responseText);
 
             // 解析响应JSON
             JSONObject resJson = new JSONObject(responseText.toString());
@@ -155,7 +165,7 @@ public enum GameTask {
      */
     private boolean executeSingleReport(String gameType,int current, int total) {
         try {
-            String mark = AlipayMiniMarkHelper.getAlipayMiniMark(appId, version);
+            String mark = getAlipayMiniMark(appId, version);
             String reqId = System.currentTimeMillis() + "_" + (new Random().nextInt(90) + 10); // 10-99随机数
 
             // 构建请求体
@@ -167,6 +177,8 @@ public enum GameTask {
             bodyJson.put("action_code", action);
             bodyJson.put("action_finish_channel", channel);
             String body = bodyJson.toString();
+
+            //Log.other("taskReport 请求体 -> " + body);
 
             // 建立HTTP连接
             URL url = new URL("https://gamesapi2.aslk2018.com/v2/zfb/taskReport");
@@ -198,6 +210,8 @@ public enum GameTask {
             }
             reader.close();
             conn.disconnect();
+
+            //Log.other("taskReport 响应 -> HTTP " + respCode + " " + responseText);
 
             // 解析响应
             JSONObject resJson = new JSONObject(responseText.toString());

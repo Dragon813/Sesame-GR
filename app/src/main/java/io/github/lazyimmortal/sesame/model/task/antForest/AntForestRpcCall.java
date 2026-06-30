@@ -137,7 +137,33 @@ public class AntForestRpcCall {
         String args = "[{\"entityId\":\"" + entityId + "\",\"requestType\":\"rpc\",\"sceneCode\":\"" + sceneCode + "\",\"source\":\"ANTFOREST\",\"userId\":\"" + userId + "\"}]";
         return ApplicationHook.requestString("com.alipay.antiep.sign", args);
     }
-    
+
+    public static String batchQueryAndTouchopengreen() throws JSONException {
+        JSONObject args = new JSONObject();
+        JSONObject paramMap = new JSONObject();
+        paramMap.put("ANTFOREST_VITALITY_TASK#acc_task_energy_20g", new JSONObject());
+        paramMap.put("ANTFOREST_VITALITY_TASK#acc_task_energy_30g", new JSONObject());
+        paramMap.put("ANTFOREST_VITALITY_TASK#acc_task_energy_50g", new JSONObject());
+        args.put("paramMap", paramMap);
+        args.put("requestType", "RPC");
+        args.put("sceneCode", "ANTFOREST_VITALITY_TASK");
+        args.put("source", "chInfo_ch_appcenter__chsub_9patch");
+        String params = "[" + args + "]";
+        return ApplicationHook.requestString("com.alipay.antieprights.batchQueryAndTouchopengreen", params);
+    }
+    /*
+    public static String batchQueryAndTouchopengreen() {
+        String args = "[{\"paramMap\":{},\"requestType\":\"RPC\",\"sceneCode\":\"ANTFOREST_VITALITY_TASK\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]";
+        return ApplicationHook.requestString("com.alipay.antieprights.batchQueryAndTouchopengreen", args);
+    }*/
+
+    public static String listTaskopengreen() {
+        String args = "[{\"extend\":{\"businessSource\":\"ANTFOREST-home_task_list\",\"osType\":\"android\",\"version\":\"20260109\"},\"requestType\":\"RPC\",\"sceneCode\":\"ANTFOREST_VITALITY_TASK\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]";
+        return ApplicationHook.requestString("com.alipay.antieptask.listTaskopengreen", args);
+    }
+
+
+
     public static String queryTaskList() {
         return queryTaskList(new JSONObject());
     }

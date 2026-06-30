@@ -284,10 +284,19 @@ public class TimeUtil {
     public static DateFormat getCommonDateFormat() {
         return new SimpleDateFormat("dd日HH:mm:ss");
     }
+    @SuppressLint("SimpleDateFormat")
+    public static DateFormat getCommonDateFormatS() {
+        return new SimpleDateFormat("dd日HHmmss");
+    }
 
     @SuppressLint("SimpleDateFormat")
     public static String getCommonDate(Long timestamp) {
         return getCommonDateFormat().format(timestamp);
+    }
+
+    @SuppressLint("SimpleDateFormat")
+    public static String getCommonDateS(Long timestamp) {
+        return getCommonDateFormatS().format(timestamp);
     }
 
 }

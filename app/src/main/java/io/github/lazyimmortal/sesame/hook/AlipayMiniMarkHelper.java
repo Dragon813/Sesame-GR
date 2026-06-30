@@ -30,9 +30,12 @@ public class AlipayMiniMarkHelper {
      */
     public static String getAlipayMiniMark(String str, String str2) {
         try {
-            Class<?> h5HttpUtilsClass = XposedHelpers.findClass("com.alipay.mobile.nebula.util.H5HttpUtils", classLoader);
+            //Log.other("getAlipayMiniMark 请求 -> appId:" + str + ", version:" + str2);
+            //Class<?> h5HttpUtilsClass = XposedHelpers.findClass("com.alibaba.ariver.nebula.util.H5HttpUtils", classLoader);
+            Class<?> h5HttpUtilsClass = XposedHelpers.findClass("com.alibaba.mobile.nebula.util.H5HttpUtils", classLoader);
             Object resultObj = XposedHelpers.callStaticMethod(h5HttpUtilsClass, "getAlipayMiniMark", str, str2);
             String result = (resultObj instanceof String) ? (String) resultObj : "";
+            //Log.other("getAlipayMiniMark 响应 -> mark:" + result);
             return result;
         } catch (Throwable e) {
             Log.printStackTrace("获取alipayminimark失败: " + e.getMessage(), e);

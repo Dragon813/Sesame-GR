@@ -3,7 +3,7 @@ apply plugin: 'com.android.application'
 android {
     def version = project.getProperties().get("version")
     if (version == null || "unspecified".equalsIgnoreCase(version)) {
-        def buildTime = new Date().format("ddHHmm", TimeZone.getTimeZone("Asia/Shanghai"))
+        def buildTime = new Date().format("MMddHHmm", TimeZone.getTimeZone("Asia/Shanghai"))
         //version = "Dragon-${buildTime}"
         version = "${buildTime}"
         //version = "Dragon"
