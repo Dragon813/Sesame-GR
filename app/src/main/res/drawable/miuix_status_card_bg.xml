@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LSPosed style status card - light green gradient with rounded corners -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#E8F5E9" />
+    <corners android:radius="16dp" />
+</shape>

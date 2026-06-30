@@ -86,6 +86,21 @@
             android:resizeableActivity="true"
             tools:targetApi="n" />
 
+        <activity
+            android:name="io.github.lazyimmortal.sesame.ui.AboutActivity"
+            android:resizeableActivity="true"
+            tools:targetApi="n" />
+
+        <activity
+            android:name="io.github.lazyimmortal.sesame.ui.LogDetailActivity"
+            android:resizeableActivity="true"
+            tools:targetApi="n" />
+
+        <activity
+            android:name="io.github.lazyimmortal.sesame.ui.ListViewerActivity"
+            android:resizeableActivity="true"
+            tools:targetApi="n" />
+
 
     </application>
 

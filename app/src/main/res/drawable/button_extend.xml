@@ -1,17 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-
     <item android:state_pressed="true">
         <shape>
-            <solid android:color="@color/button_pressed" />
-            <corners android:radius="10dp" />
+            <solid android:color="@color/miuix_button_main_bg_pressed" />
+            <corners android:radius="@dimen/miuix_button_corner_radius" />
         </shape>
     </item>
     <item>
         <shape>
-            <solid android:color="@color/button" />
-            <corners android:radius="10dp" />
+            <solid android:color="@color/miuix_button_main_bg" />
+            <corners android:radius="@dimen/miuix_button_corner_radius" />
         </shape>
     </item>
-
 </selector>

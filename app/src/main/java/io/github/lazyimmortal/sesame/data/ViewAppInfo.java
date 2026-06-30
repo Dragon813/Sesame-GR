@@ -71,6 +71,8 @@ public final class ViewAppInfo {
             if (result == null) {
                 return runType = RunType.DISABLE;
             }
+            // 同时提取 LSPosed API 版本
+            lspApi = result.getInt("api", lspApi);
             if (result.getBoolean("active", false)) {
                 return runType = RunType.MODEL;
             }
@@ -86,6 +88,29 @@ public final class ViewAppInfo {
             newRunType = RunType.DISABLE;
         }
         ViewAppInfo.runType = newRunType;
+    }
+
+    /**
+     * 获取 LSPosed API 版本
+     */
+    @Getter
+    private static int lspApi = 0;
+
+    public static int checkLspApi() {
+        if (lspApi > 0) return lspApi;
+        if (context == null) return 0;
+        try {
+            Uri uri = Uri.parse("content://me.weishu.exposed.CP/");
+            Bundle result = context.getContentResolver().call(uri, "active", null, null);
+            if (result != null) {
+                lspApi = result.getInt("api", 0);
+                if (lspApi == 0) lspApi = result.getInt("xposedApiVersion", 0);
+                if (lspApi == 0) lspApi = result.getInt("apiVersion", 0);
+                if (lspApi == 0) lspApi = result.getInt("sdk", 0);
+                if (lspApi == 0) lspApi = result.getInt("xposed_sdk", 0);
+            }
+        } catch (Throwable ignored) {}
+        return lspApi;
     }
 
     /**
