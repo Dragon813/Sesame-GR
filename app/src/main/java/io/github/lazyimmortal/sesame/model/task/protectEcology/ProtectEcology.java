@@ -585,7 +585,11 @@ public class ProtectEcology extends ModelTask {
     
     private static JSONArray queryCultivationList() {
         try {
-            JSONObject jo = new JSONObject(ProtectOceanRpcCall.queryCultivationList());
+            String result = ProtectOceanRpcCall.queryCultivationList();
+            if (result == null || result.isEmpty()) {
+                return null;
+            }
+            JSONObject jo = new JSONObject(result);
             if (MessageUtil.checkResultCode(TAG, jo)) {
                 return jo.getJSONArray("cultivationItemVOList");
             }

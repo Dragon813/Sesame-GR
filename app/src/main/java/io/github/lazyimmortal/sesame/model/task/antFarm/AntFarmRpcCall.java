@@ -25,12 +25,7 @@ public class AntFarmRpcCall {
 
     public static String enterFarm(String farmId, String userId) {
         String shareUniqueId = System.currentTimeMillis() + "_" + userId;
-        return ApplicationHook.requestString("com.alipay.antfarm.enterFarm",
-            "[{\"animalId\":\"\",\"bizCode\":\"\",\"farmId\":\"" + farmId + "\",\"gotoneScene\":\"\",\"gotoneTemplateId\":\"\"," +
-            "\"groupId\":\"\",\"growthExtInfo\":\"\",\"inviteUserId\":\"\",\"masterFarmId\":\"\",\"queryLastRecordNum\":true,\"recall\":false," +
-            "\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"shareId\":\"\",\"shareUniqueId\":\"" + shareUniqueId + "\"," +
-            "\"source\":\"ANTFOREST\",\"starFarmId\":\"\",\"subBizCode\":\"\",\"touchRecordId\":\"\"," +
-            "\"userId\":\"" + userId + "\",\"version\":\"" + VERSION + "\"}]");
+        return ApplicationHook.requestString("com.alipay.antfarm.enterFarm", "[{\"animalId\":\"\",\"bizCode\":\"\",\"farmId\":\"" + farmId + "\",\"gotoneScene\":\"\",\"gotoneTemplateId\":\"\"," + "\"groupId\":\"\",\"growthExtInfo\":\"\",\"inviteUserId\":\"\",\"masterFarmId\":\"\",\"queryLastRecordNum\":true,\"recall\":false," + "\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"shareId\":\"\",\"shareUniqueId\":\"" + shareUniqueId + "\"," + "\"source\":\"ANTFOREST\",\"starFarmId\":\"\",\"subBizCode\":\"\",\"touchRecordId\":\"\"," + "\"userId\":\"" + userId + "\",\"version\":\"" + VERSION + "\"}]");
     }
 
     // 一起拿小鸡饲料
@@ -139,7 +134,7 @@ public class AntFarmRpcCall {
 
     //{"bizKey":"SHH_liyunrui","requestType":"NORMAL","sceneCode":"ANTFARM","source":"H5","version":"1.8.2302070202.46"}]}
     public static String doFarmTask(String bizKey) {
-        String args1 = "[{\"bizKey\":\""+bizKey+"\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\"}]";
+        String args1 = "[{\"bizKey\":\"" + bizKey + "\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\"}]";
         return ApplicationHook.requestString("com.alipay.antfarm.doFarmTask", args1);
     }
 
@@ -710,6 +705,18 @@ public class AntFarmRpcCall {
      */
     public static String setDonationCompetitionConf(String action) {
         return ApplicationHook.requestString("com.alipay.antfarm.setDonationCompetitionConf", "[{" + "  \"action\": \"" + action + "\"," + "  \"requestType\": \"NORMAL\"," + "  \"sceneCode\": \"ANTFARM\"," + "  \"source\": \"H5\"," + "  \"version\": \"" + VERSION + "\"" + "}]");
+    }
+
+    public static String participateCompetition() {
+        return ApplicationHook.requestString("com.alipay.antfarm.participateCompetition", "[{\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"version\":\"" + VERSION + "\"}]");
+    }
+
+    public static String listCompetitionTask() {
+        return ApplicationHook.requestString("com.alipay.antfarm.listCompetitionTask", "[{\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"version\":\"" + VERSION + "\"}]");
+    }
+    //查询所有排行
+    public static String queryAllMemberRankInfo() {
+        return ApplicationHook.requestString("com.alipay.antfarm.queryAllMemberRankInfo", "[{\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"version\":\"" + VERSION + "\"}]");
     }
 
     /**

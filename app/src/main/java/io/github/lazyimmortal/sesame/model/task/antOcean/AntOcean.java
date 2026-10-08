@@ -26,6 +26,7 @@ import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
 import io.github.lazyimmortal.sesame.util.idMap.AntOceanAntiepTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.AntOceanFishBlackListMap;
+import io.github.lazyimmortal.sesame.util.idMap.PathThemeMapListMap;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
 import java.util.*;
@@ -71,12 +72,14 @@ public class AntOcean extends ModelTask {
     private BooleanModelField antfishEnable;  // 开启摸鱼功能
     private BooleanModelField antfishAutoTask;  // 自动完成任务获得次数
 
+    private BooleanModelField exchangeProject;
+
 
     @Override
     public ModelFields getFields() {
         ModelFields modelFields = new ModelFields();
         modelFields.addField(queryTaskList = new BooleanModelField("queryTaskList", "海洋任务", false));
-        modelFields.addField(AutoAntOceanAntiepTaskList = new BooleanModelField("AutoAntOceanAntiepTaskList", "海洋任务 | 自动黑白名单", true));
+        modelFields.addField(AutoAntOceanAntiepTaskList = new BooleanModelField("AutoAntOceanAntiepTaskList", "海洋任务 | 推荐黑白名单", true));
         modelFields.addField(AntOceanAntiepTaskList = new SelectModelField("AntOceanAntiepTaskList", "海洋任务 | 黑名单列表", new LinkedHashSet<>(), AlipayAntOceanAntiepTaskList::getList));
         modelFields.addField(cleanOceanType = new ChoiceModelField("cleanOceanType", "清理海域 | 动作", CleanOceanType.NONE, CleanOceanType.nickNames));
         modelFields.addField(cleanOceanList = new SelectModelField("cleanOceanList", "清理海域 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
@@ -85,8 +88,9 @@ public class AntOcean extends ModelTask {
         modelFields.addField(replica = new BooleanModelField("replica", "潘多拉海域", false));
         modelFields.addField(antfishEnable = new BooleanModelField("antfishEnable", "海洋摸鱼 | 开启摸鱼", false));
         modelFields.addField(antfishAutoTask = new BooleanModelField("antfishAutoTask", "海洋摸鱼 | 摸鱼任务", false));
-        modelFields.addField(AutoAntOceanFishBlackList = new BooleanModelField("AutoAntOceanFishBlackList", "海洋摸鱼 | 自动黑名单", true));
+        modelFields.addField(AutoAntOceanFishBlackList = new BooleanModelField("AutoAntOceanFishBlackList", "海洋摸鱼 | 推荐黑白名单", true));
         modelFields.addField(AntOceanFishBlackList = new SelectModelField("AntOceanFishBlackList", "摸鱼任务 | 黑名单列表", new LinkedHashSet<>(), AlipayAntOceanFishBlackList::getList));
+        modelFields.addField(exchangeProject = new BooleanModelField("exchangeProject", "海洋摸鱼 | 兑换科学证书", false));
         return modelFields;
     }
 
@@ -108,7 +112,7 @@ public class AntOcean extends ModelTask {
 
             //初始任务列表
             if (!Status.hasFlagToday("BlackList::initAntOceanAntiep")) {
-                initAntOceanAntiepTaskListMap(AutoAntOceanAntiepTaskList.getValue(), queryTaskList.getValue(),AutoAntOceanFishBlackList.getValue(),antfishAutoTask.getValue());
+                initAntOceanAntiepTaskListMap(AutoAntOceanAntiepTaskList.getValue(), queryTaskList.getValue(), AutoAntOceanFishBlackList.getValue(), antfishAutoTask.getValue());
                 Status.flagToday("BlackList::initAntOceanAntiep");
             }
 
@@ -166,7 +170,7 @@ public class AntOcean extends ModelTask {
         return false;
     }
 
-    public static void initAntOceanAntiepTaskListMap(boolean AutoAntOceanAntiepTaskList, boolean queryTaskList,boolean AutoAntOceanFishBlackList,boolean antfishAutoTask) {
+    public static void initAntOceanAntiepTaskListMap(boolean AutoAntOceanAntiepTaskList, boolean queryTaskList, boolean AutoAntOceanFishBlackList, boolean antfishAutoTask) {
         try {
             //初始化AntOceanAntiepTaskListMap
             AntOceanAntiepTaskListMap.load();
@@ -249,22 +253,22 @@ public class AntOcean extends ModelTask {
             //初始化AntOceanFishBlackListMap
             if (antfishAutoTask) {
                 JSONObject jo = new JSONObject(AntOceanRpcCall.antfishListTask());
-                    if (!MessageUtil.checkResultCode(TAG, jo)) {
-                        return;
-                    }
-                    JSONArray taskInfoList = jo.optJSONArray("taskInfoList");
-                    if (taskInfoList == null || taskInfoList.length() == 0) {
-                        return;
-                    }
-                    for (int i = 0; i < taskInfoList.length(); i++) {
-                        JSONObject taskInfo = taskInfoList.optJSONObject(i);
-                        if (taskInfo == null) continue;
-                        JSONObject taskBaseInfo = taskInfo.optJSONObject("taskBaseInfo");
-                        if (taskBaseInfo == null) continue;
-                        JSONObject bizInfo = new JSONObject(taskBaseInfo.optString("bizInfo", "{}"));
-                        String taskTitle = bizInfo.getString("taskTitle");
-                        AntOceanFishBlackListMap.add(taskTitle, taskTitle);
-                    }
+                if (!MessageUtil.checkResultCode(TAG, jo)) {
+                    return;
+                }
+                JSONArray taskInfoList = jo.optJSONArray("taskInfoList");
+                if (taskInfoList == null || taskInfoList.length() == 0) {
+                    return;
+                }
+                for (int i = 0; i < taskInfoList.length(); i++) {
+                    JSONObject taskInfo = taskInfoList.optJSONObject(i);
+                    if (taskInfo == null) continue;
+                    JSONObject taskBaseInfo = taskInfo.optJSONObject("taskBaseInfo");
+                    if (taskBaseInfo == null) continue;
+                    JSONObject bizInfo = new JSONObject(taskBaseInfo.optString("bizInfo", "{}"));
+                    String taskTitle = bizInfo.getString("taskTitle");
+                    AntOceanFishBlackListMap.add(taskTitle, taskTitle);
+                }
 
                 AntOceanFishBlackListMap.save();
                 Log.record("同步任务🉑海洋去摸鱼任务列表");
@@ -1163,6 +1167,11 @@ public class AntOcean extends ModelTask {
             // 4. 执行摸鱼
             touchfish();
 
+            //5. 兑换证书
+            if (exchangeProject.getValue()) {
+                exchangeProject();
+            }
+
 
         } catch (Throwable t) {
             Log.i(TAG, "antfishRun err:");
@@ -1181,7 +1190,7 @@ public class AntOcean extends ModelTask {
             if (MessageUtil.checkResultCode(TAG, jo)) {
                 String fishStatus = jo.optString("fishStatus", "DEFAULT_AI_FISH");
                 int level = jo.optInt("level", 0);
-                if("DEFAULT_AI_FISH".equals(fishStatus)){
+                if ("DEFAULT_AI_FISH".equals(fishStatus)) {
                     drawFish();
                 }
                 //Log.record("海洋摸鱼🐟状态[" + fishStatus + "]等级" + level);
@@ -1209,7 +1218,7 @@ public class AntOcean extends ModelTask {
                 String projectName = "";
                 String region = "";
                 String fishLevelName = "";
-                String fishInteractStatus= "";
+                String fishInteractStatus = "";
                 String nickName = "";
                 int touchEnergy = 0;
                 int touchTotal = 0;
@@ -1250,21 +1259,21 @@ public class AntOcean extends ModelTask {
                         touchTotal = interactVO.optInt("touchTotal", 0);
                         fishInteractStatus = interactVO.optString("fishInteractStatus", "");
                         remainTouchChance = interactVO.optInt("remainTouchChance", 0);
-                        
+
                         // 解析鱼主人信息
                         JSONObject owner = interactVO.optJSONObject("owner");
                         if (owner != null) {
                             String ownerNickName = owner.optString("nickName", "");
                             String ownerUserId = owner.optString("userId", "");
                             if (!ownerNickName.isEmpty()) {
-                                Log.record("海洋摸鱼🐟当前鱼状态["+ fishInteractStatus +"]主人[" + ownerNickName + "](" + ownerUserId + ")");
+                                Log.record("海洋摸鱼🐟当前鱼状态[" + fishInteractStatus + "]主人[" + ownerNickName + "](" + ownerUserId + ")");
                             }
                         }
                     }
                 }
-                Log.record("海洋摸鱼🐟当前赛季[" + seasonTitle + "](" + seasonId + ")项目[" + projectName + "](" + region + ")用户[" + nickName + "]鱼状态["+ fishInteractStatus +"]等级[" + fishLevelName + "]可摸鱼"+remainTouchChance+"累计摸" + touchTotal + "累计获得能量" + touchEnergy + "g(总"+energy+"g)");
+                Log.record("海洋摸鱼🐟当前赛季[" + seasonTitle + "](" + seasonId + ")项目[" + projectName + "](" + region + ")用户[" + nickName + "]鱼状态[" + fishInteractStatus + "]等级[" + fishLevelName + "]可摸鱼" + remainTouchChance + "累计摸" + touchTotal + "累计获得能量" + touchEnergy + "g(总" + energy + "g)");
                 //鱼被困了，解救鱼
-                if("CAPTURED".equals(fishInteractStatus)){
+                if ("CAPTURED".equals(fishInteractStatus)) {
                     rescueFish();
                 }
             }
@@ -1277,23 +1286,15 @@ public class AntOcean extends ModelTask {
     private boolean drawFish() {
         try {
             // 鱼图片URL列表
-            String[] fishImgUrls = {
-                "https://mdn.alipayobjects.com/afts/img/JNVwTJAPzqMAAAAAQOAAAAgA9KBtAQJr/original?bz=ai_fish",
-                "https://mdn.alipayobjects.com/afts/img/ZK3FTK8eQ-IAAAAAQIAAAAgA9KBtAQJr/original?bz=ai_fish",
-                "https://mdn.alipayobjects.com/afts/img/Se_RQ7215tsAAAAAQQAAAAgA9KBtAQJr/original?bz=ai_fish",
-                "https://mdn.alipayobjects.com/afts/img/n8yQSYH-lvgAAAAAQGAAAAgA9KBtAQJr/original?bz=ai_fish",
-                "https://mdn.alipayobjects.com/afts/img/_rKKT6IJRWcAAAAAQKAAAAgA9KBtAQJr/original?bz=ai_fish",
-                "https://mdn.alipayobjects.com/afts/img/_zy6QaSffRMAAAAAQGAAAAgA9KBtAQJr/original?bz=ai_fish",
-                "https://mdn.alipayobjects.com/afts/img/3tFWT43StnAAAAAAQHAAAAgA9KBtAQJr/original?bz=ai_fish"
-            };
-            
+            String[] fishImgUrls = {"https://mdn.alipayobjects.com/afts/img/JNVwTJAPzqMAAAAAQOAAAAgA9KBtAQJr/original?bz=ai_fish", "https://mdn.alipayobjects.com/afts/img/ZK3FTK8eQ-IAAAAAQIAAAAgA9KBtAQJr/original?bz=ai_fish", "https://mdn.alipayobjects.com/afts/img/Se_RQ7215tsAAAAAQQAAAAgA9KBtAQJr/original?bz=ai_fish", "https://mdn.alipayobjects.com/afts/img/n8yQSYH-lvgAAAAAQGAAAAgA9KBtAQJr/original?bz=ai_fish", "https://mdn.alipayobjects.com/afts/img/_rKKT6IJRWcAAAAAQKAAAAgA9KBtAQJr/original?bz=ai_fish", "https://mdn.alipayobjects.com/afts/img/_zy6QaSffRMAAAAAQGAAAAgA9KBtAQJr/original?bz=ai_fish", "https://mdn.alipayobjects.com/afts/img/3tFWT43StnAAAAAAQHAAAAgA9KBtAQJr/original?bz=ai_fish"};
+
             // 随机选择一张图片
             int randomIndex = (int) (Math.random() * fishImgUrls.length);
             String imgUrl = fishImgUrls[randomIndex];
-            
+
             // 从URL中提取imgId（img/和/original之间的部分）
             String imgId = imgUrl.substring(imgUrl.indexOf("img/") + 4, imgUrl.indexOf("/original"));
-            
+
             String result = AntOceanRpcCall.drawFish(imgId, imgUrl);
             JSONObject jo = new JSONObject(result);
 
@@ -1323,7 +1324,7 @@ public class AntOcean extends ModelTask {
                         String fishInteractStatus = interactVO.optString("fishInteractStatus", "");
                         int remainChance = interactVO.optInt("remainTouchChance", 0);
                         int touchTotal = interactVO.optInt("touchTotal", 0);
-                        
+
                         Log.forest("摸鱼解救🐟解救成功[" + fishInteractStatus + "]可摸鱼次数" + remainChance + "累计摸鱼" + touchTotal);
                         Toast.show("摸鱼解救🐟解救成功[" + fishInteractStatus + "]");
                     } else {
@@ -1561,6 +1562,45 @@ public class AntOcean extends ModelTask {
 
         } catch (Throwable t) {
             Log.i(TAG, "antfishDrawFish err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    private void exchangeProject() {
+        try {
+            String result = AntOceanRpcCall.queryProjectDetail();
+            JSONObject jo = new JSONObject(result);
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                Log.record("海洋摸鱼查询证书状态失败");
+            }
+            JSONObject project = jo.optJSONObject("project");
+            if (project != null) {
+                JSONArray phaseList = project.optJSONArray("phaseList");
+                if (phaseList != null) {
+                    for (int i = 0; i < phaseList.length(); i++) {
+                        JSONObject phase = phaseList.optJSONObject(i);
+                        String exchangeStatus = phase.optString("exchangeStatus");
+                        if (exchangeStatus.equals("levelNotEnough")) {
+                            continue;
+                        }
+                        if (exchangeStatus.equals("canExchange")) {
+                            String exchangeResult = AntOceanRpcCall.exchangeProject();
+                            JSONObject exchangeJo = new JSONObject(exchangeResult);
+                            if (!MessageUtil.checkResultCode(TAG, exchangeJo)) {
+                                Log.record("海洋摸鱼证书兑换失败");
+                            }
+                            JSONObject properties = exchangeJo.optJSONObject("properties");
+                            String protectContent = properties.optString("protectContent");
+                            String releasePoint = properties.optString("releasePoint");
+                            String certificateName = properties.optString("certificateName");
+                            String region = properties.optString("region");
+                            Log.forest("海洋摸鱼🐟兑换证书#" + region + releasePoint + protectContent + "(" + certificateName + ")");
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "exchangeProject err:");
             Log.printStackTrace(TAG, t);
         }
     }

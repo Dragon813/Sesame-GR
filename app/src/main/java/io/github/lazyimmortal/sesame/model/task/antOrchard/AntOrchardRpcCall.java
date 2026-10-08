@@ -86,6 +86,37 @@ public class AntOrchardRpcCall {
         return ApplicationHook.requestString("com.alipay.antfarm.triggerTbTask", "[{\"requestType\":\"NORMAL\",\"sceneCode\":\"ORCHARD\",\"source\":\"ch_appcenter__chsub_9patch\",\"taskId\":\"" + taskId + "\",\"taskPlantType\":\"" + taskPlantType + "\",\"version\":\"" + VERSION + "\"}]");
     }
 
+    public static String enterDrawActivityantorchard() {
+        return ApplicationHook.requestString("com.alipay.antiepdrawprod.enterDrawActivityantorchard", "[{\"activityId\":\"\",\"context\":{\"appMode\":\"normal\"},\"requestType\":\"RPC\",\"sceneCode\":\"ANTORCHARD_DRAW_TIMES\",\"source\":\"antorchard\"}]");
+    }
+
+    public static String orchardDrawListTask() {
+        return ApplicationHook.requestString("com.alipay.antieptask.listTaskantorchard", "[{\"extend\":{\"appMode\":\"normal\"},\"requestType\":\"RPC\",\"sceneCode\":\"ANTORCHARD_DRAW_TIMES_TASK\",\"source\":\"antorchard\"}]");
+    }
+
+    public static String receiveTaskAwardantorchard(String taskType, String taskSceneCode) {
+        return ApplicationHook.requestString("com.alipay.antieptask.receiveTaskAwardantorchard", "[{\"ignoreLimit\":true,\"requestType\":\"RPC\",\"sceneCode\":\"" + taskSceneCode + "\",\"source\":\"antorchard\",\"taskType\":\"" + taskType + "\"}]");
+    }
+
+    public static String finishTaskantorchard(String taskType, String taskSceneCode) {
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        String randomSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
+        String outBizNo = taskType + "_" + timestamp + "_" + randomSuffix;
+        return ApplicationHook.requestString("com.alipay.antieptask.finishTaskantorchard", "[{\"outBizNo\":\"" + outBizNo + "\",\"sceneCode\":\"" + taskSceneCode + "\",\"source\":\"antorchard\",\"taskType\":\"" + taskType + "\"}]");
+    }
+
+    public static String drawSyncantorchard(String activityId) {
+        return ApplicationHook.requestString("com.alipay.antiepdrawprod.drawSyncantorchard", "[{\"activityId\":\"" + activityId + "\",\"context\":{\"appMode\":\"normal\"},\"requestType\":\"RPC\",\"sceneCode\":\"ANTORCHARD_DRAW_TIMES\",\"source\":\"backend\"}]");
+    }
+
+    public static String drawantorchard(String activityId, String userId) {
+        return ApplicationHook.requestString("com.alipay.antiepdrawprod.drawantorchard", "[{\"activityId\":\"" + activityId + "\",\"requestType\":\"RPC\",\"sceneCode\":\"ANTORCHARD_DRAW_TIMES\",\"source\":\"antorchard\",\"userId\":\"" + userId + "\"}]");
+    }
+
+    public static String batchDrawantorchard(String activityId, int blance, String userId) {
+        return ApplicationHook.requestString("com.alipay.antiepdrawprod.batchDrawantorchard", "[{\"activityId\":\"" + activityId + "\",\"requestType\":\"RPC\",\"sceneCode\":\"ANTORCHARD_DRAW_TIMES\",\"source\":\"antorchard\",\"times\":" + blance + ",\"userId\":\"" + userId + "\"}]");
+    }
+
     public static String orchardSeedList() {
         return ApplicationHook.requestString("com.alipay.antfarm.orchardSeedList", "[{\"from\":\"SEED_LIST\",\"page\":0,\"pvuuid\":\"" + System.currentTimeMillis() + "\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ORCHARD\",\"source\":\"ch_appcollect__chsub_my-recentlyUsed\",\"version\":\"" + VERSION + "\"}]");
     }

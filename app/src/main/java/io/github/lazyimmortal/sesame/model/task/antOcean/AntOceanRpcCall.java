@@ -273,4 +273,18 @@ public class AntOceanRpcCall {
         return ApplicationHook.requestString("alipay.antaifish.h5.touchfish", 
             "[{\"source\":\"ANT_OCEAN\",\"uniqueId\":\"" + getAntfishUniqueId() + "\"}]");
     }
+
+    /**
+     * 兑换证书
+     */
+    public static String queryProjectDetail() {
+        return ApplicationHook.requestString("alipay.antaifish.h5.queryProjectDetail",
+                "[{\"source\":\"ANT_OCEAN\",\"uniqueId\":\"" + getAntfishUniqueId() + "\"}]");
+    }
+
+    public static String exchangeProject() {
+        return ApplicationHook.requestString("alipay.antaifish.h5.exchangeProject",
+                "[{\"source\":\"ANT_OCEAN\",\"uniqueId\":\"" + getAntfishUniqueId() + "\"}]");
+    }
+
 }

@@ -104,4 +104,16 @@ public class AntDodoRpcCall {
         return ApplicationHook.requestString("alipay.antdodo.rpc.h5.collect",
                 "[{\"targetUserId\":" + targetUserId + "}]");
     }
+
+    public static String queryMyCollection(String extendAnimalId) {
+        return ApplicationHook.requestString("alipay.antdodo.rpc.h5.queryMyCollection",
+                "[{\"extendAnimalId\":\""+extendAnimalId+"\",\"pageSize\":18,\"pageStart\":\"0\"}]");
+    }
+
+    public static String exchange(String animalId,String targetAnimalId,String targetCardInstanceId,String targetUserId) {
+        return ApplicationHook.requestString("alipay.antdodo.rpc.h5.exchange",
+                "[{\"animalId\":\""+animalId+"\",\"targetAnimalId\":\""+targetAnimalId+"\",\"targetCardInstanceId\":\""+targetCardInstanceId+"\",\"targetUserId\":\""+targetUserId+"\"}]");
+    }
+
+
 }

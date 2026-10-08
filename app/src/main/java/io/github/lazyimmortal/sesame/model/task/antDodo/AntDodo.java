@@ -60,6 +60,8 @@ public class AntDodo extends ModelTask {
     private SelectModelField bookMedalOptions;
     private ChoiceModelField collectToFriendType;
     private SelectModelField collectToFriendList;
+
+    private BooleanModelField useMaxExchangeFriendCard;
     private BooleanModelField giftToFriend;
     private ChoiceModelField giftToFriendBookStatusType;
     private ChoiceModelField giftToFriendBookCollectedStatusType;
@@ -85,6 +87,7 @@ public class AntDodo extends ModelTask {
         modelFields.addField(bookMedalOptions = new SelectModelField("bookMedalOptions", "图鉴勋章 | 选项", new LinkedHashSet<>(), CustomOption::getAntDodoBookMedalOptions));
         modelFields.addField(collectToFriendType = new ChoiceModelField("collectToFriendType", "帮抽卡片 | 动作", CollectToFriendType.NONE, CollectToFriendType.nickNames));
         modelFields.addField(collectToFriendList = new SelectModelField("collectToFriendList", "帮抽卡片 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
+        modelFields.addField(useMaxExchangeFriendCard = new BooleanModelField("useMaxExchangeFriendCard", "帮抽交换 | 用历史最多卡片", false));
         modelFields.addField(giftToFriend = new BooleanModelField("giftToFriend", "赠送卡片 | 开启", false));
         modelFields.addField(giftToFriendBookStatusType = new ChoiceModelField("giftToFriendBookStatusType", "赠送卡片 | " + "图鉴状态类型", BookStatusType.ALL, BookStatusType.nickNames));
         modelFields.addField(giftToFriendBookCollectedStatusType = new ChoiceModelField("giftToFriendBookCollectedStatusType", "赠送卡片 | 图鉴收集状态", BookCollectedStatusType.ALL, BookCollectedStatusType.nickNames));
@@ -601,11 +604,35 @@ public class AntDodo extends ModelTask {
                     if (MessageUtil.checkResultCode(TAG, jo)) {
                         String userName = UserIdMap.getMaskName(useId);
                         JSONObject animal = jo.getJSONObject("data").optJSONObject("animal");
-                        Log.forest("帮抽卡片🦕[" + userName + "]" + getAnimalInfo(animal));
+                        JSONObject collectDetail = jo.getJSONObject("data").optJSONObject("collectDetail");
+                        if (useMaxExchangeFriendCard.getValue()) {
+                            String animalId = animal.optString("animalId");
+                            String nameHave = animal.optString("name");
+                            String cardInstanceId = collectDetail.optString("cardInstanceId");
+                            JSONObject joQueryMyCollection = new JSONObject(AntDodoRpcCall.queryMyCollection(animalId));
+                            if (MessageUtil.checkResultCode(TAG, joQueryMyCollection)) {
+                                JSONArray animalCollectionInfoList = joQueryMyCollection.getJSONObject("data").optJSONArray("animalCollectionInfoList");
+                                JSONObject animalCollectionInfo = animalCollectionInfoList.getJSONObject(0);
+                                String animalIdChoose = animalCollectionInfo.optJSONObject("animal").optString("animalId");
+                                String ecosystemChoose = animalCollectionInfo.optJSONObject("animal").optString("ecosystem");
+                                String nameChoose = animalCollectionInfo.optJSONObject("animal").optString("name");
+                                String fantasticLevelChoose = animalCollectionInfo.optJSONObject("animal").optString("fantasticLevel");
+                                int animalIdChoosCcount = animalCollectionInfo.optJSONObject("collectDetail").optInt("count");
+                                if (animalIdChoosCcount > 0) {
+                                    JSONObject joExchange = new JSONObject(AntDodoRpcCall.exchange(animalIdChoose, animalId, cardInstanceId, useId));
+                                    if (MessageUtil.checkResultCode(TAG, joExchange)) {
+                                        JSONObject collectDetailHave = joExchange.getJSONObject("data").optJSONObject("collectDetail");
+                                        int countHave = collectDetailHave.optInt("count");
+                                        Log.forest("帮抽卡换🦕用[" + ecosystemChoose + "]" + nameChoose + "(" + animalIdChoosCcount + ")[" + FantasticLevel.valueOf(fantasticLevelChoose).nickName() + "]与[" + userName + "]交换#获得[" + nameHave + "](" + countHave + ")");
+                                    }
+                                }
+                            }
+                        } else {
+                            Log.forest("帮抽卡片🦕[" + userName + "]" + getAnimalInfo(animal));
+                        }
                         count--;
                     }
                 }
-
             }
         } catch (Throwable t) {
             Log.i(TAG, "collectHelpFriend err:");

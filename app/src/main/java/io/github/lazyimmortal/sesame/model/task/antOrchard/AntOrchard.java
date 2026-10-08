@@ -1,7 +1,10 @@
 package io.github.lazyimmortal.sesame.model.task.antOrchard;
 
 import io.github.lazyimmortal.sesame.data.ConfigV2;
+import io.github.lazyimmortal.sesame.entity.AlipayAntForestVitalityTaskList;
+import io.github.lazyimmortal.sesame.entity.AlipayAntOrchardDrawTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntOrchardTaskList;
+import io.github.lazyimmortal.sesame.entity.AlipayGoldenBeansTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayMemberCreditSesameTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayPlantScene;
 import io.github.lazyimmortal.sesame.entity.AlipayUser;
@@ -16,7 +19,9 @@ import io.github.lazyimmortal.sesame.data.modelFieldExt.ChoiceModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.IntegerModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectAndCountModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectModelField;
+import io.github.lazyimmortal.sesame.model.task.antFarm.AntFarm;
 import io.github.lazyimmortal.sesame.model.task.antFarm.AntFarmRpcCall;
+import io.github.lazyimmortal.sesame.model.task.antForest.ForestChouChouLe;
 import io.github.lazyimmortal.sesame.model.task.antGame.GameTask;
 import io.github.lazyimmortal.sesame.model.task.antMember.AntMemberRpcCall;
 import io.github.lazyimmortal.sesame.util.Log;
@@ -35,7 +40,9 @@ import java.util.Set;
 
 import io.github.lazyimmortal.sesame.util.*;
 import io.github.lazyimmortal.sesame.util.idMap.AntFarmDoFarmTaskListMap;
+import io.github.lazyimmortal.sesame.util.idMap.AntOrchardDrawTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.AntOrchardTaskListMap;
+import io.github.lazyimmortal.sesame.util.idMap.GoldenBeansTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.MemberCreditSesameTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.PlantSceneIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
@@ -78,6 +85,9 @@ public class AntOrchard extends ModelTask {
     private BooleanModelField orchardListTask;
     private BooleanModelField AutoAntOrchardTaskList;
     private SelectModelField AntOrchardTaskList;
+    private BooleanModelField orchardDrawListTask;
+    private BooleanModelField AutoAntOrchardDrawTaskList;
+    private SelectModelField AntOrchardDrawTaskList;
     private BooleanModelField orchardSpreadManure;
     private BooleanModelField useBatchSpread;
     private SelectAndCountModelField orchardSpreadManureSceneList;
@@ -91,6 +101,14 @@ public class AntOrchard extends ModelTask {
     private SelectModelField doNotWeedingList;
     private BooleanModelField assistFriend;
     private SelectModelField assistFriendList;
+    // 金豆夺宝（芭芭农场下的新玩法）
+    private BooleanModelField goldenBeans;
+    private BooleanModelField goldenBeansTask;
+    private BooleanModelField AutoGoldenBeansTaskList;
+    private SelectModelField GoldenBeansTaskList;
+    private BooleanModelField GoldenBeansGameCenter;
+    private BooleanModelField goldenBeanExchangeManure;
+    private IntegerModelField goldenBeanReserveManure;
     private static int fertilizerProgress = 0;
     private static final ArrayList<String> enableSceneList = new ArrayList<>();
 
@@ -109,12 +127,15 @@ public class AntOrchard extends ModelTask {
         ModelFields modelFields = new ModelFields();
         modelFields.addField(executeInterval = new IntegerModelField("executeInterval", "执行间隔(毫秒)", 500, 500, null));
         modelFields.addField(orchardListTask = new BooleanModelField("orchardListTask", "农场任务", false));
-        modelFields.addField(AutoAntOrchardTaskList = new BooleanModelField("AutoAntOrchardTaskList", "农场任务 | 自动黑白名单", true));
+        modelFields.addField(AutoAntOrchardTaskList = new BooleanModelField("AutoAntOrchardTaskList", "农场任务 | 推荐黑白名单", true));
         modelFields.addField(AntOrchardTaskList = new SelectModelField("AntOrchardTaskList", "农场任务 | 黑名单列表", new LinkedHashSet<>(), AlipayAntOrchardTaskList::getList));
         modelFields.addField(orchardSpreadManure = new BooleanModelField("orchardSpreadManure", "农场施肥 | 开启", false));
         modelFields.addField(useBatchSpread = new BooleanModelField("useBatchSpread", "一键施肥5次", false));
         modelFields.addField(orchardSpreadManureSceneList = new SelectAndCountModelField("orchardSpreadManureSceneList", "农场施肥 | 场景列表", new LinkedHashMap<>(), AlipayPlantScene::getList, "请填写每日施肥次数"));
         modelFields.addField(drawGameCenterAward = new BooleanModelField("drawGameCenterAward", "农场乐园 | 游戏宝箱", true));
+        modelFields.addField(orchardDrawListTask = new BooleanModelField("orchardDrawListTask", "农场抽抽乐任务", false));
+        modelFields.addField(AutoAntOrchardDrawTaskList = new BooleanModelField("AutoAntOrchardDrawTaskList", "农场抽抽乐任务 | 推荐黑白名单", true));
+        modelFields.addField(AntOrchardDrawTaskList = new SelectModelField("AntOrchardDrawTaskList", "农场抽抽乐任务 | 黑名单列表", new LinkedHashSet<>(), AlipayAntOrchardDrawTaskList::getList));
         //modelFields.addField(driveAnimalType = new ChoiceModelField("driveAnimalType", "驱赶小鸡 | 动作", DriveAnimalType.NONE, DriveAnimalType.nickNames));
         //modelFields.addField(driveAnimalList = new SelectModelField("driveAnimalList", "驱赶小鸡 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
         //modelFields.addField(batchHireAnimal = new BooleanModelField("batchHireAnimal", "捉鸡除草 | 开启", false));
@@ -122,6 +143,13 @@ public class AntOrchard extends ModelTask {
         //modelFields.addField(doNotWeedingList = new SelectModelField("doNotWeedingList", "捉鸡除草 | 不除草列表", new LinkedHashSet<>(), AlipayUser::getList));
         modelFields.addField(assistFriend = new BooleanModelField("assistFriend", "分享助力 | 开启", false));
         modelFields.addField(assistFriendList = new SelectModelField("assistFriendList", "分享助力 | 好友列表", new LinkedHashSet<>(), AlipayUser::getList));
+        modelFields.addField(goldenBeans = new BooleanModelField("goldenBeans", "金豆夺宝 | 开启", false));
+        modelFields.addField(goldenBeansTask = new BooleanModelField("goldenBeansTask", "金豆完成任务领奖 | 开启", false));
+        modelFields.addField(AutoGoldenBeansTaskList = new BooleanModelField("AutoGoldenBeansTaskList", "金豆任务 | 推荐黑白名单", true));
+        modelFields.addField(GoldenBeansTaskList = new SelectModelField("GoldenBeansTaskList", "金豆任务 | 黑名单列表", new LinkedHashSet<>(), AlipayGoldenBeansTaskList::getList));
+        modelFields.addField(GoldenBeansGameCenter = new BooleanModelField("GoldenBeansGameCenter", "农场金豆乐园 | 游戏宝箱", true));
+        modelFields.addField(goldenBeanExchangeManure = new BooleanModelField("goldenBeanExchangeManure", "金豆夺宝 | 肥料换金豆", false));
+        modelFields.addField(goldenBeanReserveManure = new IntegerModelField("goldenBeanReserveManure", "金豆夺宝 | 保留肥料数量", 0, 0, null));
         return modelFields;
     }
 
@@ -147,7 +175,7 @@ public class AntOrchard extends ModelTask {
 
             //初始任务列表
             if (!Status.hasFlagToday("BlackList::initAntOrchard")) {
-                initAntOrchardTaskListMap(AutoAntOrchardTaskList.getValue(), orchardListTask.getValue());
+                initAntOrchardTaskListMap(orchardListTask.getValue(), orchardDrawListTask.getValue(), goldenBeansTask.getValue(), AutoAntOrchardTaskList.getValue(), AutoAntOrchardDrawTaskList.getValue(), AutoGoldenBeansTaskList.getValue());
                 Status.flagToday("BlackList::initAntOrchard");
             }
             // 额外信息获取（每日肥料包）
@@ -167,6 +195,17 @@ public class AntOrchard extends ModelTask {
             // 好友助力
             if (assistFriend.getValue()) {
                 orchardAssistFriend();
+            }
+
+            // 金豆夺宝：签到 完成任务 金豆乐园 肥料换金豆
+            if (goldenBeans.getValue()) {
+                GoldenBean GoldenBean = new GoldenBean();
+                GoldenBean.run(goldenBeansTask.getValue(), GoldenBeansTaskList.getValue(), GoldenBeansGameCenter.getValue(), goldenBeanExchangeManure.getValue(), goldenBeanReserveManure.getValue());
+            }
+
+            // 执行农场抽抽乐任务
+            if (orchardDrawListTask.getValue()) {
+                orchardDrawListTask();
             }
 
         } catch (Throwable t) {
@@ -281,7 +320,7 @@ public class AntOrchard extends ModelTask {
         }
     }
 
-    public static void initAntOrchardTaskListMap(boolean AutoAntOrchardTaskList, boolean orchardListTask) {
+    public static void initAntOrchardTaskListMap(boolean orchardListTask, boolean orchardDrawListTask, boolean goldenBeansTask, boolean AutoAntOrchardTaskList, boolean AutoAntOrchardDrawTaskList, boolean AutoGoldenBeansTaskList) {
         try {
             //初始化AntOrchardTaskListMap
             AntOrchardTaskListMap.load();
@@ -321,7 +360,7 @@ public class AntOrchard extends ModelTask {
                 }
                 //保存任务到配置文件
                 AntOrchardTaskListMap.save();
-                Log.record("同步任务🉑农芭芭场肥料任务列表");
+                Log.record("同步任务🉑芭芭农场肥料任务列表");
 
                 //自动按模块初始化设定调整黑名单和白名单
                 if (AutoAntOrchardTaskList) {
@@ -354,6 +393,165 @@ public class AntOrchard extends ModelTask {
                         Log.record("黑白名单🈲芭芭农场肥料任务自动设置: " + AntOrchardTaskList.getValue());
                     } else {
                         Log.record("农场肥料任务黑白名单设置失败");
+                    }
+                }
+            }
+
+            //初始化AntOrchardDrawTaskListMap
+            AntOrchardDrawTaskListMap.load();
+            // 1. 定义黑名单（需要添加的任务）和白名单（需要移除的任务）
+            blackList = new HashSet<>();
+            blackList.add("去完成2个居民订单");
+            blackList.add("去完成20个居民订单");
+            blackList.add("去完成50个居民订单");
+            blackList.add("花园世界任意充值一笔");
+            // 可继续添加更多黑名单任务
+
+            whiteList = new HashSet<>();// 从黑名单中移除该任务
+            //whiteList.add("逛一芝麻树");
+            // 可继续添加更多白名单任务
+            for (String task : blackList) {
+                AntOrchardDrawTaskListMap.add(task, task);
+            }
+
+            if (orchardDrawListTask) {
+                String result = AntOrchardRpcCall.orchardDrawListTask();
+                JSONObject jo = new JSONObject(result);
+                if (MessageUtil.checkResultCode(TAG, jo)) {
+                    JSONArray taskInfoList = jo.getJSONArray("taskInfoList");
+                    for (int i = 0; i < taskInfoList.length(); i++) {
+                        JSONObject taskInfo = taskInfoList.getJSONObject(i);
+                        JSONObject taskBaseInfo = taskInfo.getJSONObject("taskBaseInfo");
+                        JSONObject bizInfo = new JSONObject(taskBaseInfo.getString("bizInfo"));
+                        String taskName = bizInfo.getString("title");
+                        AntOrchardDrawTaskListMap.add(taskName, taskName);
+                    }
+                }
+                //保存任务到配置文件
+                AntOrchardDrawTaskListMap.save();
+                Log.record("同步任务🉑芭芭农场抽抽乐任务列表");
+
+                //自动按模块初始化设定调整黑名单和白名单
+                if (AutoAntOrchardDrawTaskList) {
+                    // 初始化黑白名单（使用集合统一操作）
+                    ConfigV2 config = ConfigV2.INSTANCE;
+                    ModelFields AntOrchard = config.getModelFieldsMap().get("AntOrchard");
+                    SelectModelField AntOrchardDrawTaskList = (SelectModelField) AntOrchard.get("AntOrchardDrawTaskList");
+                    if (AntOrchardDrawTaskList == null) {
+                        return;
+                    }
+
+                    // 2. 批量添加黑名单任务（确保存在）
+                    Set<String> currentValues = AntOrchardDrawTaskList.getValue();//该处直接返回列表地址
+                    if (currentValues != null) {
+                        for (String task : blackList) {
+                            if (!currentValues.contains(task)) {
+                                AntOrchardDrawTaskList.add(task, 0);
+                            }
+                        }
+
+                        // 3. 批量移除白名单任务（从现有列表中删除）
+                        for (String task : whiteList) {
+                            if (currentValues.contains(task)) {
+                                currentValues.remove(task);
+                            }
+                        }
+                    }
+                    // 4. 保存配置
+                    if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
+                        Log.record("黑白名单🈲芭芭农场抽抽乐任务自动设置: " + AntOrchardDrawTaskList.getValue());
+                    } else {
+                        Log.record("农场抽抽乐任务黑白名单设置失败");
+                    }
+                }
+            }
+
+
+            //初始化GoldenBeansTaskListMap
+            GoldenBeansTaskListMap.load();
+            // 1. 定义黑名单（需要添加的任务）和白名单（需要移除的任务）
+            blackList = new HashSet<>();
+            blackList.add("逛一逛快手");
+            blackList.add("到店支付1笔");
+            blackList.add("四季物语合成20次");
+            blackList.add("余额宝攒钱满1000元");
+            blackList.add("线上支付1笔");
+            blackList.add("逛一逛淘宝拍照");
+            blackList.add("每日福利：肥料兑换支金豆");
+            blackList.add("逛一逛淘宝闪购");
+            blackList.add("支付宝旧衣回收1次");
+
+            // 可继续添加更多黑名单任务
+
+            whiteList = new HashSet<>();// 从黑名单中移除该任务
+            //whiteList.add("逛一芝麻树");
+            // 可继续添加更多白名单任务
+            for (String task : blackList) {
+                GoldenBeansTaskListMap.add(task, task);
+            }
+
+            if (goldenBeansTask) {
+                String indexStr = GoldenBeanRpcCall.index();
+                JSONObject index = new JSONObject(indexStr);
+                if (!MessageUtil.checkResultCode(TAG, index)) {
+                    return;
+                }
+                if (index.has("taskList")) {
+                    JSONArray taskList = index.getJSONArray("taskList");
+                    for (int i = 0; i < taskList.length(); i++) {
+                        JSONObject taskInfo = taskList.getJSONObject(i);
+                        JSONObject taskDisplayConfig = taskInfo.getJSONObject("taskDisplayConfig");
+                        String title = taskDisplayConfig.getString("title");
+                        GoldenBeansTaskListMap.add(title, title);
+                    }
+                }
+
+                if (index.has("farmTaskList")) {
+                    JSONArray taskList = index.getJSONArray("farmTaskList");
+                    for (int i = 0; i < taskList.length(); i++) {
+                        JSONObject taskInfo = taskList.getJSONObject(i);
+                        JSONObject taskDisplayConfig = taskInfo.getJSONObject("taskDisplayConfig");
+                        String title = taskDisplayConfig.getString("title");
+                        GoldenBeansTaskListMap.add(title, title);
+                    }
+                }
+
+
+                //保存任务到配置文件
+                GoldenBeansTaskListMap.save();
+                Log.record("同步任务🉑芭芭农场金豆任务列表");
+
+                //自动按模块初始化设定调整黑名单和白名单
+                if (AutoGoldenBeansTaskList) {
+                    // 初始化黑白名单（使用集合统一操作）
+                    ConfigV2 config = ConfigV2.INSTANCE;
+                    ModelFields AntOrchard = config.getModelFieldsMap().get("AntOrchard");
+                    SelectModelField GoldenBeansTaskList = (SelectModelField) AntOrchard.get("GoldenBeansTaskList");
+                    if (GoldenBeansTaskList == null) {
+                        return;
+                    }
+
+                    // 2. 批量添加黑名单任务（确保存在）
+                    Set<String> currentValues = GoldenBeansTaskList.getValue();//该处直接返回列表地址
+                    if (currentValues != null) {
+                        for (String task : blackList) {
+                            if (!currentValues.contains(task)) {
+                                GoldenBeansTaskList.add(task, 0);
+                            }
+                        }
+
+                        // 3. 批量移除白名单任务（从现有列表中删除）
+                        for (String task : whiteList) {
+                            if (currentValues.contains(task)) {
+                                currentValues.remove(task);
+                            }
+                        }
+                    }
+                    // 4. 保存配置
+                    if (ConfigV2.save(UserIdMap.getCurrentUid(), false)) {
+                        Log.record("黑白名单🈲芭芭农场金豆任务自动设置: " + GoldenBeansTaskList.getValue());
+                    } else {
+                        Log.record("农场金豆任务黑白名单设置失败");
                     }
                 }
             }
@@ -861,6 +1059,108 @@ public class AntOrchard extends ModelTask {
             Log.printStackTrace(TAG, t);
         }
     }
+
+
+    //完成农场抽抽任务、领取奖励
+    private void orchardDrawListTask() {
+        try {
+            JSONObject JoDrawActivity = new JSONObject(AntOrchardRpcCall.enterDrawActivityantorchard());
+            if (!MessageUtil.checkSuccess(TAG, JoDrawActivity)) {
+                return;
+            }
+            if (!JoDrawActivity.has("drawActivity")) {
+                return;
+            }
+            JSONObject drawActivity = JoDrawActivity.optJSONObject("drawActivity");
+            String activityId = drawActivity.optString("activityId");
+            String sceneCode = drawActivity.optString("sceneCode");
+
+            String result = AntOrchardRpcCall.orchardDrawListTask();
+            JSONObject jo = new JSONObject(result);
+            if (!MessageUtil.checkSuccess(TAG, jo)) {
+                return;
+            }
+            JSONArray orchardDrawListTask = jo.getJSONArray("taskInfoList");
+            for (int i = 0; i < orchardDrawListTask.length(); i++) {
+                JSONObject taskInfo = orchardDrawListTask.getJSONObject(i);
+                JSONObject taskBaseInfo = taskInfo.getJSONObject("taskBaseInfo");
+                JSONObject bizInfo = new JSONObject(taskBaseInfo.getString("bizInfo"));
+                String taskName = bizInfo.getString("title");
+                String taskSceneCode = taskBaseInfo.getString("sceneCode");
+                String taskStatus = taskBaseInfo.getString("taskStatus");
+                String taskType = taskBaseInfo.getString("taskType");
+
+                JSONObject taskRights = taskInfo.getJSONObject("taskRights");
+                int rightsTimes = taskRights.getInt("rightsTimes");
+                int rightsTimesLimit = taskRights.getInt("rightsTimesLimit");
+
+                if (TaskStatus.RECEIVED.name().equals(taskStatus)) {
+                    continue;
+                }
+
+                //黑名单任务跳过
+                if (!AntOrchardDrawTaskList.getValue().contains(taskName)) {
+                    if (TaskStatus.TODO.name().equals(taskStatus)) {
+                        for (int j = 0; j < (rightsTimesLimit - rightsTimes); j++) {
+                            JSONObject joFinishTaskantorchard = new JSONObject(AntOrchardRpcCall.finishTaskantorchard(taskType, taskSceneCode));
+                            //检查并标记黑名单任务
+                            MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOrchardDrawTaskList", taskName, joFinishTaskantorchard);
+                            if (MessageUtil.checkSuccess(TAG, joFinishTaskantorchard)) {
+                                Log.farm("农场寻宝🧾完成[" + taskName + "]");
+                            }
+                            JSONObject joReceiveTaskAwardantorchard = new JSONObject(AntOrchardRpcCall.receiveTaskAwardantorchard(taskType, taskSceneCode));
+                            if (MessageUtil.checkSuccess(TAG, joReceiveTaskAwardantorchard)) {
+                                int incAwardCount = joReceiveTaskAwardantorchard.getInt("incAwardCount");
+                                Log.farm("农场寻宝🎖️领取[" + taskName + "]获得抽奖*" + incAwardCount);
+                            }
+                            TimeUtil.sleep(1000);
+                        }
+                    }
+                }
+                if (TaskStatus.FINISHED.name().equals(taskStatus)) {
+                    JSONObject joReceiveTaskAwardantorchard = new JSONObject(AntOrchardRpcCall.receiveTaskAwardantorchard(taskType, taskSceneCode));
+                    if (MessageUtil.checkSuccess(TAG, joReceiveTaskAwardantorchard)) {
+                        int incAwardCount = joReceiveTaskAwardantorchard.getInt("incAwardCount");
+                        Log.farm("农场寻宝🎖️领取[" + taskName + "]获得抽奖*" + incAwardCount);
+                    }
+                }
+            }
+
+            JSONObject JoDrawSyncantorchard = new JSONObject(AntOrchardRpcCall.drawSyncantorchard(activityId));
+            if (!MessageUtil.checkSuccess(TAG, JoDrawSyncantorchard)) {
+                return;
+            }
+            if (!JoDrawSyncantorchard.has("drawAsset")) {
+                return;
+            }
+            JSONObject drawAsset = JoDrawActivity.optJSONObject("drawAsset");
+            int blance = drawAsset.optInt("blance");
+            String CurrentUid = UserIdMap.getCurrentUid();
+            while (blance > 0) {
+                JSONObject JoDrawantorchard = new JSONObject(AntOrchardRpcCall.drawantorchard(activityId, CurrentUid));
+                if (!MessageUtil.checkSuccess(TAG, JoDrawantorchard)) {
+                    return;
+                }
+                if (!JoDrawantorchard.has("drawAsset")) {
+                    return;
+                }
+                drawAsset = JoDrawantorchard.optJSONObject("drawAsset");
+                blance = drawAsset.optInt("blance");
+                if (!JoDrawantorchard.has("prizeVO")) {
+                    return;
+                }
+                JSONObject prizeVO = JoDrawantorchard.optJSONObject("prizeVO");
+                String prizeName = prizeVO.getString("prizeName");
+                int prizeNum = prizeVO.getInt("prizeNum");
+                Log.farm("农场寻宝🎁抽中[" + prizeName + "*" + prizeNum + "]" + "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                Toast.show("农场寻宝🎁抽中[" + prizeName + "*" + prizeNum + "]");
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "orchardDrawListTask err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
 
     /**
      * 领取七日礼包

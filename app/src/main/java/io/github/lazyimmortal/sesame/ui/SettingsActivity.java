@@ -82,6 +82,9 @@ public class SettingsActivity extends BaseActivity {
         AntOceanAntiepTaskListMap.load();
         AntOceanFishBlackListMap.load();
         AntOrchardTaskListMap.load();
+        AntOrchardDrawTaskListMap.load();
+        GoldenBeansTaskListMap.load();
+        MonopolyTaskListMap.load();
         AntStallTaskListMap.load();
         AntSportsTaskListMap.load();
         PathThemeMapListMap.load();

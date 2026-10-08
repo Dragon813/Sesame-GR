@@ -572,6 +572,30 @@ public class FileUtil {
         }
         return file;
     }
+
+    public static File getAntOrchardDrawTaskListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "AntOrchardDrawTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+
+    public static File getGoldenBeansTaskListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "GoldenBeansTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+
+    public static File getMonopolyTaskListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "MonopolyTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
     
     public static File getAntStallTaskListMapFile() {
         File file = new File(MAIN_DIRECTORY_FILE, "AntStallTask.json");

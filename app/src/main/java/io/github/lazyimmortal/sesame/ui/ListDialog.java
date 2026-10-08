@@ -28,8 +28,11 @@ import io.github.lazyimmortal.sesame.entity.AlipayAntForestVitalityTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntMemberTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntOceanAntiepTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntOceanFishBlackList;
+import io.github.lazyimmortal.sesame.entity.AlipayAntOrchardDrawTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntOrchardTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntSportsTaskList;
+import io.github.lazyimmortal.sesame.entity.AlipayGoldenBeansTaskList;
+import io.github.lazyimmortal.sesame.entity.AlipayMonopolyTaskList;
 import io.github.lazyimmortal.sesame.entity.WalkPathThemeMapList;
 import io.github.lazyimmortal.sesame.entity.AlipayAntStallTaskList;
 import io.github.lazyimmortal.sesame.entity.AlipayBeach;
@@ -299,7 +302,7 @@ public class ListDialog {
         });
         lv_list.setOnItemLongClickListener((p1, p2, p3, p4) -> {
             IdAndName curIdAndName = (IdAndName) p1.getAdapter().getItem(p3);
-            if ((curIdAndName instanceof AlipayTree) || (curIdAndName instanceof AlipayReserve) || (curIdAndName instanceof AlipayAnimal) || (curIdAndName instanceof AlipayMarathon) || (curIdAndName instanceof AlipayNewAncientTree) || (curIdAndName instanceof AlipayBeach) || (curIdAndName instanceof AlipayPlantScene) || (curIdAndName instanceof AlipayrpcRequest) || (curIdAndName instanceof AlipayForestHunt) || (curIdAndName instanceof AlipayMemberCreditSesameTaskList) || (curIdAndName instanceof AlipayAntForestVitalityTaskList) || (curIdAndName instanceof AlipayAntForestHuntTaskList) || (curIdAndName instanceof AlipayAntFarmDoFarmTaskList) || (curIdAndName instanceof AlipayAntFarmDrawMachineTaskList) || (curIdAndName instanceof AlipayAntDodoTaskList)|| (curIdAndName instanceof AlipayAntOceanAntiepTaskList)|| (curIdAndName instanceof AlipayAntOceanFishBlackList) || (curIdAndName instanceof AlipayAntOrchardTaskList) || (curIdAndName instanceof AlipayAntStallTaskList) || (curIdAndName instanceof AlipayAntSportsTaskList) ||(curIdAndName instanceof WalkPathThemeMapList) || (curIdAndName instanceof AlipayAntMemberTaskList) || (curIdAndName instanceof WalkPath)) {
+            if ((curIdAndName instanceof AlipayTree) || (curIdAndName instanceof AlipayReserve) || (curIdAndName instanceof AlipayAnimal) || (curIdAndName instanceof AlipayMarathon) || (curIdAndName instanceof AlipayNewAncientTree) || (curIdAndName instanceof AlipayBeach) || (curIdAndName instanceof AlipayPlantScene) || (curIdAndName instanceof AlipayrpcRequest) || (curIdAndName instanceof AlipayForestHunt) || (curIdAndName instanceof AlipayMemberCreditSesameTaskList) || (curIdAndName instanceof AlipayAntForestVitalityTaskList) || (curIdAndName instanceof AlipayAntForestHuntTaskList) || (curIdAndName instanceof AlipayAntFarmDoFarmTaskList) || (curIdAndName instanceof AlipayAntFarmDrawMachineTaskList) || (curIdAndName instanceof AlipayAntDodoTaskList)|| (curIdAndName instanceof AlipayAntOceanAntiepTaskList)|| (curIdAndName instanceof AlipayAntOceanFishBlackList) || (curIdAndName instanceof AlipayAntOrchardTaskList)|| (curIdAndName instanceof AlipayAntOrchardDrawTaskList)|| (curIdAndName instanceof AlipayGoldenBeansTaskList)|| (curIdAndName instanceof AlipayMonopolyTaskList) || (curIdAndName instanceof AlipayAntStallTaskList) || (curIdAndName instanceof AlipayAntSportsTaskList) ||(curIdAndName instanceof WalkPathThemeMapList) || (curIdAndName instanceof AlipayAntMemberTaskList) || (curIdAndName instanceof WalkPath)) {
                 try {
                     new AlertDialog.Builder(c).setTitle("删除 " + curIdAndName.name).setPositiveButton(c.getString(R.string.ok), (dialog, which) -> {
                         if (which == DialogInterface.BUTTON_POSITIVE) {
@@ -392,6 +395,21 @@ public class ListDialog {
                                 AlipayAntOrchardTaskList.remove(curIdAndName.id);
                                 AntOrchardTaskListMap.remove(curIdAndName.id);
                                 AntOrchardTaskListMap.save();
+                            }
+                            else if (curIdAndName instanceof AlipayAntOrchardDrawTaskList) {
+                                AlipayAntOrchardDrawTaskList.remove(curIdAndName.id);
+                                AntOrchardDrawTaskListMap.remove(curIdAndName.id);
+                                AntOrchardDrawTaskListMap.save();
+                            }
+                            else if (curIdAndName instanceof AlipayGoldenBeansTaskList) {
+                                AlipayGoldenBeansTaskList.remove(curIdAndName.id);
+                                GoldenBeansTaskListMap.remove(curIdAndName.id);
+                                GoldenBeansTaskListMap.save();
+                            }
+                            else if (curIdAndName instanceof AlipayMonopolyTaskList) {
+                                AlipayMonopolyTaskList.remove(curIdAndName.id);
+                                MonopolyTaskListMap.remove(curIdAndName.id);
+                                MonopolyTaskListMap.save();
                             }
                             else if (curIdAndName instanceof AlipayAntStallTaskList) {
                                 AlipayAntStallTaskList.remove(curIdAndName.id);
