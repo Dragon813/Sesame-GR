@@ -32,7 +32,12 @@ import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
 import java.lang.reflect.Field;
+import java.net.URLDecoder;
 import java.util.Objects;
+import java.util.Set;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -49,6 +54,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
+import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 import io.github.lazyimmortal.sesame.BuildConfig;
@@ -429,6 +435,26 @@ public class ApplicationHook implements IXposedHookLoadPackage {
             }
             hooked = true;
             Log.i(TAG, "load success: " + lpparam.packageName);
+        } else if (ClassUtil.PACKAGE_NAME.equals(lpparam.packageName)) {
+            // 支付宝非主进程（如小程序独立进程 :nebula/:tinyapp 等）：仅安装小程序网络抓包hook，不动其他逻辑
+            final ClassLoader remoteClassLoader = lpparam.classLoader;
+            XposedHelpers.findAndHookMethod(Application.class, "attach", Context.class, new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) {
+                    try {
+                        context = (Context) param.args[0];
+                        classLoader = remoteClassLoader;
+                        if (miniDebugEnabled()) {
+                            Log.debug("小程序抓包进程启动[" + processName + "]");
+                        }
+                        hookMiniProgramNetwork();
+                    } catch (Throwable t) {
+                        if (miniDebugEnabled()) {
+                            Log.debug("小程序抓包进程[" + processName + "]启动失败: " + t.getMessage());
+                        }
+                    }
+                }
+            });
         }
     }
 
@@ -705,6 +731,8 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                 }
                 rpcBridge.load();
                 rpcVersion = rpcBridge.getVersion();
+                // 抓取支付宝小程序网络请求/响应数据
+                hookMiniProgramNetwork();
                 if (BaseModel.getStayAwake().getValue()) {
                     try {
                         PowerManager pm = (PowerManager) service.getSystemService(Context.POWER_SERVICE);
@@ -1195,5 +1223,544 @@ public class ApplicationHook implements IXposedHookLoadPackage {
         }
 
         return true;
+    }
+
+    /**
+     * 抓取支付宝小程序（含小游戏）的网络请求与响应，只读不写，不影响原有链路。
+     * 请求入口：AsyncRequestHandler.processAsyncRequest(ctx,app,page,RequestModel,ParamsModel,...)
+     * 响应出口：HttpRequestResponseTrigger.onHandleResponse(url, body, ext, ...)
+     * 两个类位于小程序插件 dex 中延迟加载，故先尝试直接加载，同时监听 ClassLoader.loadClass。
+     */
+    private void hookMiniProgramNetwork() {
+        tryHookMiniNetworkClass(MINI_RESP_CLASS);
+        tryHookMiniNetworkClass(ASYNC_REQUEST_HANDLER_CLASS);
+        installDeferredNetworkHook();
+    }
+
+    private void tryHookMiniNetworkClass(String className) {
+        if (deferredHookedClasses.contains(className)) {
+            return;
+        }
+        try {
+            hookMiniNetworkClass(XposedHelpers.findClass(className, classLoader));
+        } catch (Throwable ignored) {
+            // 类尚未加载，交给 loadClass 延迟监听
+        }
+    }
+
+    /** 请求暂存：域名白名单过滤后按精确 URL 保存，等待 onHandleResponse 配对（只读，不修改原请求） */
+    private void pendingMiniRequest(String url, String method, String data) {
+        if (url == null || url.length() == 0 || !isGameApi(url)) {
+            return;
+        }
+        String body = "";
+        if (data != null && data.length() > 0) {
+            body = data;
+            // rantu 走 application/x-www-form-urlencoded：data=<urlencoded JSON>；
+            // gamesapi2 等接口直接是裸 JSON，不能 URLDecoder 解码（'+' 会被误转为空格）
+            if (body.startsWith("data=")) {
+                body = body.substring(5);
+                try {
+                    body = URLDecoder.decode(body, "UTF-8");
+                } catch (Throwable ignored) {
+                }
+            }
+            body = clip(deepPrettyJson(body));
+        }
+        // timestamp+sign 使每次请求的完整 URL 唯一，天然可作为请求/响应配对键
+        pendingMiniRequests.put(url, new String[]{
+                String.valueOf(System.currentTimeMillis()),
+                "MINI " + (method == null || method.length() == 0 ? "?" : method) + " " + url,
+                body
+        });
+    }
+
+    /** 记录小程序响应：与暂存请求按 URL 配对，按 时间/方法/参数/数据 单条输出，只保留游戏业务接口 */
+    private void logMiniResponse(Object[] args, Object thisObject) {
+        if (!miniDebugEnabled() || args == null || args.length < 2 || args[0] == null) {
+            return;
+        }
+        String url = args[0].toString();
+        if (!isGameApi(url)) {
+            return;
+        }
+        ensureAsyncRequestHook(thisObject != null ? thisObject.getClass().getClassLoader() : classLoader);
+        String body = args[1] != null ? clip(deepPrettyJson(args[1].toString())) : "";
+        String[] record = pendingMiniRequests.remove(url);
+        String time;
+        String methodLine;
+        String params;
+        if (record != null) {
+            time = record[0];
+            methodLine = record[1];
+            params = record[2];
+        } else {
+            // 请求先于 hook 安装等情况下没有暂存，仍单独记录响应
+            time = String.valueOf(System.currentTimeMillis());
+            methodLine = "MINI ? " + url;
+            params = "";
+        }
+        Log.debug("记录\n时间: " + time + "\n方法: " + methodLine + "\n参数: " + params + "\n数据: " + body + "\n");
+    }
+
+    /**
+     * 响应首包到达时兜底补装 AsyncRequestHandler hook（正常情况下类加载时已在
+     * hookMiniNetworkClass 中装好；此处防止 loadClass 监听漏回调）。
+     */
+    private void ensureAsyncRequestHook(ClassLoader loader) {
+        if (deferredHookedClasses.contains(ASYNC_REQUEST_HANDLER_CLASS)) {
+            return;
+        }
+        try {
+            Class<?> clazz = Class.forName(ASYNC_REQUEST_HANDLER_CLASS, false, loader);
+            if (!deferredHookedClasses.add(ASYNC_REQUEST_HANDLER_CLASS)) {
+                return;
+            }
+            installAsyncRequestHookOnClass(clazz);
+        } catch (Throwable ignored) {
+            // 类尚未加载：loadClass 监听命中后会安装，这里不打日志避免噪音
+        }
+    }
+
+    /**
+     * 定点 hook 真实请求入口（由响应调用栈与方法清单确认）：
+     *   AsyncRequestHandler.processAsyncRequest(ApiContext,App,Page,RequestModel,ParamsModel,...,String,...)
+     * paramsJson 在到达此处前已被拆进 RequestModel/ParamsModel 的字段，故递归收集模型中的字符串。
+     * 调用方需已持有 deferredHookedClasses 中的去重标记。
+     */
+    private void installAsyncRequestHookOnClass(Class<?> clazz) {
+        XposedBridge.hookAllMethods(clazz, "processAsyncRequest", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam p) {
+                try {
+                    logRequestFromModels(p.args);
+                } catch (Throwable ignored) {
+                }
+            }
+        });
+        if (miniDebugEnabled()) {
+            Log.debug("小程序抓包hook已安装: AsyncRequestHandler.processAsyncRequest 进程=" + processName);
+        }
+    }
+
+    /** 从 processAsyncRequest 的模型参数中提取游戏请求（先找完整 paramsJson，再按 url/body 拼装） */
+    private void logRequestFromModels(Object[] args) {
+        if (!miniDebugEnabled() || args == null) {
+            return;
+        }
+        java.util.List<String> strings = new java.util.ArrayList<>();
+        java.util.Set<Object> visited =
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<Object, Boolean>());
+        for (Object arg : args) {
+            collectStrings(arg, 3, visited, strings);
+            if (strings.size() > 256) {
+                break;
+            }
+        }
+        // 1) 模型里若仍保留完整 paramsJson
+        for (String s : strings) {
+            if (s.length() >= 8 && s.indexOf('"') >= 0) {
+                try {
+                    JSONObject jo = new JSONObject(s);
+                    String u = jo.optString("url");
+                    if (u.length() > 0 && isGameApi(u)) {
+                        pendingMiniRequest(u, jo.optString("method", "GET"), jo.optString("data"));
+                        return;
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+        // 2) url 与 body 被拆成独立字段：模型里可能有多个 URL（referer/广告配置等），
+        //    给所有候选 URL 登记同一份暂存，响应回来时精确 URL 自然命中真实请求
+        String method = null;
+        for (String s : strings) {
+            if ("GET".equals(s) || "POST".equals(s) || "PUT".equals(s) || "DELETE".equals(s)) {
+                method = s;
+                break;
+            }
+        }
+        String body = null;
+        for (String s : strings) {
+            if (s.startsWith("data=")) {
+                body = s;
+                break;
+            }
+        }
+        if (body == null) {
+            for (String s : strings) {
+                if (s.startsWith("{") && s.length() > 16 && (body == null || s.length() > body.length())) {
+                    body = s;
+                }
+            }
+        }
+        java.util.Set<String> candidates = new java.util.LinkedHashSet<>();
+        for (String s : strings) {
+            if (s.startsWith("http") && isGameApi(s)) {
+                candidates.add(s.trim());
+                if (candidates.size() >= 3) {
+                    break;
+                }
+            }
+        }
+        for (String url : candidates) {
+            pendingMiniRequest(url, method, body);
+        }
+    }
+
+    /** 各类实例字段缓存（含父类链），避免网络热路径重复反射 */
+    private static final java.util.Map<Class<?>, java.util.List<java.lang.reflect.Field>> modelFieldsCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * 递归收集对象图中的 String：字段读取含父类链，com.alipay 模型对象继续下钻，
+     * Map/Collection 取元素，深度与对象数双重上限，只读。
+     */
+    private void collectStrings(Object obj, int depth, java.util.Set<Object> visited, java.util.List<String> out) {
+        if (obj == null || depth < 0 || visited.size() > 128) {
+            return;
+        }
+        if (obj instanceof String) {
+            String s = (String) obj;
+            if (s.length() > 0) {
+                out.add(s);
+            }
+            return;
+        }
+        Class<?> c = obj.getClass();
+        if (c.isPrimitive() || c.isArray() || obj instanceof Number || obj instanceof Boolean
+                || obj instanceof Character || obj instanceof Enum) {
+            return;
+        }
+        if (obj instanceof java.util.Map) {
+            if (!visited.add(obj)) {
+                return;
+            }
+            for (Object v : ((java.util.Map<?, ?>) obj).values()) {
+                collectStrings(v, depth - 1, visited, out);
+            }
+            return;
+        }
+        if (obj instanceof java.util.Collection) {
+            if (!visited.add(obj)) {
+                return;
+            }
+            for (Object v : (java.util.Collection<?>) obj) {
+                collectStrings(v, depth - 1, visited, out);
+            }
+            return;
+        }
+        if (!c.getName().startsWith("com.alipay") || !visited.add(obj)) {
+            return;
+        }
+        for (java.lang.reflect.Field f : modelFieldsCache.computeIfAbsent(c, this::resolveInstanceFields)) {
+            try {
+                collectStrings(f.get(obj), depth - 1, visited, out);
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    private java.util.List<java.lang.reflect.Field> resolveInstanceFields(Class<?> clazz) {
+        java.util.List<java.lang.reflect.Field> list = new java.util.ArrayList<>();
+        Class<?> cur = clazz;
+        int guard = 0;
+        while (cur != null && cur != Object.class && guard++ < 6) {
+            for (java.lang.reflect.Field fld : cur.getDeclaredFields()) {
+                int mods = fld.getModifiers();
+                if (java.lang.reflect.Modifier.isStatic(mods)) {
+                    continue;
+                }
+                Class<?> t = fld.getType();
+                if (t == String.class || t.getName().startsWith("com.alipay")
+                        || java.util.Map.class.isAssignableFrom(t) || java.util.Collection.class.isAssignableFrom(t)) {
+                    try {
+                        fld.setAccessible(true);
+                        list.add(fld);
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+            cur = cur.getSuperclass();
+        }
+        return list;
+    }
+
+    /** 非业务域名：日志埋点/监控/小程序包静态资源 CDN，命中即不记录 */
+    private static final String[] MINI_HOST_BLACKLIST = {
+            "hybrid.alipay-eco.com", "xxl-log", "mmstat", "amdc.", "arms",
+            "alicdn.com", "tbcdn.cn", "alipayobjects.com", "gtimg.cn"
+    };
+
+    /** 静态资源后缀（按 ? 之前的路径判断）：命中即不记录 */
+    private static final String[] MINI_STATIC_SUFFIX = {
+            ".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico",
+            ".svg", ".woff", ".woff2", ".ttf", ".html", ".htm", ".mp4", ".mp3", ".json"
+    };
+
+    /**
+     * 是否记录该小程序请求：抓包开关打开期间默认记录全部小程序 API 请求，
+     * 仅排除埋点/日志/监控域名和静态资源，避免白名单域名导致其他游戏抓不到。
+     */
+    private boolean isGameApi(String url) {
+        if (url == null || url.length() < 8) {
+            return false;
+        }
+        String lower = url.toLowerCase();
+        if (!lower.startsWith("http://") && !lower.startsWith("https://")) {
+            return false;
+        }
+        for (String host : MINI_HOST_BLACKLIST) {
+            if (lower.contains(host)) {
+                return false;
+            }
+        }
+        int query = lower.indexOf('?');
+        String path = query >= 0 ? lower.substring(0, query) : lower;
+        int slash = path.indexOf('/', 8);
+        if (slash >= 0) {
+            path = path.substring(slash);
+        }
+        for (String suffix : MINI_STATIC_SUFFIX) {
+            if (path.endsWith(suffix)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** 把 JSON 中嵌套转义的 JSON 字符串逐层展开为单行紧凑形式；非 JSON 原样返回并折掉换行 */
+    private String deepPrettyJson(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String s = raw.trim();
+        try {
+            Object parsed;
+            if (s.startsWith("{")) {
+                parsed = deepParseJson(new JSONObject(s));
+            } else if (s.startsWith("[")) {
+                parsed = deepParseJson(new JSONArray(s));
+            } else {
+                return raw.replaceAll("\\r?\\n", " ");
+            }
+            // toString() 为单行紧凑输出，保证每条日志只占一行
+            String out = (parsed instanceof JSONObject)
+                    ? ((JSONObject) parsed).toString()
+                    : ((JSONArray) parsed).toString();
+            return out.replaceAll("\\r?\\n", " ");
+        } catch (Throwable t) {
+            return raw.replaceAll("\\r?\\n", " ");
+        }
+    }
+
+    private Object deepParseJson(Object value) {
+        try {
+            if (value instanceof JSONObject) {
+                JSONObject obj = (JSONObject) value;
+                JSONObject out = new JSONObject();
+                JSONArray names = obj.names();
+                if (names != null) {
+                    for (int i = 0; i < names.length(); i++) {
+                        String key = names.optString(i);
+                        out.put(key, deepParseJson(obj.opt(key)));
+                    }
+                }
+                return out;
+            }
+            if (value instanceof JSONArray) {
+                JSONArray arr = (JSONArray) value;
+                JSONArray out = new JSONArray();
+                for (int i = 0; i < arr.length(); i++) {
+                    out.put(deepParseJson(arr.opt(i)));
+                }
+                return out;
+            }
+            if (value instanceof String) {
+                String str = ((String) value).trim();
+                boolean jsonObj = str.startsWith("{") && str.endsWith("}");
+                boolean jsonArr = str.startsWith("[") && str.endsWith("]");
+                if (jsonObj || jsonArr) {
+                    return jsonObj ? deepParseJson(new JSONObject(str)) : deepParseJson(new JSONArray(str));
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return value;
+    }
+
+    private String clip(String s) {
+        if (s != null && s.length() > MAX_LOG_LEN) {
+            return s.substring(0, MAX_LOG_LEN) + "...(truncated)";
+        }
+        return s;
+    }
+
+    private static final String MINI_RESP_CLASS =
+            "com.alipay.android.phone.event.ariver.network.HttpRequestResponseTrigger";
+    private static final String ASYNC_REQUEST_HANDLER_CLASS =
+            "com.alipay.android.phone.wallet.aompnetwork.request.AsyncRequestHandler";
+
+    /** 单条日志最大长度，防止走子记录等超长内容刷爆日志 */
+    private static final int MAX_LOG_LEN = 20000;
+
+    /** 已 hook 过的类名（跨 loadClass 多次回调去重） */
+    private static final Set<String> deferredHookedClasses =
+            java.util.Collections.synchronizedSet(new java.util.HashSet<String>());
+
+    /** 已暂存未配对请求：精确 URL -> {时间, 方法行, 请求体}（LRU 上限，防止无响应请求堆积） */
+    private static final java.util.Map<String, String[]> pendingMiniRequests =
+            java.util.Collections.synchronizedMap(new java.util.LinkedHashMap<String, String[]>(128, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(java.util.Map.Entry<String, String[]> eldest) {
+                    return size() > 128;
+                }
+            });
+
+    /** 抓包开关读取缓存：子进程不加载 Model 配置，直接读配置文件，10 秒刷新一次（开关可热生效） */
+    private static volatile long miniDebugExpireAt = 0L;
+    private static volatile boolean miniDebugCached = false;
+
+    /** 是否记录小程序抓包：基础配置 debugMode("开启抓包(基于新接口)") 打开时才记录 */
+    private boolean miniDebugEnabled() {
+        long now = System.currentTimeMillis();
+        if (now < miniDebugExpireAt) {
+            return miniDebugCached;
+        }
+        boolean enabled = false;
+        try {
+            enabled = BaseModel.getDebugMode().getValue();
+        } catch (Throwable ignored) {
+        }
+        if (!enabled) {
+            enabled = miniDebugEnabledInConfigFiles();
+        }
+        miniDebugCached = enabled;
+        miniDebugExpireAt = now + 10_000L;
+        return enabled;
+    }
+
+    /** 从外部存储的配置文件读取开关：默认配置 + 各用户目录任一打开即视为打开 */
+    private boolean miniDebugEnabledInConfigFiles() {
+        try {
+            if (miniDebugEnabledInFile(io.github.lazyimmortal.sesame.util.FileUtil.getDefaultConfigV2File())) {
+                return true;
+            }
+            java.io.File[] dirs = io.github.lazyimmortal.sesame.util.FileUtil.CONFIG_DIRECTORY_FILE.listFiles();
+            if (dirs != null) {
+                for (java.io.File dir : dirs) {
+                    if (dir.isDirectory()
+                            && miniDebugEnabledInFile(new java.io.File(dir, "config_v2.json"))) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
+    /** 解析单个 config_v2.json 中 modelFieldsMap.BaseModel.debugMode.value */
+    private boolean miniDebugEnabledInFile(java.io.File file) {
+        try {
+            if (file == null || !file.isFile()) {
+                return false;
+            }
+            String json = io.github.lazyimmortal.sesame.util.FileUtil.readFromFile(file);
+            if (json == null || json.indexOf("debugMode") < 0) {
+                return false;
+            }
+            JSONObject models = new JSONObject(json).optJSONObject("modelFieldsMap");
+            if (models == null) {
+                return false;
+            }
+            JSONObject base = models.optJSONObject("BaseModel");
+            if (base == null) {
+                return false;
+            }
+            JSONObject debugMode = base.optJSONObject("debugMode");
+            return debugMode != null && debugMode.optBoolean("value", false);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * 监听 ClassLoader.loadClass：小程序插件 dex 中的网络类被加载时动态安装 hook。
+     * 同时 hook ClassLoader 和 BaseDexClassLoader（后者重写了 loadClass）。
+     */
+    private void installDeferredNetworkHook() {
+        XC_MethodHook loadClassHook = new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam p) {
+                try {
+                    Object result = p.getResult();
+                    if (result instanceof Class) {
+                        hookMiniNetworkClass((Class<?>) result);
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+        };
+        try {
+            XposedBridge.hookAllMethods(ClassLoader.class, "loadClass", loadClassHook);
+        } catch (Throwable ignored) {
+        }
+        try {
+            Class<?> baseDexClassLoader = XposedHelpers.findClass("dalvik.system.BaseDexClassLoader", null);
+            XposedBridge.hookAllMethods(baseDexClassLoader, "loadClass", loadClassHook);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** 对小程序网络请求/响应类安装定点 hook（只记录，不修改参数和返回值） */
+    private void hookMiniNetworkClass(Class<?> clazz) {
+        String name = clazz.getName();
+        if (!MINI_RESP_CLASS.equals(name) && !ASYNC_REQUEST_HANDLER_CLASS.equals(name)) {
+            return;
+        }
+        if (!deferredHookedClasses.add(name)) {
+            return;
+        }
+        try {
+            if (MINI_RESP_CLASS.equals(name)) {
+                int hooked = hookMethodInHierarchy(clazz, "onHandleResponse", new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam p) {
+                        try {
+                            logMiniResponse(p.args, p.thisObject);
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                });
+                if (miniDebugEnabled()) {
+                    Log.debug("小程序抓包hook已安装: " + name + " onHandleResponse方法=" + hooked + " 进程=" + processName);
+                }
+            } else {
+                installAsyncRequestHookOnClass(clazz);
+            }
+        } catch (Throwable t) {
+            if (miniDebugEnabled()) {
+                Log.debug("小程序抓包hook安装失败: " + name + " " + t.getMessage());
+            }
+        }
+    }
+
+    /**
+     * 沿继承链逐层 hook 同名方法并返回 hook 到的方法总数。
+     * XposedBridge.hookAllMethods 只覆盖目标类自身声明的方法，
+     * onHandleResponse 可能定义在父类上，必须向上追溯。
+     */
+    private int hookMethodInHierarchy(Class<?> clazz, String methodName, XC_MethodHook callback) {
+        int count = 0;
+        Class<?> current = clazz;
+        while (current != null && current != Object.class) {
+            try {
+                count += XposedBridge.hookAllMethods(current, methodName, callback).size();
+            } catch (Throwable ignored) {
+            }
+            current = current.getSuperclass();
+        }
+        return count;
     }
 }

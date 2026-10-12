@@ -71,7 +71,7 @@ public class GoldenBean {
             String indexStr = GoldenBeanRpcCall.index();
             JSONObject index = new JSONObject(indexStr);
             if (!MessageUtil.checkResultCode(TAG, index)) {
-                dbg("首页index校验失败，原始返回=" + brief(indexStr));
+                //dbg("首页index校验失败，原始返回=" + brief(indexStr));
                 return;
             }
             // 金豆概况 + 领支金豆(金豆苗收取，调 index 时服务端已自动收取)
@@ -96,7 +96,7 @@ public class GoldenBean {
                 exchangeManure(index.optJSONObject("manureExchangeInfo"), reserveManure);
             }
         } catch (Throwable t) {
-            dbg("主流程异常: " + t.getMessage());
+            //dbg("主流程异常: " + t.getMessage());
             Log.printStackTrace(TAG, t);
         }
     }
@@ -152,12 +152,12 @@ public class GoldenBean {
             }
             int taskAward = index.optInt("taskAwardToReceive", 0);
             int needForJar = Math.max(0, capacity - balance);
-            dbg("金豆概况: 金豆余额=" + balance + " 金豆罐=" + jarCount + " 距兑罐还需=" + needForJar + " 金豆苗待收=" + pendingBeans + " 待领任务奖励=" + taskAward);
+            //dbg("金豆概况: 金豆余额=" + balance + " 金豆罐=" + jarCount + " 距兑罐还需=" + needForJar + " 金豆苗待收=" + pendingBeans + " 待领任务奖励=" + taskAward);
             if (jarFull) {
-                dbg("金豆概况: 金豆已满" + capacity + "，可兑换金豆罐(自动兑罐暂未实现，缺兑罐RPC抓包)");
+                //dbg("金豆概况: 金豆已满" + capacity + "，可兑换金豆罐(自动兑罐暂未实现，缺兑罐RPC抓包)");
             }
         } catch (Throwable t) {
-            dbg("金豆概况解析异常: " + t.getMessage());
+            //dbg("金豆概况解析异常: " + t.getMessage());
         }
     }
 
@@ -167,28 +167,28 @@ public class GoldenBean {
     private static void sign(JSONObject signInfo) {
         try {
             if (signInfo == null) {
-                dbg("签到: 无 signInfo，跳过");
+                //dbg("签到: 无 signInfo，跳过");
                 return;
             }
             if (signInfo.optBoolean("todaySigned", false)) {
-//                dbg("签到: 今日已签到，跳过");
+//                //dbg("签到: 今日已签到，跳过");
                 return;
             }
             String signKey = signInfo.optString("currentSignKey");
             if (signKey.isEmpty()) {
-                dbg("签到: currentSignKey 为空，跳过");
+                //dbg("签到: currentSignKey 为空，跳过");
                 return;
             }
             String resp = GoldenBeanRpcCall.sign(signKey);
             JSONObject jo = new JSONObject(resp);
             if (!MessageUtil.checkResultCode(TAG, jo)) {
-                dbg("签到: 提交失败(signKey=" + signKey + ")，返回=" + brief(resp));
+                //dbg("签到: 提交失败(signKey=" + signKey + ")，返回=" + brief(resp));
                 return;
             }
             int awardCount = getTodayAwardCount(signInfo);
             Log.farm("金豆夺宝🎁每日签到#获得" + awardCount + "金豆");
         } catch (Throwable t) {
-            dbg("签到异常: " + t.getMessage());
+            //dbg("签到异常: " + t.getMessage());
             Log.printStackTrace(TAG, t);
         }
     }
@@ -218,12 +218,12 @@ public class GoldenBean {
     private static void fortuneDraw(JSONObject fortuneDrawInfo) {
         try {
             if (fortuneDrawInfo != null && fortuneDrawInfo.optBoolean("todayDrawn", false)) {
-//                dbg("求签: 今日已求签(index标记)，跳过");
+//                //dbg("求签: 今日已求签(index标记)，跳过");
                 return;
             }
             // 本地当日标记兜底：index 的 todayDrawn 偶尔不准，避免每轮重复请求
             if (Status.hasFlagToday("GoldenBean::fortuneDraw")) {
-//                dbg("求签: 今日已求签(本地标记)，跳过");
+//                //dbg("求签: 今日已求签(本地标记)，跳过");
                 return;
             }
             String resp = GoldenBeanRpcCall.fortuneDraw();
@@ -233,9 +233,9 @@ public class GoldenBean {
                 String desc = jo.optString("resultDesc") + jo.optString("memo");
                 if (desc.contains("已抽") || desc.contains("已完成") || desc.contains("已领")) {
                     Status.flagToday("GoldenBean::fortuneDraw");
-//                    dbg("求签: 今日已求签(服务端返回:" + desc + ")，打标跳过");
+//                    //dbg("求签: 今日已求签(服务端返回:" + desc + ")，打标跳过");
                 } else {
-                    dbg("求签: 提交失败，返回=" + brief(resp));
+                    //dbg("求签: 提交失败，返回=" + brief(resp));
                 }
                 return;
             }
@@ -248,7 +248,7 @@ public class GoldenBean {
             }
             Log.farm("金豆夺宝🔮求签夺宝#" + (typeName.isEmpty() ? "" : "[" + typeName + "]") + "获得[" + beanDelta + "金豆]");
         } catch (Throwable t) {
-            dbg("求签异常: " + t.getMessage());
+            //dbg("求签异常: " + t.getMessage());
             Log.printStackTrace(TAG, t);
         }
     }
@@ -259,11 +259,11 @@ public class GoldenBean {
     private static void exchangeManure(JSONObject exchangeInfo, int reserveManure) {
         try {
             if (exchangeInfo == null) {
-                dbg("换豆: 无 manureExchangeInfo，跳过");
+                //dbg("换豆: 无 manureExchangeInfo，跳过");
                 return;
             }
             if (!exchangeInfo.optBoolean("farmOpened", true) || !exchangeInfo.optBoolean("pageOpened", true)) {
-                dbg("换豆: farmOpened/pageOpened 未开启，跳过");
+                //dbg("换豆: farmOpened/pageOpened 未开启，跳过");
                 return;
             }
             // 当前肥料余额（优先用 effectiveExchangeManure，其次 currentManure）
@@ -279,16 +279,16 @@ public class GoldenBean {
             if (exchangeable > remainQuota) {
                 exchangeable = remainQuota;
             }
-            dbg("换豆: 当前肥料=" + currentManure + " 保留=" + reserveManure + " 每日剩余额度=" + remainQuota + " 最低兑换=" + minExchange + " 实际可兑换=" + exchangeable);
+            //dbg("换豆: 当前肥料=" + currentManure + " 保留=" + reserveManure + " 每日剩余额度=" + remainQuota + " 最低兑换=" + minExchange + " 实际可兑换=" + exchangeable);
             if (exchangeable < minExchange) {
-                dbg("换豆: 可兑换 " + exchangeable + " < 最低 " + minExchange + "，跳过");
+                //dbg("换豆: 可兑换 " + exchangeable + " < 最低 " + minExchange + "，跳过");
                 return;
             }
 
             String resp = GoldenBeanRpcCall.manureExchange(exchangeable);
             JSONObject jo = new JSONObject(resp);
             if (!MessageUtil.checkResultCode(TAG, jo)) {
-                dbg("换豆: 提交失败(兑换" + exchangeable + ")，返回=" + brief(resp));
+                //dbg("换豆: 提交失败(兑换" + exchangeable + ")，返回=" + brief(resp));
                 return;
             }
             int manureCost = jo.optInt("manureCost", exchangeable);
@@ -296,7 +296,7 @@ public class GoldenBean {
             long gotBeans = (long) manureCost * beanReward;
             Log.farm("金豆夺宝💰肥料换金豆#消耗[" + manureCost + "肥料]获得[" + gotBeans + "金豆]");
         } catch (Throwable t) {
-            dbg("肥料换金豆异常: " + t.getMessage());
+            //dbg("肥料换金豆异常: " + t.getMessage());
             Log.printStackTrace(TAG, t);
         }
     }
@@ -313,12 +313,12 @@ public class GoldenBean {
             String indexStr = GoldenBeanRpcCall.minerIndex();
             JSONObject index = new JSONObject(indexStr);
             if (!MessageUtil.checkResultCode(TAG, index)) {
-                dbg("挖矿: miner.index 校验失败，返回=" + brief(indexStr));
+                //dbg("挖矿: miner.index 校验失败，返回=" + brief(indexStr));
                 return;
             }
             JSONObject minerInfo = index.optJSONObject("minerInfo");
             if (minerInfo == null) {
-                dbg("挖矿: 无 minerInfo，跳过");
+                //dbg("挖矿: 无 minerInfo，跳过");
                 return;
             }
             JSONObject currentLevel = minerInfo.optJSONObject("currentLevel");
@@ -326,12 +326,12 @@ public class GoldenBean {
             JSONObject progress = minerInfo.optJSONObject("progress");
             int remainingTimes = taskProgress == null ? 0 : taskProgress.optInt("remainingTimes", 0);
             boolean canGrab = taskProgress != null && taskProgress.optBoolean("canGrab", false);
-            dbg("挖矿: 剩余次数=" + remainingTimes + " canGrab=" + canGrab + " 棋盘=" + (currentLevel != null));
+            //dbg("挖矿: 剩余次数=" + remainingTimes + " canGrab=" + canGrab + " 棋盘=" + (currentLevel != null));
             if (remainingTimes <= 0 || !canGrab || currentLevel == null) {
                 if (remainingTimes <= 0) {
                     Status.flagToday("GoldenBean::minerDone");
                 }
-                dbg("挖矿: 无可用次数或不可抓取，跳过");
+                //dbg("挖矿: 无可用次数或不可抓取，跳过");
                 return;
             }
 
@@ -383,7 +383,7 @@ public class GoldenBean {
                 Log.farm("金豆夺宝⛏️金猫矿工#下钩[" + grabbed + "次]获得[" + totalBeans + "金豆]");
             }
         } catch (Throwable t) {
-            dbg("金猫矿工异常: " + t.getMessage());
+            //dbg("金猫矿工异常: " + t.getMessage());
             Log.printStackTrace(TAG, t);
         }
     }
@@ -473,7 +473,7 @@ public class GoldenBean {
                 if (taskStatus.equals("FINISHED") && !goldenBeansReceiveTaskAward(sceneCode, taskType, title, awardType)) {
                     continue;
                 }
-                if (taskStatus.equals("TODO") && !goldenBeansFinishTask(sceneCode, taskType, title)) {
+                if (taskStatus.equals("TODO") && goldenBeansFinishTask(sceneCode, taskType, title)) {
                     goldenBeansReceiveTaskAward(sceneCode, taskType, title, awardType);
                     continue;
                 }
@@ -574,7 +574,7 @@ public class GoldenBean {
                 }
             }
         } catch (Throwable t) {
-            dbg("金豆乐园砸蛋异常: " + t.getMessage());
+            //dbg("金豆乐园砸蛋异常: " + t.getMessage());
             Log.printStackTrace(TAG, t);
         }
     }
@@ -598,7 +598,7 @@ public class GoldenBean {
                 GameTask.GoldenBean_ncscc.report("金豆乐园", remaining);
             }
         } catch (Throwable t) {
-            dbg("玩游戏异常: " + t.getMessage());
+            //dbg("玩游戏异常: " + t.getMessage());
             Log.printStackTrace(TAG, t);
         }
     }

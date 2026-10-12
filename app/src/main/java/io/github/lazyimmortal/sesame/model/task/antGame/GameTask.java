@@ -31,8 +31,14 @@ public enum GameTask {
     Forest_sljyd("森林救援队(能量雨)", "2021005113684028", "zfb_sljydx", "sljyd_game_xiaochu_every_10", "lianyun_senlin_leyuan", "1.0.1", 3),
     // 金豆乐园：复用农场/庄园同款游戏，channel=goldenbean，用于刷金豆砸蛋机会
     GoldenBean_ncscc("农场上车车", "2060170000356601", "zfb_ncscc", "ncscc_game_kaiche_every_10", "goldenbean", "1.0.2", 2);
-
     //Forest_sgbhsd("三国冰河时代", "2021004173661702", "zfb_sgbhsd", "cclyx_sgbhsd_3c_zm10c", "lianyun_senlin_leyuan", "0.94.1", 3);
+
+    // 不良人：破局 —— 抓包确认 action_code=blrpj_game_zhaomu_every_10（每10次1个），channel=lianyun_senlin_leyuan
+    // 该游戏抓包走 huanyou7 平台，gamesapi2 侧的 appId/gid/version 未知，确认后取消注释
+    //Forest_blrpj("不良人：破局", "TODO_APPID", "zfb_blrpj", "blrpj_game_zhaomu_every_10", "lianyun_senlin_leyuan", "TODO_VERSION", 10);
+
+    // 37SDK游戏（区服:少年时6区，37平台gid=1021669）—— 抓包走 8rn4u.com，gamesapi2 参数未知
+    //Forest_37xs("少年时", "TODO_APPID", "TODO_GID", "TODO_ACTION", "lianyun_senlin_leyuan", "TODO_VERSION", 3);
 
     //Farm_lhs("灵画师", "2021005122634802", "lhs", "lhs", "lianyun_zhuangyuan_v2", "0.0.89", 3);
 
@@ -214,7 +220,7 @@ public enum GameTask {
             reader.close();
             conn.disconnect();
 
-            //Log.other("taskReport 响应 -> HTTP " + respCode + " " + responseText);
+            //Log.debug("taskReport 响应 -> HTTP " + respCode + " " + responseText);
 
             // 解析响应
             JSONObject resJson = new JSONObject(responseText.toString());

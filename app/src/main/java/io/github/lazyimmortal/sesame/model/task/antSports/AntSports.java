@@ -498,7 +498,7 @@ public class AntSports extends ModelTask {
                     //                        Log.record("没有签到");
                 }
             } else {
-                Log.record("运动签到今日已签到");
+                //Log.record("运动签到今日已签到");
             }
         } catch (Throwable t) {
             Log.i(TAG, "signInCoinTask err:");

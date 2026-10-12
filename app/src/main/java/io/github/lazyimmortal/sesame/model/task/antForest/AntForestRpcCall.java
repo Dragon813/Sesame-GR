@@ -427,8 +427,13 @@ public class AntForestRpcCall {
     }
 
     //领证书
-    public static String newMonopolyExchangeTree() {
-        return ApplicationHook.requestString("alipay.antmember.forest.h5.exchangeTree", "[{\"projectId\":22100082,\"sToken\":\"" + System.currentTimeMillis() + "\",\"source\":\"monopoly_exchange_mappage\",\"version\":\"20230501\"}]");
+    public static String newMonopolyExchangeTree(int projectId) {
+        return ApplicationHook.requestString("alipay.antmember.forest.h5.exchangeTree", "[{\"projectId\":" + projectId + ",\"sToken\":\"" + System.currentTimeMillis() + "\",\"source\":\"monopoly_exchange_mappage\",\"version\":\"20230501\"}]");
+    }
+
+    //排行
+    public static String queryMonopolyRanking() {
+        return ApplicationHook.requestString("alipay.antisle.monopoly.h5.queryMonopolyRanking", "[{\"rankType\":\"TOTAL\",\"source\":\"monopoly_home_animal\",\"uniqueId\":\"" + RandomUtil.getRandomString(16) + "\"}]");
     }
 
 
