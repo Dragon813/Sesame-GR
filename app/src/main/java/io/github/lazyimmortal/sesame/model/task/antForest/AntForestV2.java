@@ -233,6 +233,8 @@ public class AntForestV2 extends ModelTask {
     private BooleanModelField newMonopolyExchangeTree;
 
     private BooleanModelField preNewMonopolyExchangeTree;
+
+    private BooleanModelField switchNewMonopolyMap;
     private BooleanModelField monopolyAnimalEnergy;
     private BooleanModelField monopolyDispatchAnimal;
     private ChoiceModelField monopolyDispatchPriority;
@@ -274,6 +276,7 @@ public class AntForestV2 extends ModelTask {
 
     private BooleanModelField partnerteamWater;
     private IntegerModelField partnerteamWaterNum;
+    private IntegerModelField partnerteamWaterMax;
     private BooleanModelField ForestHunt;
     private BooleanModelField AutoAntForestHuntTaskList;
     private SelectModelField AntForestHuntTaskList;
@@ -350,6 +353,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(monopolyTasks = new BooleanModelField("monopolyTasks", "新版保护地 | 自动任务", false));
         modelFields.addField(newMonopolyExchangeTree = new BooleanModelField("newMonopolyExchangeTree", "新版保护地 | 领取证书", false));
         modelFields.addField(preNewMonopolyExchangeTree = new BooleanModelField("preNewMonopolyExchangeTree", "新版保护地 | 提前兑换未开始保护地证书", false));
+        modelFields.addField(switchNewMonopolyMap = new BooleanModelField("switchNewMonopolyMap", "新版保护地 | 切换最新可保护地图", false));
         modelFields.addField(AutoMonopolyTaskList = new BooleanModelField("AutoMonopolyTaskList", "新版保护地 | 推荐黑白名单", true));
         modelFields.addField(MonopolyTaskList = new SelectModelField("MonopolyTaskList", "新版保护地 | 黑白名单列表", new LinkedHashSet<>(), AlipayMonopolyTaskList::getList));
         modelFields.addField(receiveForestTaskAward = new BooleanModelField("receiveForestTaskAward", "森林任务", false));
@@ -364,6 +368,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(ecoLifeOptions = new SelectModelField("ecoLifeOptions", "绿色行动 | 选项", new LinkedHashSet<>(), CustomOption::getEcoLifeOptions, "光盘行动需要先手动完成一次"));
         modelFields.addField(partnerteamWater = new BooleanModelField("partnerteamWater", "组队合种浇水", false));
         modelFields.addField(partnerteamWaterNum = new IntegerModelField("partnerteamWaterNum", "组队合种浇水" + "(g)", 10, 10, 5000));
+        modelFields.addField(partnerteamWaterMax = new IntegerModelField("partnerteamWaterMax", "组队合种浇水上限（0不限)", 0, 0, 99999999));
         modelFields.addField(loveteamWater = new BooleanModelField("loveteamWater", "真爱合种浇水", false));
         modelFields.addField(loveteamWaterNum = new IntegerModelField("loveteamWaterNum", "真爱合种浇水" + "(g)", 20, 20, 10000));
         modelFields.addField(ForestHunt = new BooleanModelField("ForestHunt", "森林寻宝", false));
@@ -3722,7 +3727,163 @@ public class AntForestV2 extends ModelTask {
                 mapCount = myself.optInt("mapCount");
                 medalCount = myself.optInt("medalCount");
             }
-            Log.record("新保护地🌲巡护[" + regionName + "(" + currentRegionCode + ")]地图[" + mapNameText + "(" + currentMapCode + ")]累计排名" + rank + "证书" + mapCount + "勋章" + medalCount + "总能量" + energyCount + "g总步数" + stepCount + "掷骰子剩余" + totalDiceCount);
+            Log.record("新保护地🌲巡护[" + regionName + "]地图[" + mapNameText + "(" + currentMapCode + ")]累计排名" + rank + "证书" + mapCount + "勋章" + medalCount + "总能量" + energyCount + "g总步数" + stepCount + "掷骰子剩余" + totalDiceCount);
+
+            if (switchNewMonopolyMap.getValue()) {
+                // 从第一张地图起依次检测: ownedCreatureCount达到totalCreatureCount且creatureList全部达到maxLevel视为已满级, 找第一张未达成的AVAILABLE地图
+                String targetRegionCode = currentRegionCode;
+                String targetMapCode = null;
+                String targetMapName = "";
+                String targetRegionName = "";
+                String targetReason = "";
+                boolean crossRegion = false;
+                StringBuilder detectDetail = new StringBuilder();
+                if (currentRegionMapList != null) {
+                    for (int i = 0; i < currentRegionMapList.length(); i++) {
+                        JSONObject mapItem = currentRegionMapList.optJSONObject(i);
+                        // 仅检测可保护(AVAILABLE)的地图, PREPARING等状态直接跳过
+                        if (mapItem == null || !"AVAILABLE".equals(mapItem.optString("mapAvailability"))) {
+                            continue;
+                        }
+                        int ownedCreatureCount = mapItem.optInt("ownedCreatureCount");
+                        int totalCreatureCount = mapItem.optInt("totalCreatureCount");
+                        boolean allCollected = totalCreatureCount > 0 && ownedCreatureCount >= totalCreatureCount;
+                        JSONArray creatureList = mapItem.optJSONArray("creatureList");
+                        // 必须逐只核对到level达到maxLevel, 动物列表为空/缺失时不能视为满级
+                        boolean allMaxLevel = creatureList != null && creatureList.length() > 0;
+                        StringBuilder notMaxNames = new StringBuilder();
+                        if (creatureList != null) {
+                            for (int j = 0; j < creatureList.length(); j++) {
+                                JSONObject creature = creatureList.optJSONObject(j);
+                                if (creature == null) {
+                                    continue;
+                                }
+                                if (creature.optInt("level") < creature.optInt("maxLevel")) {
+                                    allMaxLevel = false;
+                                    if (notMaxNames.length() > 0) {
+                                        notMaxNames.append(",");
+                                    }
+                                    notMaxNames.append(creature.optString("creatureName"));
+                                }
+                            }
+                        }
+                        detectDetail.append(mapItem.optString("mapCode")).append(":")
+                                .append(ownedCreatureCount).append("/").append(totalCreatureCount)
+                                .append(allMaxLevel ? "满级" : "未满级[" + notMaxNames + "]");
+                        // 收集数达到总数 且 每只动物等级都达到maxLevel, 两个条件同时满足才跳过该图检测下一张
+                        if (allCollected && allMaxLevel) {
+                            continue;
+                        }
+                        targetMapCode = mapItem.optString("mapCode");
+                        JSONObject targetDisplay = mapItem.optJSONObject("displayInfo");
+                        JSONObject targetMapDisplay = targetDisplay == null ? null : targetDisplay.optJSONObject("mapDisplay");
+                        targetMapName = targetMapDisplay == null ? targetMapCode : targetMapDisplay.optString("mapNameText", targetMapCode);
+                        targetReason = "动物" + ownedCreatureCount + "/" + totalCreatureCount
+                                + (allMaxLevel ? "已满级" : "未满级[" + notMaxNames + "]");
+                        break;
+                    }
+                }
+                // 调试日志: 输出各图完成度与选中目标, 需要排查时再放开
+                //Log.record("新保护地🌲切换检测" + (detectDetail.length() == 0 ? "无地图数据" : detectDetail.toString()
+                //        + (targetMapCode == null ? "→无目标" : "→目标" + targetMapCode)));
+                // 当前地区所有AVAILABLE地图均已收集满级: 若仍有未开放(PREPARING等)地图则等待, 只有lv1至最后一张地图全部完成才切换到下一个保护区
+                boolean hasUnavailableMap = false;
+                int lastMapLevel = 0;
+                if (targetMapCode == null && currentRegionMapList != null) {
+                    for (int i = 0; i < currentRegionMapList.length(); i++) {
+                        JSONObject mapItem = currentRegionMapList.optJSONObject(i);
+                        if (mapItem == null) {
+                            continue;
+                        }
+                        int mapLevel = mapItem.optInt("level", 0);
+                        if (mapLevel > lastMapLevel) {
+                            lastMapLevel = mapLevel;
+                        }
+                        if (!"AVAILABLE".equals(mapItem.optString("mapAvailability"))) {
+                            hasUnavailableMap = true;
+                        }
+                    }
+                }
+                boolean nextRegionAvailable = false;
+                boolean hasOtherRegion = false;
+                String nextRegionName = "";
+                String nextRegionStatus = "";
+                if (targetMapCode == null && !hasUnavailableMap && lastMapLevel > 0 && regionList != null) {
+                    // 当前地区lv1至最后一张地图全部收集满级且均已开放, 切换到下一个保护区; 新保护区无地图数据, 首张地图按 regionCode#lv1 规律推算
+                    for (int i = 0; i < regionList.length(); i++) {
+                        JSONObject region = regionList.optJSONObject(i);
+                        if (region == null) {
+                            continue;
+                        }
+                        String nextRegionCode = region.optString("regionCode");
+                        if (currentRegionCode.equals(nextRegionCode)) {
+                            continue;
+                        }
+                        // 记录第一个其他保护区的名称和状态(无论是否开放)
+                        hasOtherRegion = true;
+                        nextRegionName = region.optString("regionName", "");
+                        nextRegionStatus = region.optString("regionAvailability");
+                        // 仅切换到已开放(AVAILABLE)的保护区, PREPARING等状态跳过
+                        if (!"AVAILABLE".equals(nextRegionStatus)) {
+                            continue;
+                        }
+                        nextRegionAvailable = true;
+                        targetRegionCode = nextRegionCode;
+                        targetMapCode = nextRegionCode + "#lv1";
+                        crossRegion = true;
+                        targetRegionName = nextRegionName;
+                        targetReason = "当前地区lv1至lv" + lastMapLevel + "均已收集满级";
+                        break;
+                    }
+                }
+                if (targetMapCode == null) {
+                    if (lastMapLevel == 0) {
+                        Log.record("新保护地🌲当前地区无地图数据，跳过切换检测");
+                    } else if (hasUnavailableMap) {
+                        Log.record("新保护地🌲当前地区已开放地图均已收集满级，后续地图未开放，等待不切换");
+                    } else if (!hasOtherRegion) {
+                        Log.record("新保护地🌲当前地区lv1至lv" + lastMapLevel + "均已收集满级，暂无后续保护区");
+                    } else if (!nextRegionAvailable) {
+                        Log.record("新保护地🌲当前地区lv1至lv" + lastMapLevel + "均已收集满级，下一保护区["
+                                + nextRegionName + "]状态" + nextRegionStatus + "尚未开放，等待不切换");
+                    } else {
+                        Log.record("新保护地🌲所有保护区地图动物均已收集且满级，无需切换");
+                    }
+                } else if (targetRegionCode.equals(currentRegionCode) && targetMapCode.equals(currentMapCode)) {
+                    //Log.record("新保护地🌲当前地图[" + targetMapName + "(" + targetMapCode + ")]" + targetReason + "，无需切换");
+                } else {
+                    if (crossRegion) {
+                        Log.record("新保护地🌲" + targetReason + "，切换到保护区[" + targetRegionName + "]("
+                                + targetRegionCode + ")首张地图" + targetMapCode + "(地图名未知)，开始切换");
+                    } else {
+                        Log.record("新保护地🌲目标地图[" + targetMapName + "(" + targetMapCode + ")]" + targetReason + "开始切换");
+                    }
+                    JSONObject switchJo = new JSONObject(AntForestRpcCall.switchMonopolyMap(targetMapCode, targetRegionCode));
+                    if (MessageUtil.checkResultCode(TAG, switchJo)) {
+                        if (crossRegion) {
+                            Log.forest("新保护地🌲已切换保护区[" + targetRegionName + "](" + targetRegionCode + "/" + targetMapCode + ")继续巡护");
+                        } else {
+                            Log.forest("新保护地🌲已切换到地图[" + targetMapName + "(" + targetMapCode + ")]继续巡护");
+                        }
+                        // 切换成功后重新查询入口信息, 新state的regionInfo.regionCode即为新区域, 本轮继续按新地图巡护
+                        state = new JSONObject(AntForestRpcCall.queryMonopolyEntryInfo());
+                        if (!MessageUtil.checkResultCode(TAG, state)) {
+                            return;
+                        }
+                        regionInfo = state.optJSONObject("regionInfo");
+                        mapInfo = state.optJSONObject("mapInfo");
+                        userInfo = state.optJSONObject("userInfo");
+                        if (regionInfo == null || mapInfo == null || userInfo == null) {
+                            Log.record("新保护地🌲切换后入口缺少区域、地图或用户状态，跳过本轮");
+                            return;
+                        }
+                        if (isMonopolyClosed(regionInfo) || isMonopolyClosed(mapInfo)) {
+                            Log.record("新保护地🌲切换后的区域或地图不在开放期，停止本轮");
+                            return;
+                        }
+                    }
+                }
+            }
 
             regionCode = regionInfo.optString("regionCode");
             boolean tasksEnabled = monopolyTasks.getValue();
@@ -4604,13 +4765,11 @@ public class AntForestV2 extends ModelTask {
         try {
 
             int userDailyTarget = Math.min(Math.max(partnerteamWaterNum.getValue(), 10), 5000);
-            int todayUsed = Status.getforestHuntHelpToday("FLAG_TEAM_WATER_DAILY_COUNT");
-            int userRemainingQuota = userDailyTarget - todayUsed;
+            int userWaterMax = partnerteamWaterMax.getValue();
+            int todayUsed = 0;
+            int usertotalEnergy = 0;
+            //int todayUsed = Status.getforestHuntHelpToday("FLAG_TEAM_WATER_DAILY_COUNT");
 
-            if (userRemainingQuota < 10) {
-                Log.record("组队合种今日已达标 (已浇" + todayUsed + "g / 目标" + userDailyTarget + "g)，跳过");
-                return;
-            }
 
             // 获取组队合种基础信息
             String homeStr = AntForestRpcCall.queryHomePage();
@@ -4628,7 +4787,52 @@ public class AntForestV2 extends ModelTask {
 
             int currentEnergy = homeJo.optJSONObject("userBaseInfo").optInt("currentEnergy", 0);
             if (currentEnergy < 10) {
-                Log.record("当前能量不足10g(" + currentEnergy + "g)，无法浇水");
+                Log.record("当前能量不足10g(" + currentEnergy + "g)无法浇水");
+                return;
+            }
+
+            JSONObject joTeamMemberList = new JSONObject(AntForestRpcCall.queryTeamMemberList(teamId));
+            if (!MessageUtil.checkResultCode(TAG, joTeamMemberList)) {
+                return;
+            }
+            JSONObject teamDetail = joTeamMemberList.optJSONObject("teamDetail");
+            int teamCurrentEnergy = teamDetail.optInt("currentEnergy");
+
+            // 解析队伍成员：self=true(或userId为当前用户)标记为本人，单行输出
+            JSONArray teamMemberList = joTeamMemberList.optJSONArray("memberList");
+            if (teamMemberList != null) {
+                String currentUid = UserIdMap.getCurrentUid();
+                StringBuilder memberInfo = new StringBuilder("组队浇水👥");
+                memberInfo.append("小队能量").append(teamCurrentEnergy).append("g;");
+                for (int i = 0; i < teamMemberList.length(); i++) {
+                    JSONObject member = teamMemberList.optJSONObject(i);
+                    if (member == null) {
+                        continue;
+                    }
+                    String userId = member.optString("userId");
+                    String displayName = member.optString("displayName");
+                    if (displayName.isEmpty()) {
+                        displayName = UserIdMap.getShowName(userId);
+                    }
+                    int totalEnergy = member.optInt("totalEnergy");
+                    int todayEnergy = member.optInt("todayEnergy");
+                    int yesterdayEnergy = member.optInt("yesterdayEnergy");
+                    boolean isSelf = member.optBoolean("self") || userId.equals(currentUid);
+                    memberInfo.append("[").append(displayName).append("]");
+                    if (isSelf) {
+                        memberInfo.append("(当前账户)");
+                        todayUsed = member.optInt("todayEnergy");
+                        usertotalEnergy = member.optInt("totalEnergy");
+                    }
+                    memberInfo.append("累计浇水").append(totalEnergy).append("g昨").append(yesterdayEnergy).append("g今").append(todayEnergy).append("g;");
+                }
+                Log.record(memberInfo.toString());
+            }
+
+            int userRemainingQuota = userDailyTarget - todayUsed;
+
+            if (userRemainingQuota < 10) {
+                Log.record("组队合种今日已达标 (已浇" + todayUsed + "g目标" + userDailyTarget + "g组队合种浇水上限" + userWaterMax + "g)跳过");
                 return;
             }
 
@@ -4652,7 +4856,7 @@ public class AntForestV2 extends ModelTask {
             }
 
             int serverRemaining = miscJo.optJSONObject("combineHandlerVOMap").optJSONObject("teamCanWaterCount").optInt("waterCount", 0);
-            Log.record("组队状态检查:目标剩余" + userRemainingQuota + "g|官方剩余" + serverRemaining + "g|背包能量" + currentEnergy + "g");
+            Log.record("组队状态检查:目标剩余" + userRemainingQuota + "g;官方剩余" + serverRemaining + "g;背包能量" + currentEnergy + "g;组队合种浇水上限" + userWaterMax + "g");
 
             if (serverRemaining < 10) {
                 Log.record("官方限制今日无可浇水额度，跳过");
@@ -4663,7 +4867,12 @@ public class AntForestV2 extends ModelTask {
             }
 
             // 计算最终浇水量
-            int finalWaterAmount = Math.min(userRemainingQuota, Math.min(serverRemaining, currentEnergy));
+            int finalWaterAmount = 0;
+            if (userWaterMax > 0) {
+                finalWaterAmount = Math.min(Math.min(userRemainingQuota, userWaterMax - usertotalEnergy), Math.min(serverRemaining, currentEnergy));
+            } else {
+                finalWaterAmount = Math.min(userRemainingQuota, Math.min(serverRemaining, currentEnergy));
+            }
             if (finalWaterAmount < 10) {
                 Log.record("计算后浇水量(" + finalWaterAmount + "g)低于最小限制10g，不执行");
                 if (needReturn) {
@@ -4678,7 +4887,7 @@ public class AntForestV2 extends ModelTask {
             if (MessageUtil.checkResultCode(TAG, waterJo)) {
                 Log.forest("组队合种🚿给合种浇水" + finalWaterAmount + "g#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                 Toast.show("组队合种🚿给合种浇水" + finalWaterAmount + "g");
-                Status.forestHuntHelpToday("FLAG_TEAM_WATER_DAILY_COUNT", todayUsed + finalWaterAmount, UserIdMap.getCurrentUid());
+                //Status.forestHuntHelpToday("FLAG_TEAM_WATER_DAILY_COUNT", todayUsed + finalWaterAmount, UserIdMap.getCurrentUid());
                 Log.record("组队合种今日浇水累计: " + (todayUsed + finalWaterAmount) + "g / " + userDailyTarget + "g");
             }
 
@@ -4715,19 +4924,94 @@ public class AntForestV2 extends ModelTask {
         return "Team".equals(homeObj.optString("nextAction", ""));
     }
 
-    private static void loveteam(int loveteamWater) {
-        if (!Status.hasFlagToday("Forest::loveteamWater")) {
+    private void loveteam(int loveteamWater) {
+        if (loveteamWaterNum.getValue() >= 20) {
             try {
                 JSONObject jo = new JSONObject(AntForestRpcCall.loveteamHome());
                 if (!MessageUtil.checkResultCode(TAG, jo)) {
                     return;
                 }
-                if (jo.has("userInfo")) {
-                    JSONObject userInfo = jo.getJSONObject("userInfo");
-                    if (userInfo.has("teamId")) {
-                        String teamId = userInfo.getString("teamId");
-                        loveteamWater(teamId, loveteamWater);
+
+                // 解析真爱合种今日浇水：teamInfo.waterInfo.todayWaterMap={userId:浇水数}，名称从memberInfoList按userId查
+                JSONObject teamInfo = jo.optJSONObject("teamInfo");
+                int currentEnergy = 0;
+                if (teamInfo != null) {
+                    JSONObject energyInfo = teamInfo.optJSONObject("energyInfo");
+                    if (energyInfo != null) {
+                        currentEnergy = energyInfo.optInt("currentEnergy");
                     }
+                }
+                String loveTeamId = "";
+                int usertotalEnergy = 0;
+                JSONObject userInfo = jo.optJSONObject("userInfo");
+                if (userInfo != null) {
+                    loveTeamId = userInfo.optString("teamId");
+                }
+                if (teamInfo != null) {
+                    JSONObject todayWaterMap = null;
+                    JSONObject waterInfo = teamInfo.optJSONObject("waterInfo");
+                    if (waterInfo != null) {
+                        todayWaterMap = waterInfo.optJSONObject("todayWaterMap");
+                    }
+                    if (todayWaterMap != null && todayWaterMap.length() > 0) {
+                        String currentUid = UserIdMap.getCurrentUid();
+                        // userId -> displayName
+                        Map<String, String> nameMap = new HashMap<>();
+                        JSONArray memberInfoList = teamInfo.optJSONArray("memberInfoList");
+                        if (memberInfoList != null) {
+                            for (int i = 0; i < memberInfoList.length(); i++) {
+                                JSONObject member = memberInfoList.optJSONObject(i);
+                                if (member == null) {
+                                    continue;
+                                }
+                                String uid = member.optString("userId");
+                                String displayName = member.optString("displayName");
+                                if (displayName.isEmpty()) {
+                                    displayName = UserIdMap.getShowName(uid);
+                                }
+                                nameMap.put(uid, displayName);
+                            }
+                        }
+
+                        StringBuilder waterLog = new StringBuilder("真爱合种💧[" + loveTeamId + "]累计攒能量" + currentEnergy + "g;");
+                        Iterator<String> it = todayWaterMap.keys();
+                        while (it.hasNext()) {
+                            String uid = it.next();
+                            int waterNum = todayWaterMap.optInt(uid);
+                            String name = nameMap.get(uid);
+                            if (name == null) {
+                                name = UserIdMap.getShowName(uid);
+                            }
+                            waterLog.append("[").append(name).append("]");
+                            if (uid.equals(currentUid)) {
+                                waterLog.append("(当前账户)");
+                                usertotalEnergy = waterNum;
+                            }
+                            waterLog.append("当天浇水").append(waterNum).append("g;");
+                        }
+                        Log.record(waterLog.toString());
+                    }
+                }
+
+                // 仅真爱合种已激活(teamStatus=ACTIVATED)时才浇水
+                String teamStatus = teamInfo == null ? "" : teamInfo.optString("teamStatus");
+                if (!"ACTIVATED".equals(teamStatus)) {
+                    Log.record("真爱合种💧当前状态[" + teamStatus + "]未激活, 跳过浇水");
+                    return;
+                }
+
+                // 若配置修改，计算再浇水数
+                int waterAgainNum;
+                if (loveteamWater <= usertotalEnergy) {
+                    waterAgainNum=0;
+                }else{
+                    //差着一点，多浇一些，凑足保底20
+                    waterAgainNum = Math.max((loveteamWater - usertotalEnergy), 20);
+                }
+                // 计算最终浇水量
+                int finalWaterAmount = Math.min(loveteamWater, waterAgainNum);
+                if (!loveTeamId.isEmpty() && finalWaterAmount >= 20) {
+                    loveteamWater(loveTeamId, finalWaterAmount);
                 }
             } catch (Throwable th) {
                 Log.i(TAG, "loveteam err:");
@@ -4742,7 +5026,6 @@ public class AntForestV2 extends ModelTask {
             if (MessageUtil.checkSuccess(TAG, jo)) {
                 Log.forest("真爱浇水🚿给[" + loveteamWater + "]合种浇水" + loveteamWaterNum + "g#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
                 Toast.show("真爱浇水🚿给[" + loveteamWater + "]合种浇水" + loveteamWaterNum + "g");
-                Status.flagToday("Forest::loveteamWater");
             }
         } catch (Throwable th) {
             Log.i(TAG, "loveteamWater err:");

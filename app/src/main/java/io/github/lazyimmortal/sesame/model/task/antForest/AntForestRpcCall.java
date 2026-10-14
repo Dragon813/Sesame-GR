@@ -426,6 +426,12 @@ public class AntForestRpcCall {
         return ApplicationHook.requestString("alipay.antisle.monopoly.h5.queryMonopolyMapPage", "[{\"source\":\"monopoly_home_animal\",\"uniqueId\":\"" + RandomUtil.getRandomString(16) + "\"}]");
     }
 
+    //保护地地图切换
+    public static String switchMonopolyMap(String mapCode,String regionCode) {
+        //{"mapCode":"hongshandongwuyuan#lv2","regionCode":"hongshandongwuyuan","source":"monopoly_home_animal","uniqueId":"f7oze4rrmv7hocd0"}
+        return ApplicationHook.requestString("alipay.antisle.monopoly.h5.switchMonopolyMap", "[{\"mapCode\":\""+mapCode+"\",\"regionCode\":\""+regionCode+"\",\"source\":\"monopoly_home_animal\",\"uniqueId\":\"" + RandomUtil.getRandomString(16) + "\"}]");
+    }
+
     //领证书
     public static String newMonopolyExchangeTree(int projectId) {
         return ApplicationHook.requestString("alipay.antmember.forest.h5.exchangeTree", "[{\"projectId\":" + projectId + ",\"sToken\":\"" + System.currentTimeMillis() + "\",\"source\":\"monopoly_exchange_mappage\",\"version\":\"20230501\"}]");
@@ -891,7 +897,12 @@ public class AntForestRpcCall {
         String args = "[{\"queryBizType\":\"" + queryBizType + "\",\"source\":\"SELF_HOME\",\"targetUserId\":\"" + teamId + "\",\"version\":\"" + VERSION + "\"}]";
         return ApplicationHook.requestString("alipay.antforest.forest.h5.queryMiscInfo", args);
     }
-
+    //组队成员浇水情况
+    public static String queryTeamMemberList(String teamId) {
+        // 构造 H5 RPC 参数
+        String args = "[{\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"teamId\":\""+teamId+"\"}]";
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.queryTeamMemberList", args);
+    }
     public static String queryUserTag() {
         String args = "[{}]";
         return ApplicationHook.requestString("alipay.antmember.h5.queryUserTag", args);

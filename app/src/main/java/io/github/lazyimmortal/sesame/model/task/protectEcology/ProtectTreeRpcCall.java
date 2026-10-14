@@ -56,4 +56,29 @@ public class ProtectTreeRpcCall {
                 "[{\"actionCode\":\"" + actionCode + "\",\"activityId\":\"" + activityId + "\",\"paramMap\":" + paramMap + ",\"source\":\"forest\"}]";
         return ApplicationHook.requestString("com.alipay.charityactivity.rubick.rpc.h5.doRubickActivity", args);
     }
+
+    /* 能量PK赛季: 查询古树地图(activityId固定pkSeason4, 返回resData.actionData.resultData.protectProgress) */
+    public static String pkQueryTreeMap(String seasonActivityId) {
+        String args =
+                "[{\"actionCode\":\"queryTreeMap\",\"activityId\":\"" + seasonActivityId + "\",\"source\":\"forest\"}]";
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.activity.doRubickActivity", args);
+    }
+
+    /* 能量PK赛季: 查询关卡首页(actionCode=pkSeason2Home, activityId=pk4Level{N}) */
+    public static String pkSeason2Home(String levelActivityId) {
+        return doRubickActivity("pkSeason2Home", levelActivityId, new JSONObject());
+    }
+
+    /* 能量PK赛季: 浇水保护古树(actionCode=pkSeason2Water, paramMap={"donateNum":N,"incrNum":N}) */
+    public static String pkSeason2Water(String levelActivityId, int donateNum) {
+        try {
+            JSONObject paramMap = new JSONObject();
+            paramMap.put("donateNum", donateNum);
+            paramMap.put("incrNum", donateNum);
+            return doRubickActivity("pkSeason2Water", levelActivityId, paramMap);
+        }
+        catch (Throwable t) {
+            return null;
+        }
+    }
 }

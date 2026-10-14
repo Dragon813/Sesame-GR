@@ -1533,6 +1533,7 @@ public class AntSports extends ModelTask {
                         return;
                     }
                     TimeUtil.sleep(7000);
+                    //"errorMsg":"海豚活动触发可重试错误"
                     jo = new JSONObject(AntSportsRpcCall.duublecompleteTask(bizId, taskAction, taskId));
                     if (!MessageUtil.checkSuccess(TAG, jo)) {
                         return;

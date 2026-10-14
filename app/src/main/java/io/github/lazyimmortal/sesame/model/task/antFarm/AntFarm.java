@@ -1283,7 +1283,7 @@ public class AntFarm extends ModelTask {
                                     if (DonationEggNum < 1) {
                                         continue;
                                     }
-                                    Log.farm("捐蛋排位🥚[在捐蛋上限" + dailyLimit + "范围内]比目标星星或爱心值" + desStarNum + "少" + (desStarNum + desStarSub[j]) + "个的[" + desUserIdSub[j] + "]捐了" + desDonationSub[j] + "当前捐蛋" + myDonation + "尝试再捐蛋" + DonationEggNum);
+                                    Log.farm("捐蛋排位🥚[在捐蛋上限" + dailyLimit + "范围内]比目标星星或爱心值" + desStarNum + "少" + (desStarNum - desStarSub[j]) + "的[" + desUserIdSub[j] + "]捐了" + desDonationSub[j] + "当前捐蛋" + myDonation + "尝试再捐蛋" + DonationEggNum);
                                     competitionDonation("养老保底模式", DonationEggNum);
                                     break;
                                 }
