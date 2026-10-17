@@ -111,6 +111,8 @@ public class AntOrchard extends ModelTask {
     private IntegerModelField goldenBeanReserveManure;
     private static int fertilizerProgress = 0;
     private static final ArrayList<String> enableSceneList = new ArrayList<>();
+    //本轮orchardIndex响应缓存, 供农场信息记录复用, 避免重复请求
+    private JSONObject lastOrchardIndexJo = null;
 
     @Override
     public String getName() {
@@ -208,10 +210,119 @@ public class AntOrchard extends ModelTask {
                 orchardDrawListTask();
             }
 
+            // 农场信息记录
+            orchardInfo();
+
+
         } catch (Throwable t) {
             Log.i(TAG, "start.run err:");
             Log.printStackTrace(TAG, t);
         }
+    }
+
+
+    /**
+     * 去掉double末尾多余的.0
+     */
+    private static String trimDouble(double d) {
+        if (d == Math.rint(d) && !Double.isInfinite(d)) {
+            return Long.toString((long) d);
+        }
+        return Double.toString(d);
+    }
+
+    /**
+     * 农场(芭芭农场)信息记录(信息记录): 复用本轮orchardIndex响应及其taobaoData, 读不到的字段以空格占位
+     */
+    private void orchardInfo() {
+        Integer happyPoint = null;
+        Integer wateringLeftTimes = null;
+        String seedName = "";
+        String seedSubTitle = "";
+        String stageName = "";
+        Integer stageLevel = null;
+        Integer stageMaxLevel = null;
+        Integer currentProgress = null;
+        Integer totalProgress = null;
+        Integer exchangeCount = null;
+        Boolean canExchange = null;
+        Integer smashedEggs = null;
+        Integer eggLimit = null;
+        Integer unsmashedEggs = null;
+        try {
+            JSONObject jo = lastOrchardIndexJo;
+            if (jo == null) {
+                Log.info("芭芭农场🌳[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]未获取到首页数据");
+                return;
+            }
+            JSONObject goldenEggInfo = jo.optJSONObject("goldenEggInfo");
+            if (goldenEggInfo != null) {
+                if (goldenEggInfo.has("smashedGoldenEggs")) {
+                    smashedEggs = goldenEggInfo.optInt("smashedGoldenEggs");
+                }
+                if (goldenEggInfo.has("goldenEggLimit")) {
+                    eggLimit = goldenEggInfo.optInt("goldenEggLimit");
+                }
+                if (goldenEggInfo.has("unsmashedGoldenEggs")) {
+                    unsmashedEggs = goldenEggInfo.optInt("unsmashedGoldenEggs");
+                }
+            }
+            String taobaoDataStr = jo.optString("taobaoData", "");
+            if (!taobaoDataStr.isEmpty()) {
+                JSONObject taobaoData = new JSONObject(taobaoDataStr);
+                JSONObject gameInfo = taobaoData.optJSONObject("gameInfo");
+                if (gameInfo != null) {
+                    JSONObject accountInfo = gameInfo.optJSONObject("accountInfo");
+                    if (accountInfo != null) {
+                        if (accountInfo.has("happyPoint")) {
+                            happyPoint = accountInfo.optInt("happyPoint");
+                        }
+                        if (accountInfo.has("wateringLeftTimes")) {
+                            wateringLeftTimes = accountInfo.optInt("wateringLeftTimes");
+                        }
+                    }
+                    JSONObject plantInfo = gameInfo.optJSONObject("plantInfo");
+                    if (plantInfo != null) {
+                        if (plantInfo.has("canExchange")) {
+                            canExchange = plantInfo.optBoolean("canExchange");
+                        }
+                        if (plantInfo.has("exchangeCount")) {
+                            exchangeCount = plantInfo.optInt("exchangeCount");
+                        }
+                        JSONObject seedStage = plantInfo.optJSONObject("seedStage");
+                        if (seedStage != null) {
+                            seedName = seedStage.optString("seedName", "");
+                            seedSubTitle = seedStage.optString("seedSubTitle", "");
+                            stageName = seedStage.optString("stageName", "");
+                            if (seedStage.has("stageLevel")) {
+                                stageLevel = seedStage.optInt("stageLevel");
+                            }
+                            if (seedStage.has("stageMaxLevel")) {
+                                stageMaxLevel = seedStage.optInt("stageMaxLevel");
+                            }
+                            if (seedStage.has("currentProgress")) {
+                                currentProgress = seedStage.optInt("currentProgress");
+                            }
+                            if (seedStage.has("totalProgress")) {
+                                totalProgress = seedStage.optInt("totalProgress");
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "orchardInfo 解析失败:");
+            Log.printStackTrace(TAG, th);
+        }
+        String exchangeText;
+        if (canExchange == null) {
+            exchangeText = " ";
+        } else if (canExchange) {
+            exchangeText = "可兑换(已兑" + Log.n(exchangeCount) + "次)";
+        } else {
+            exchangeText = "未成熟";
+        }
+        Log.info("芭芭农场🌳[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "][" + seedName + seedSubTitle + "]" + stageName + "(" + Log.n(stageLevel) + "/" + Log.n(stageMaxLevel) + "级)进度" + Log.n(currentProgress) + "/" + Log.n(totalProgress) + ";肥料" + Log.n(happyPoint) + ";今日可施肥" + Log.n(wateringLeftTimes) + "次;金蛋" + Log.n(smashedEggs) + "/" + Log.n(eggLimit) + "(待砸" + Log.n(unsmashedEggs) + ");" + exchangeText + ";");
     }
 
     /**
@@ -269,6 +380,7 @@ public class AntOrchard extends ModelTask {
             //    receiveOrchardVisitAward();
             //}
 
+            lastOrchardIndexJo = jo;
             return true;
         } catch (Throwable t) {
             Log.i(TAG, "orchardIndex err:");

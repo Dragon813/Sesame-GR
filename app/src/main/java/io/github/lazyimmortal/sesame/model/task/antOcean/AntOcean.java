@@ -1271,7 +1271,7 @@ public class AntOcean extends ModelTask {
                         }
                     }
                 }
-                Log.record("海洋摸鱼🐟当前赛季[" + seasonTitle + "](" + seasonId + ")项目[" + projectName + "](" + region + ")用户[" + nickName + "]鱼状态[" + fishInteractStatus + "]等级[" + fishLevelName + "]可摸鱼" + remainTouchChance + "累计摸" + touchTotal + "累计获得能量" + touchEnergy + "g(总" + energy + "g)");
+                Log.info("海洋摸鱼🐟[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]当前赛季[" + seasonTitle + "](" + seasonId + ")项目[" + projectName + "](" + region + ")用户[" + nickName + "]鱼状态[" + fishInteractStatus + "]等级[" + fishLevelName + "]可摸鱼" + remainTouchChance + "累计摸" + touchTotal + "累计获得能量" + touchEnergy + "g(总" + energy + "g)");
                 //鱼被困了，解救鱼
                 if ("CAPTURED".equals(fishInteractStatus)) {
                     rescueFish();

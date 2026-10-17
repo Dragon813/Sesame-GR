@@ -788,127 +788,335 @@ public class AntForestV2 extends ModelTask {
     }
 
     private void ForestEnergyInfo() {
+        //读到的值(含真实0)正常赋值, 读不到保持null, 输出时null用空格代替; 每个RPC独立容错, 最终一定输出一条完整信息
+        JSONObject homeJo = null;
+        Integer bubblesNumber = null;
+        Integer currentEnergy = null;
+        Integer totalCertCount = null;
+        Integer treeCount = null;
+        Integer ancientTreeCount = null;
+        Integer reserveCount = null;
+        Integer seaPlantCount = null;
+        Integer animalCertCount = null;
+        Integer totalVitalityAmount = null;
+        Integer obtainTotal = null;
+        Integer robbedTotal = null;
+        String robMost = "";
+        Integer dayenergySummation = null;
+        Integer dayrank = null;
+        Integer weekenergySummation = null;
+        Integer weekrank = null;
+        Integer totalenergySummation = null;
+        Integer totalrank = null;
+        String dayenergySummationtop3 = "";
+        String weekenergySummationtop3 = "";
+        String pkInfo = "";
+
+        //首页: 能量球数量/当前能量/证书明细
         try {
-            JSONObject jo = new JSONObject(AntForestRpcCall.queryHomePage());
-            if (!MessageUtil.checkResultCode(TAG, jo)) {
-                return;
-            }
-            JSONArray bubbles = jo.getJSONArray("bubbles");
-            int bubblesNumber = bubbles.length();
-
-            if (!jo.has("userBaseInfo")) {
-                return;
-            }
-            JSONObject userBaseInfo = jo.getJSONObject("userBaseInfo");
-            int currentEnergy = userBaseInfo.optInt("currentEnergy", 0);
-            int totalCertCount = userBaseInfo.optInt("totalCertCount", 0);
-            if (!jo.has("userVitalityInfo")) {
-                return;
-            }
-            JSONObject userVitalityInfo = jo.getJSONObject("userVitalityInfo");
-            int totalVitalityAmount = userVitalityInfo.optInt("totalVitalityAmount", 0);
-
-            jo = new JSONObject(AntForestRpcCall.queryDynamicsIndex());
-            if (!MessageUtil.checkSuccess(TAG, jo)) {
-                return;
-            }
-            if (!jo.has("todayEnergySummary")) {
-                return;
-            }
-            JSONObject todayEnergySummary = jo.getJSONObject("todayEnergySummary");
-            int obtainTotal = todayEnergySummary.optInt("obtainTotal", 0);
-            int robbedTotal = todayEnergySummary.optInt("robbedTotal", 0);
-
-            //获取能量日榜top
-            jo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("energyRank", "day"));
-            if (!MessageUtil.checkResultCode(TAG, jo)) {
-                return;
-            }
-            if (!jo.has("myself")) {
-                return;
-            }
-            JSONObject myself = jo.getJSONObject("myself");
-            int dayenergySummation = myself.optInt("energySummation", 0);
-            int dayrank = myself.optInt("rank", 0);
-
-            //获取能量周榜top
-            jo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("energyRank", "week"));
-            if (!MessageUtil.checkResultCode(TAG, jo)) {
-                return;
-            }
-            if (!jo.has("myself")) {
-                return;
-            }
-            myself = jo.getJSONObject("myself");
-            int weekenergySummation = myself.optInt("energySummation", 0);
-            int weekrank = myself.optInt("rank", 0);
-
-            //获取能量总榜top
-            jo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("energyRank", "total"));
-            if (!MessageUtil.checkResultCode(TAG, jo)) {
-                return;
-            }
-            if (!jo.has("myself")) {
-                return;
-            }
-            myself = jo.getJSONObject("myself");
-            int totalenergySummation = myself.optInt("energySummation", 0);
-            int totalrank = myself.optInt("rank", 0);
-
-            //获取偷我日榜top
-            String dayenergySummationtop3 = "偷我日榜top3:";
-            String userId;
-            int energySummation;
-            jo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("robRank", "day"));
-            if (!MessageUtil.checkResultCode(TAG, jo)) {
-                return;
-            }
-            if (!jo.has("friendRanking")) {
-                return;
-            }
-            JSONArray friendRankings = jo.getJSONArray("friendRanking");
-            //friendRankings.length()
-            for (int i = 0; i < (Math.max(friendRankings.length(), 3)); i++) {
-                JSONObject friendRanking = friendRankings.getJSONObject(i);
-                energySummation = friendRanking.optInt("energySummation", 0);
-                if (energySummation == 0) {
-                    break;
+            homeJo = new JSONObject(AntForestRpcCall.queryHomePage());
+            if (MessageUtil.checkResultCode(TAG, homeJo)) {
+                JSONArray bubbles = homeJo.optJSONArray("bubbles");
+                bubblesNumber = bubbles != null ? bubbles.length() : 0;
+                JSONObject userBaseInfo = homeJo.optJSONObject("userBaseInfo");
+                if (userBaseInfo != null) {
+                    currentEnergy = userBaseInfo.optInt("currentEnergy", 0);
+                    totalCertCount = userBaseInfo.optInt("totalCertCount", 0);
+                    treeCount = userBaseInfo.optInt("treeCount", 0);
+                    ancientTreeCount = userBaseInfo.optInt("ancientTreeCount", 0);
+                    reserveCount = userBaseInfo.optInt("reserveCount", 0);
+                    seaPlantCount = userBaseInfo.optInt("seaPlantCount", 0);
+                    animalCertCount = userBaseInfo.optInt("animalCertCount", 0);
                 }
-                userId = friendRanking.optString("userId", null);
-                dayenergySummationtop3 = dayenergySummationtop3 + "[" + UserIdMap.getShowName(userId) + "]" + energySummation + "g;";
             }
-
-            //获取偷我周榜top
-            String weekenergySummationtop3 = "偷我周榜top3:";
-            jo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("robRank", "week"));
-            if (!MessageUtil.checkResultCode(TAG, jo)) {
-                return;
-            }
-            if (!jo.has("friendRanking")) {
-                return;
-            }
-            friendRankings = jo.getJSONArray("friendRanking");
-            //friendRankings.length()
-            for (int i = 0; i < (Math.max(friendRankings.length(), 3)); i++) {
-                JSONObject friendRanking = friendRankings.getJSONObject(i);
-                energySummation = friendRanking.optInt("energySummation", 0);
-                if (energySummation == 0) {
-                    break;
-                }
-                userId = friendRanking.optString("userId", null);
-                weekenergySummationtop3 = weekenergySummationtop3 + "[" + UserIdMap.getShowName(userId) + "]" + energySummation + "g;";
-            }
-            String ForestInfo = "森林榜单🌳[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "](" + UserIdMap.getCurrentUid() + ")收取" + obtainTotal + "g;被收" + robbedTotal + "g;能量球" + bubblesNumber + "个;活力值" + totalVitalityAmount + ";当前能量" + currentEnergy + "g;证书" + totalCertCount + ";😡" + dayenergySummationtop3 + weekenergySummationtop3 + "😁日榜第" + dayrank + "名:" + dayenergySummation + "g;周榜第" + weekrank + "名:" + weekenergySummation + "g;总榜第" + totalrank + "名:" + totalenergySummation + "g;";
-            //Toast.show(ForestInfo);
-            //Log.forest("");
-            Log.record(ForestInfo);
-            //Log.forest("");
-
         } catch (Throwable th) {
-            Log.i(TAG, "ForestEnergyInfo err:");
+            Log.i(TAG, "ForestEnergyInfo 首页查询失败, 相关数据按空格处理:");
             Log.printStackTrace(TAG, th);
         }
 
+        //活力值: 新版queryHomePage不再返回, 改查queryTaskList; 已对照RPC.txt抓包验证真实路径为userVitalityInfo.totalVitalityAmount(另有过期值overDueVitalityAmount)
+        try {
+            JSONObject vitalityJo = new JSONObject(AntForestRpcCall.queryTaskList());
+            if (MessageUtil.checkResultCode(TAG, vitalityJo)) {
+                JSONObject userVitalityInfo = vitalityJo.optJSONObject("userVitalityInfo");
+                if (userVitalityInfo == null) {
+                    userVitalityInfo = vitalityJo.optJSONObject("userVitalityInfoVO");
+                }
+                if (userVitalityInfo != null && userVitalityInfo.has("totalVitalityAmount")) {
+                    totalVitalityAmount = userVitalityInfo.optInt("totalVitalityAmount");
+                } else if (vitalityJo.has("totalVitalityAmount")) {
+                    totalVitalityAmount = vitalityJo.optInt("totalVitalityAmount");
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "ForestEnergyInfo 活力值查询失败, 按空格处理:");
+            Log.printStackTrace(TAG, th);
+        }
+
+        //动态首页: 今日收取/被收能量, 今日我收取最多好友
+        try {
+            JSONObject dynamicsJo = new JSONObject(AntForestRpcCall.queryDynamicsIndex());
+            if (MessageUtil.checkSuccess(TAG, dynamicsJo)) {
+                JSONObject todayEnergySummary = dynamicsJo.optJSONObject("todayEnergySummary");
+                if (todayEnergySummary != null) {
+                    obtainTotal = todayEnergySummary.optInt("obtainTotal", 0);
+                    robbedTotal = todayEnergySummary.optInt("robbedTotal", 0);
+                }
+                JSONObject dynamicsRobRank = dynamicsJo.optJSONObject("robRank");
+                JSONObject robEntry = dynamicsRobRank != null ? dynamicsRobRank.optJSONObject("ROB") : null;
+                if (robEntry != null) {
+                    String robContent = robEntry.optString("content", "");
+                    if (!robContent.isEmpty()) {
+                        robMost = "偷取最多[" + robEntry.optString("displayName", "") + "]" + robContent + ";";
+                    }
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "ForestEnergyInfo 动态首页查询失败, 相关数据按空格处理:");
+            Log.printStackTrace(TAG, th);
+        }
+
+        //能量日榜
+        try {
+            JSONObject dayRankJo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("energyRank", "day"));
+            if (MessageUtil.checkResultCode(TAG, dayRankJo)) {
+                JSONObject myself = dayRankJo.optJSONObject("myself");
+                if (myself != null) {
+                    dayenergySummation = myself.optInt("energySummation", 0);
+                    dayrank = myself.optInt("rank", 0);
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "ForestEnergyInfo 能量日榜查询失败, 按空格处理:");
+            Log.printStackTrace(TAG, th);
+        }
+
+        //能量周榜
+        try {
+            JSONObject weekRankJo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("energyRank", "week"));
+            if (MessageUtil.checkResultCode(TAG, weekRankJo)) {
+                JSONObject myself = weekRankJo.optJSONObject("myself");
+                if (myself != null) {
+                    weekenergySummation = myself.optInt("energySummation", 0);
+                    weekrank = myself.optInt("rank", 0);
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "ForestEnergyInfo 能量周榜查询失败, 按空格处理:");
+            Log.printStackTrace(TAG, th);
+        }
+
+        //能量总榜
+        try {
+            JSONObject totalRankJo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("energyRank", "total"));
+            if (MessageUtil.checkResultCode(TAG, totalRankJo)) {
+                JSONObject myself = totalRankJo.optJSONObject("myself");
+                if (myself != null) {
+                    totalenergySummation = myself.optInt("energySummation", 0);
+                    totalrank = myself.optInt("rank", 0);
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "ForestEnergyInfo 能量总榜查询失败, 按空格处理:");
+            Log.printStackTrace(TAG, th);
+        }
+
+        //偷我日榜top3
+        try {
+            JSONObject robDayJo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("robRank", "day"));
+            if (MessageUtil.checkResultCode(TAG, robDayJo)) {
+                JSONArray friendRankings = robDayJo.optJSONArray("friendRanking");
+                if (friendRankings != null) {
+                    for (int i = 0; i < Math.min(friendRankings.length(), 3); i++) {
+                        JSONObject friendRanking = friendRankings.optJSONObject(i);
+                        if (friendRanking == null) {
+                            continue;
+                        }
+                        int energySummation = friendRanking.optInt("energySummation", 0);
+                        if (energySummation == 0) {
+                            break;
+                        }
+                        String userId = friendRanking.optString("userId", null);
+                        dayenergySummationtop3 = dayenergySummationtop3 + "[" + UserIdMap.getShowName(userId) + "]" + energySummation + "g;";
+                    }
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "ForestEnergyInfo 偷我日榜查询失败, 按空处理:");
+            Log.printStackTrace(TAG, th);
+        }
+
+        //偷我周榜top3
+        try {
+            JSONObject robWeekJo = new JSONObject(AntForestRpcCall.queryTopEnergyRanking("robRank", "week"));
+            if (MessageUtil.checkResultCode(TAG, robWeekJo)) {
+                JSONArray friendRankings = robWeekJo.optJSONArray("friendRanking");
+                if (friendRankings != null) {
+                    for (int i = 0; i < Math.min(friendRankings.length(), 3); i++) {
+                        JSONObject friendRanking = friendRankings.optJSONObject(i);
+                        if (friendRanking == null) {
+                            continue;
+                        }
+                        int energySummation = friendRanking.optInt("energySummation", 0);
+                        if (energySummation == 0) {
+                            break;
+                        }
+                        String userId = friendRanking.optString("userId", null);
+                        weekenergySummationtop3 = weekenergySummationtop3 + "[" + UserIdMap.getShowName(userId) + "]" + energySummation + "g;";
+                    }
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "ForestEnergyInfo 偷我周榜查询失败, 按空处理:");
+            Log.printStackTrace(TAG, th);
+        }
+
+        //古树PK赛信息(仅展示): 优先queryTopEnergyChallengeRanking(赛季能量/保护进度/保级线), 失败回退首页energyChallengeRank
+        try {
+            JSONObject pkJo = new JSONObject(AntForestRpcCall.queryTopEnergyChallengeRanking());
+            if (MessageUtil.checkResultCode(TAG, pkJo)) {
+                String rankMemberStatus = pkJo.optString("rankMemberStatus", "");
+                JSONObject pkMyself = pkJo.optJSONObject("myself");
+                if (pkMyself != null && (rankMemberStatus.isEmpty() || "JOIN".equals(rankMemberStatus))) {
+                    String pkLevelName = pkMyself.optString("challengeRankLevelName", "");
+                    String pkLevel = pkMyself.optString("challengeRankLevel", "");
+                    String pkProgress = "";
+                    JSONObject ancientTreeProgress = pkMyself.optJSONObject("ancientTreeProgress");
+                    if (ancientTreeProgress != null) {
+                        pkProgress = "保护" + ancientTreeProgress.optInt("protectCount", 0) + "/" + ancientTreeProgress.optInt("totalCount", 0) + ";";
+                    }
+                    //预计结算结果: promote晋级/maintain保级/drop降级, 晋级时附下赛季段位名
+                    String pkExpect = "";
+                    String expect = pkMyself.optString("challengeExpectedSettlementResult", "");
+                    if (!expect.isEmpty()) {
+                        String expectCN;
+                        if ("promote".equals(expect)) {
+                            expectCN = "晋级";
+                        } else if ("maintain".equals(expect) || "keep".equals(expect)) {
+                            expectCN = "保级";
+                        } else if ("drop".equals(expect) || "degrade".equals(expect) || "demote".equals(expect)) {
+                            expectCN = "降级";
+                        } else {
+                            expectCN = expect;
+                        }
+                        pkExpect = "预计" + expectCN;
+                    }
+                    String pkLines = "";
+                    String pkQuota = "";
+                    String pkSettle = "";
+                    JSONObject rankDisplayParamsVO = pkJo.optJSONObject("rankDisplayParamsVO");
+                    if (rankDisplayParamsVO != null) {
+                        if ("promote".equals(expect) && rankDisplayParamsVO.has("nextRankLevelName")) {
+                            pkExpect += "[" + rankDisplayParamsVO.optString("nextRankLevelName", "") + "]";
+                        }
+                        if (!pkExpect.isEmpty()) {
+                            pkExpect += ";";
+                        }
+                        if (rankDisplayParamsVO.has("promoteLineEnergy")) {
+                            pkLines += "晋级线" + rankDisplayParamsVO.optInt("promoteLineEnergy", 0) + ";";
+                        }
+                        if (rankDisplayParamsVO.has("safeLineEnergy")) {
+                            pkLines += "保级线" + rankDisplayParamsVO.optInt("safeLineEnergy", 0) + ";";
+                        }
+                        if (rankDisplayParamsVO.has("promoteCount") || rankDisplayParamsVO.has("maintainCount") || rankDisplayParamsVO.has("dropCount")) {
+                            pkQuota = "名额晋" + rankDisplayParamsVO.optInt("promoteCount", 0) + "/保" + rankDisplayParamsVO.optInt("maintainCount", 0) + "/降" + rankDisplayParamsVO.optInt("dropCount", 0) + ";";
+                        }
+                        long settlementStartTime = rankDisplayParamsVO.optLong("settlementStartTime", 0);
+                        if (settlementStartTime > 0) {
+                            pkSettle = "结算" + new java.text.SimpleDateFormat("MM-dd", java.util.Locale.getDefault()).format(new java.util.Date(settlementStartTime)) + ";";
+                        }
+                    }
+                    //榜前3: friendRanking[]按排名降序 displayName+energySummation, 含本人时附加(本人)标记
+                    StringBuilder pkTop3 = new StringBuilder();
+                    JSONArray friendRanking = pkJo.optJSONArray("friendRanking");
+                    if (friendRanking != null) {
+                        String currentUid = UserIdMap.getCurrentUid();
+                        int n = Math.min(3, friendRanking.length());
+                        for (int i = 0; i < n; i++) {
+                            JSONObject item = friendRanking.optJSONObject(i);
+                            if (item == null) {
+                                continue;
+                            }
+                            String displayName = item.optString("displayName", "");
+                            if (!currentUid.isEmpty() && currentUid.equals(item.optString("userId", ""))) {
+                                displayName += "(本人)";
+                            }
+                            pkTop3.append("第").append(i + 1).append("[").append(displayName)
+                                    .append("]").append(item.optInt("energySummation", 0)).append("g;");
+                        }
+                    }
+                    pkInfo = pkLevelName + "LV" + pkLevel + "第" + pkMyself.optInt("rank", 0) + "名:" + pkMyself.optInt("energySummation", 0) + "g;" + pkProgress + pkExpect + pkLines + pkQuota + pkSettle + pkTop3;
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "ForestEnergyInfo PK榜查询失败, 回退首页段位:");
+            Log.printStackTrace(TAG, th);
+        }
+        if (pkInfo.isEmpty() && homeJo != null) {
+            //回退: queryHomePage.combineHandlerVOMap.energyChallengeRank(段位名/等级/排名)
+            try {
+                JSONObject combineHandlerVOMap = homeJo.optJSONObject("combineHandlerVOMap");
+                JSONObject energyChallengeRank = combineHandlerVOMap != null ? combineHandlerVOMap.optJSONObject("energyChallengeRank") : null;
+                if (energyChallengeRank != null && "SUCCESS".equals(energyChallengeRank.optString("resultCode", ""))) {
+                    String pkLevelName = "";
+                    JSONArray rankHeadPortraitVOS = energyChallengeRank.optJSONArray("rankHeadPortraitVOS");
+                    JSONObject firstRank = rankHeadPortraitVOS != null ? rankHeadPortraitVOS.optJSONObject(0) : null;
+                    JSONObject rankExtInfo = firstRank != null ? firstRank.optJSONObject("extInfo") : null;
+                    if (rankExtInfo != null) {
+                        pkLevelName = rankExtInfo.optString("name", "");
+                    }
+                    pkInfo = pkLevelName + "LV" + energyChallengeRank.optString("level", "") + "第" + energyChallengeRank.optInt("rank", 0) + "名;";
+                }
+            } catch (Throwable th) {
+                Log.printStackTrace(TAG, th);
+            }
+        }
+
+        String ForestInfo = "森林榜单🌳[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "](" + UserIdMap.getCurrentUid() + ")收取" + n(obtainTotal) + "g;被收" + n(robbedTotal) + "g;能量球" + n(bubblesNumber) + "个;活力值" + n(totalVitalityAmount) + ";当前能量" + n(currentEnergy) + "g;证书" + n(totalCertCount) + "(种树" + n(treeCount) + "/古树" + n(ancientTreeCount) + "/保护地" + n(reserveCount) + "/海域" + n(seaPlantCount) + "/动物" + n(animalCertCount) + ");" + (dayenergySummationtop3.isEmpty() ? "" : "偷我日榜top3:" + dayenergySummationtop3) + (weekenergySummationtop3.isEmpty() ? "" : "偷我周榜top3:" + weekenergySummationtop3) + robMost + "日榜第" + n(dayrank) + "名:" + n(dayenergySummation) + "g;周榜第" + n(weekrank) + "名:" + n(weekenergySummation) + "g;总榜第" + n(totalrank) + "名:" + n(totalenergySummation) + "g;";
+        Log.info(ForestInfo);
+        //PK赛信息单独列条(未查到不输出)
+        if (!pkInfo.isEmpty()) {
+            Log.info("森林比赛🆚[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "](PK赛)" + pkInfo);
+        }
+    }
+
+    /**
+     * 森林榜单数值展示: 读到null(接口失败/字段缺失)显示空格, 读到真实值(含0)正常显示
+     */
+    private static String n(Integer value) {
+        return value == null ? " " : Integer.toString(value);
+    }
+
+    /**
+     * 新保护地排行好友前3文本: [昵称]步数步(本人标记), 按服务端返回顺序取前3, 遇无数据条目(步数勋章证书均0)即终止
+     */
+    private static String monopolyTop3Text(JSONArray ranking) {
+        if (ranking == null || ranking.length() == 0) {
+            return "";
+        }
+        String currentUid = UserIdMap.getCurrentUid();
+        StringBuilder sb = new StringBuilder();
+        int picked = 0;
+        for (int i = 0; i < ranking.length() && picked < 3; i++) {
+            JSONObject entry = ranking.optJSONObject(i);
+            if (entry == null) {
+                continue;
+            }
+            int step = entry.optInt("stepCount", 0);
+            int medal = entry.optInt("medalCount", 0);
+            int map = entry.optInt("mapCount", 0);
+            if (step <= 0 && medal <= 0 && map <= 0) {
+                break;
+            }
+            String uid = entry.optString("userId");
+            sb.append("/[").append(UserIdMap.getShowName(uid));
+            if (uid.equals(currentUid)) {
+                sb.append("(本人)");
+            }
+            sb.append("]").append(step).append("步");
+            picked++;
+        }
+        return sb.length() == 0 ? "" : sb.substring(1);
     }
 
     private void collectPKEnergy() {
@@ -3713,21 +3921,72 @@ public class AntForestV2 extends ModelTask {
             int energyCount = userInfo.optInt("energyCount");
             int stepCount = userInfo.optInt("stepCount");
 
-            JSONObject joRank = new JSONObject(AntForestRpcCall.queryMonopolyRanking());
-            if (!MessageUtil.checkResultCode(TAG, joRank)) {
-                return;
+            // 排行信息(全容错,已对照RPC.txt queryMonopolyRanking抓包验证): 累计排名/证书/勋章取TOTAL榜myself,
+            // 今日巡护名次/步数/勋章/证书取DAY榜myself, friendRanking各取前3(跳过无数据条目); 任一失败仅略过对应段不中断主流程
+            Integer rank = null;
+            Integer mapCount = null;
+            Integer medalCount = null;
+            String totalTop3 = "";
+            try {
+                JSONObject joRank = new JSONObject(AntForestRpcCall.queryMonopolyRanking("TOTAL"));
+                if (MessageUtil.checkResultCode(TAG, joRank)) {
+                    JSONObject myself = joRank.optJSONObject("myself");
+                    if (myself != null) {
+                        if (myself.has("rank")) {
+                            rank = myself.optInt("rank");
+                        }
+                        if (myself.has("mapCount")) {
+                            mapCount = myself.optInt("mapCount");
+                        }
+                        if (myself.has("medalCount")) {
+                            medalCount = myself.optInt("medalCount");
+                        }
+                    }
+                    totalTop3 = monopolyTop3Text(joRank.optJSONArray("friendRanking"));
+                }
+            } catch (Throwable t) {
+                Log.printStackTrace(TAG, t);
+            }
+            Integer dayRank = null;
+            Integer dayStepCount = null;
+            Integer dayMedalCount = null;
+            Integer dayMapCount = null;
+            String dayTop3 = "";
+            try {
+                JSONObject joDayRank = new JSONObject(AntForestRpcCall.queryMonopolyRanking("DAY"));
+                if (MessageUtil.checkResultCode(TAG, joDayRank)) {
+                    JSONObject dayMyself = joDayRank.optJSONObject("myself");
+                    if (dayMyself != null) {
+                        if (dayMyself.has("rank")) {
+                            dayRank = dayMyself.optInt("rank");
+                        }
+                        if (dayMyself.has("stepCount")) {
+                            dayStepCount = dayMyself.optInt("stepCount");
+                        }
+                        if (dayMyself.has("medalCount")) {
+                            dayMedalCount = dayMyself.optInt("medalCount");
+                        }
+                        if (dayMyself.has("mapCount")) {
+                            dayMapCount = dayMyself.optInt("mapCount");
+                        }
+                    }
+                    dayTop3 = monopolyTop3Text(joDayRank.optJSONArray("friendRanking"));
+                }
+            } catch (Throwable t) {
+                Log.printStackTrace(TAG, t);
             }
 
-            int rank = 0;
-            int mapCount = 0;
-            int medalCount = 0;
-            if (joRank.has("myself")) {
-                JSONObject myself = joRank.optJSONObject("myself");
-                rank = myself.optInt("rank");
-                mapCount = myself.optInt("mapCount");
-                medalCount = myself.optInt("medalCount");
+            StringBuilder monopolyInfo = new StringBuilder("新保护地🌲[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]巡护[" + regionName + "]地图[" + mapNameText + "(" + currentMapCode + ")]累计排名" + n(rank) + "证书" + n(mapCount) + "勋章" + n(medalCount) + "总能量" + energyCount + "g总步数" + stepCount + "掷骰子剩余" + totalDiceCount);
+            if (dayRank != null || dayStepCount != null || dayMedalCount != null || dayMapCount != null) {
+                monopolyInfo.append(";今日巡护第").append(n(dayRank)).append("名").append(n(dayStepCount)).append("步/勋章").append(n(dayMedalCount)).append("/证书").append(n(dayMapCount));
             }
-            Log.record("新保护地🌲巡护[" + regionName + "]地图[" + mapNameText + "(" + currentMapCode + ")]累计排名" + rank + "证书" + mapCount + "勋章" + medalCount + "总能量" + energyCount + "g总步数" + stepCount + "掷骰子剩余" + totalDiceCount);
+            if (!dayTop3.isEmpty()) {
+                monopolyInfo.append(";今日前三").append(dayTop3);
+            }
+            if (!totalTop3.isEmpty()) {
+                monopolyInfo.append(";累计前三").append(totalTop3);
+            }
+            Log.info(monopolyInfo.toString());
 
             if (switchNewMonopolyMap.getValue()) {
                 // 从第一张地图起依次检测: ownedCreatureCount达到totalCreatureCount且creatureList全部达到maxLevel视为已满级, 找第一张未达成的AVAILABLE地图
@@ -4779,62 +5038,122 @@ public class AntForestV2 extends ModelTask {
                 return;
             }
 
-            String teamId = homeJo.optJSONObject("teamHomeResult").optJSONObject("teamBaseInfo").optString("teamId", "");
+            String teamId = "";
+            Integer treeCountForFlag = null;
+            Integer targetPlantNums = null;
+            String rankRewardStatus = "";
+            JSONObject teamHomeResult = homeJo.optJSONObject("teamHomeResult");
+            JSONObject teamBaseInfo = teamHomeResult != null ? teamHomeResult.optJSONObject("teamBaseInfo") : null;
+            if (teamBaseInfo != null) {
+                teamId = teamBaseInfo.optString("teamId", "");
+                if (teamBaseInfo.has("treeCountForFlag")) {
+                    treeCountForFlag = teamBaseInfo.optInt("treeCountForFlag");
+                }
+            }
             if (teamId.isEmpty()) {
                 Log.record("未获取到组队合种 TeamID");
+                Log.info("组队浇水👥[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]未获取到组队合种TeamID, 我的队伍种树" + n(treeCountForFlag) + "颗/前6万名种树" + n(targetPlantNums) + "颗(" + rankRewardStatus + ");");
                 return;
             }
 
-            int currentEnergy = homeJo.optJSONObject("userBaseInfo").optInt("currentEnergy", 0);
+            JSONObject userBaseInfo = homeJo.optJSONObject("userBaseInfo");
+            int currentEnergy = userBaseInfo != null ? userBaseInfo.optInt("currentEnergy", 0) : 0;
             if (currentEnergy < 10) {
                 Log.record("当前能量不足10g(" + currentEnergy + "g)无法浇水");
+                Log.info("组队浇水👥[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]当前能量" + currentEnergy + "g不足10g无法浇水, 我的队伍种树" + n(treeCountForFlag) + "颗/前6万名种树" + n(targetPlantNums) + "颗(" + rankRewardStatus + ");");
                 return;
             }
 
             JSONObject joTeamMemberList = new JSONObject(AntForestRpcCall.queryTeamMemberList(teamId));
             if (!MessageUtil.checkResultCode(TAG, joTeamMemberList)) {
+                Log.info("组队浇水👥[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]查询队伍成员失败, 我的队伍种树" + n(treeCountForFlag) + "颗/前6万名种树" + n(targetPlantNums) + "颗(" + rankRewardStatus + ");");
                 return;
             }
             JSONObject teamDetail = joTeamMemberList.optJSONObject("teamDetail");
-            int teamCurrentEnergy = teamDetail.optInt("currentEnergy");
+            int teamCurrentEnergy = teamDetail != null ? teamDetail.optInt("currentEnergy") : 0;
+
+            // 组队种树进度: H5主页响应路径为teamHomeResult.teamBaseInfo.treeCountForFlag(我的队伍已种)与
+            // teamHomeResult.combineHandlerVOMap.teamPlantRank.targetPlantNums(前6万名门槛), 程序自身queryHomePage响应
+            // 实测不下发这两个字段, 缺失时回退queryDessertBattleRankInfo(dessertBattleRankInfoVO.plantedNums/targetPlantNums同值)
+            JSONObject combineHandlerVOMap = teamHomeResult != null ? teamHomeResult.optJSONObject("combineHandlerVOMap") : null;
+            JSONObject teamPlantRank = combineHandlerVOMap != null ? combineHandlerVOMap.optJSONObject("teamPlantRank") : null;
+            if (teamPlantRank != null) {
+                if (teamPlantRank.has("targetPlantNums")) {
+                    targetPlantNums = teamPlantRank.optInt("targetPlantNums");
+                }
+                rankRewardStatus = teamPlantRank.optString("rankRewardStatus", "");
+            }
+            if (treeCountForFlag == null || targetPlantNums == null) {
+                try {
+                    JSONObject battleJo = new JSONObject(AntForestRpcCall.queryDessertBattleRankInfo());
+                    if (MessageUtil.checkResultCode(TAG, battleJo)) {
+                        JSONObject battleInfo = battleJo.optJSONObject("dessertBattleRankInfoVO");
+                        if (battleInfo != null) {
+                            if (treeCountForFlag == null && battleInfo.has("plantedNums")) {
+                                treeCountForFlag = battleInfo.optInt("plantedNums");
+                            }
+                            if (targetPlantNums == null && battleInfo.has("targetPlantNums")) {
+                                targetPlantNums = battleInfo.optInt("targetPlantNums");
+                            }
+                            if (rankRewardStatus.isEmpty() && battleInfo.has("rankRewardStatus")) {
+                                rankRewardStatus = battleInfo.optString("rankRewardStatus", "");
+                            }
+                        }
+                    }
+                } catch (Throwable t) {
+                    Log.printStackTrace(TAG, t);
+                }
+            }
 
             // 解析队伍成员：self=true(或userId为当前用户)标记为本人，单行输出
             JSONArray teamMemberList = joTeamMemberList.optJSONArray("memberList");
-            if (teamMemberList != null) {
-                String currentUid = UserIdMap.getCurrentUid();
-                StringBuilder memberInfo = new StringBuilder("组队浇水👥");
-                memberInfo.append("小队能量").append(teamCurrentEnergy).append("g;");
-                for (int i = 0; i < teamMemberList.length(); i++) {
-                    JSONObject member = teamMemberList.optJSONObject(i);
-                    if (member == null) {
-                        continue;
-                    }
-                    String userId = member.optString("userId");
-                    String displayName = member.optString("displayName");
-                    if (displayName.isEmpty()) {
-                        displayName = UserIdMap.getShowName(userId);
-                    }
-                    int totalEnergy = member.optInt("totalEnergy");
-                    int todayEnergy = member.optInt("todayEnergy");
-                    int yesterdayEnergy = member.optInt("yesterdayEnergy");
-                    boolean isSelf = member.optBoolean("self") || userId.equals(currentUid);
-                    memberInfo.append("[").append(displayName).append("]");
-                    if (isSelf) {
-                        memberInfo.append("(当前账户)");
-                        todayUsed = member.optInt("todayEnergy");
-                        usertotalEnergy = member.optInt("totalEnergy");
-                    }
-                    memberInfo.append("累计浇水").append(totalEnergy).append("g昨").append(yesterdayEnergy).append("g今").append(todayEnergy).append("g;");
-                }
-                Log.record(memberInfo.toString());
-            }
-
-            int userRemainingQuota = userDailyTarget - todayUsed;
-
-            if (userRemainingQuota < 10) {
-                Log.record("组队合种今日已达标 (已浇" + todayUsed + "g目标" + userDailyTarget + "g组队合种浇水上限" + userWaterMax + "g)跳过");
+            if (teamMemberList == null || teamMemberList.length() == 0) {
+                Log.info("组队浇水👥[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]成员列表为空, 我的队伍种树" + n(treeCountForFlag) + "颗/前6万名种树" + n(targetPlantNums) + "颗(" + rankRewardStatus + ")小队能量" + teamCurrentEnergy + "g;");
                 return;
             }
+            String currentUid = UserIdMap.getCurrentUid();
+            StringBuilder memberInfo = new StringBuilder("组队浇水👥[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]我的队伍种树")
+                    .append(n(treeCountForFlag)).append("颗/前6万名种树").append(n(targetPlantNums)).append("颗");
+            // 距前6万名排名差值由 targetPlantNums - treeCountForFlag 推算(响应无直接字段)，达标或字段缺失时不输出
+            if (targetPlantNums != null && treeCountForFlag != null && targetPlantNums - treeCountForFlag > 0) {
+                memberInfo.append(",距前6万名还差").append(targetPlantNums - treeCountForFlag).append("颗");
+            }
+            if (!rankRewardStatus.isEmpty()) {
+                memberInfo.append("(").append(rankRewardStatus).append(")");
+            }
+            memberInfo.append(",小队能量").append(teamCurrentEnergy).append("g;");
+            for (int i = 0; i < teamMemberList.length(); i++) {
+                JSONObject member = teamMemberList.optJSONObject(i);
+                if (member == null) {
+                    continue;
+                }
+                String userId = member.optString("userId");
+                String displayName = member.optString("displayName");
+                if (displayName.isEmpty()) {
+                    displayName = UserIdMap.getShowName(userId);
+                }
+                int totalEnergy = member.optInt("totalEnergy");
+                int todayEnergy = member.optInt("todayEnergy");
+                int yesterdayEnergy = member.optInt("yesterdayEnergy");
+                boolean isSelf = member.optBoolean("self") || userId.equals(currentUid);
+                memberInfo.append("[").append(displayName).append("]");
+                if (isSelf) {
+                    memberInfo.append("(当前账户)");
+                    todayUsed = member.optInt("todayEnergy");
+                    usertotalEnergy = member.optInt("totalEnergy");
+                }
+                memberInfo.append("累计浇水").append(totalEnergy).append("g昨").append(yesterdayEnergy).append("g今").append(todayEnergy).append("g;");
+            }
+            int userRemainingQuota = userDailyTarget - todayUsed;
+
+            // 今日已达标时将达标说明合并进组队浇水👥信息条目，不再单独输出record
+            if (userRemainingQuota < 10) {
+                memberInfo.append("今日已达标(已浇").append(todayUsed).append("g目标").append(userDailyTarget)
+                        .append("g组队合种浇水上限").append(userWaterMax).append("g);");
+                Log.info(memberInfo.toString());
+                return;
+            }
+            Log.info(memberInfo.toString());
 
             // 切换团队模式
             boolean needReturn = false;
@@ -4973,7 +5292,7 @@ public class AntForestV2 extends ModelTask {
                             }
                         }
 
-                        StringBuilder waterLog = new StringBuilder("真爱合种💧[" + loveTeamId + "]累计攒能量" + currentEnergy + "g;");
+                        StringBuilder waterLog = new StringBuilder("真爱合种💧[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "][" + loveTeamId + "]累计攒能量" + currentEnergy + "g;");
                         Iterator<String> it = todayWaterMap.keys();
                         while (it.hasNext()) {
                             String uid = it.next();
@@ -4989,7 +5308,7 @@ public class AntForestV2 extends ModelTask {
                             }
                             waterLog.append("当天浇水").append(waterNum).append("g;");
                         }
-                        Log.record(waterLog.toString());
+                        Log.info(waterLog.toString());
                     }
                 }
 
@@ -5059,7 +5378,7 @@ public class AntForestV2 extends ModelTask {
                 Log.record("updateUserConfigEnergyPvp 返回异常");
             } else {
                 //Log.record("1V1能量挑战切换成功：" + (needReturn ? "开启" : "关闭"));
-                Log.forest("比赛情况🆚1V1能量挑战成功开启");
+                Log.forest("森林比赛🆚1V1能量挑战成功开启");
                 return true;
             }
             return false;
@@ -5087,7 +5406,7 @@ public class AntForestV2 extends ModelTask {
                 int defenderEnergy = currentEnergyPvpBattleRecord.optInt("defenderEnergy");
                 int defenderWinCount = currentEnergyPvpBattleRecord.optInt("defenderWinCount");
                 String battleStatus = currentEnergyPvpBattleRecord.optString("battleStatus");
-                Log.record("比赛情况🆚" + battleType + "赛" + battleStatus + "[" + attackerDisplayName + "]" + attackerWinCount + "胜(" + attackerEnergy + "g)VS[" + defenderDisplayName + "]" + attackerWinCount + "胜(" + defenderEnergy + "g)");
+                Log.info("森林比赛🆚[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "](" + battleType + "赛)" + battleStatus + "[" + attackerDisplayName + "]" + attackerWinCount + "胜(" + attackerEnergy + "g)VS[" + defenderDisplayName + "]" + defenderWinCount + "胜(" + defenderEnergy + "g)");
                 //领取奖励
                 if (currentEnergyPvpBattleRecord.optBoolean("hasReward")) {
                     jo = new JSONObject(AntForestRpcCall.receivePvpRewards());

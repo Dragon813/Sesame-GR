@@ -57,6 +57,11 @@ public class AntForestRpcCall {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.queryHomePage", "[{\"configVersionMap" + "\":{\"wateringBubbleConfig\":\"10\"},\"skipWhackMole\":true," + "\"source" + "\":\"chInfo_ch_appcenter__chsub_9patch\",\"version\":\"" + VERSION + "\"}]", 3, 1000);
     }
 
+    //组队种树活动排行信息(前6万名), 响应dessertBattleRankInfoVO含plantedNums/targetPlantNums/rankRewardStatus
+    public static String queryDessertBattleRankInfo() {
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.queryDessertBattleRankInfo", "[{\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]");
+    }
+
     public static String queryDynamicsIndex() {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.queryDynamicsIndex", "[{\"autoRefresh" + "\":false,\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"version\":\"" + VERSION + "\"}]");
     }
@@ -439,7 +444,11 @@ public class AntForestRpcCall {
 
     //排行
     public static String queryMonopolyRanking() {
-        return ApplicationHook.requestString("alipay.antisle.monopoly.h5.queryMonopolyRanking", "[{\"rankType\":\"TOTAL\",\"source\":\"monopoly_home_animal\",\"uniqueId\":\"" + RandomUtil.getRandomString(16) + "\"}]");
+        return queryMonopolyRanking("TOTAL");
+    }
+
+    public static String queryMonopolyRanking(String rankType) {
+        return ApplicationHook.requestString("alipay.antisle.monopoly.h5.queryMonopolyRanking", "[{\"rankType\":\"" + rankType + "\",\"source\":\"monopoly_home_animal\",\"uniqueId\":\"" + RandomUtil.getRandomString(16) + "\"}]");
     }
 
 

@@ -233,9 +233,8 @@ public class MainActivity extends BaseActivity {
         else if (v.getId() == R.id.btn_other_log) {
             data += FileUtil.getOtherLogFile().getAbsolutePath();
         }
-        else if (v.getId() == R.id.btn_friend_watch) {
-            ListDialog.show(this, getString(R.string.friend_watch), FriendWatch.getList(), SelectModelFieldFunc.newMapInstance(), false, ListDialog.ListType.SHOW);
-            return;
+        else if (v.getId() == R.id.btn_info_log) {
+            data += FileUtil.getInfoLogFile().getAbsolutePath();
         }
         else if (v.getId() == R.id.btn_github) {
             //   欢迎自己打包 欢迎大佬pr
@@ -265,9 +264,10 @@ public class MainActivity extends BaseActivity {
         menu.add(0, 7, 7, R.string.export_runtime_log_file);
         menu.add(0, 8, 8, R.string.export_the_statistic_file);
         menu.add(0, 9, 9, R.string.import_the_statistic_file);
-        menu.add(0, 10, 10, R.string.hide_the_application_icon).setCheckable(true).setChecked(state > PackageManager.COMPONENT_ENABLED_STATE_ENABLED);
-        menu.add(0, 11, 11, R.string.language_simplified_chinese).setCheckable(true).setChecked(AppConfig.INSTANCE.getLanguageSimplifiedChinese());
-        menu.add(0, 12, 12, R.string.settings);
+        menu.add(0, 13, 10, R.string.friend_watch);
+        menu.add(0, 10, 11, R.string.hide_the_application_icon).setCheckable(true).setChecked(state > PackageManager.COMPONENT_ENABLED_STATE_ENABLED);
+        menu.add(0, 11, 12, R.string.language_simplified_chinese).setCheckable(true).setChecked(AppConfig.INSTANCE.getLanguageSimplifiedChinese());
+        menu.add(0, 12, 13, R.string.settings);
         return super.onCreateOptionsMenu(menu);
     }
     
@@ -341,6 +341,10 @@ public class MainActivity extends BaseActivity {
                     tvStatistics.setText(Statistics.getText(MainActivity.this));
                     ToastUtil.show(this, "导入成功！");
                 }
+                break;
+
+            case 13:
+                ListDialog.show(this, getString(R.string.friend_watch), FriendWatch.getList(), SelectModelFieldFunc.newMapInstance(), false, ListDialog.ListType.SHOW);
                 break;
             
             case 10:

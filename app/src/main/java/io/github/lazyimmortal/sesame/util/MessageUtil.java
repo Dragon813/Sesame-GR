@@ -202,12 +202,12 @@ public class MessageUtil {
 
                 //庄园饲料任务AntFarm
                 case "AntFarmDoFarmTaskList":
-                    /*if (jo.has("memo")) {
+                    if (jo.has("memo")) {
                         String memo = jo.optString("memo");
                         if (memo.contains("服务器正在开小差，请稍后再试～")) {
                             canAddBlackList = true;
                         }
-                    }*/
+                    }
                     if (canAddBlackList) {
                         MarkTaskBlackList("AntFarm", listTitle, "庄园饲料任务", taskTitle);
                     }
@@ -215,12 +215,12 @@ public class MessageUtil {
 
                 //庄园装扮抽抽乐任务AntFarm
                 case "AntFarmDrawMachineTaskList":
-                    /*if (jo.has("memo")) {
+                    if (jo.has("memo")) {
                         String memo = jo.optString("memo");
                         if (memo.contains("服务器正在开小差，请稍后再试～")) {
                             canAddBlackList = true;
                         }
-                    }*/
+                    }
                     if (canAddBlackList) {
                         MarkTaskBlackList("AntFarm", listTitle, "庄园装扮抽抽乐任务", taskTitle);
                     }

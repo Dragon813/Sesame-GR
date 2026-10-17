@@ -134,7 +134,7 @@ public class GoldenBean {
             }
             // 领取为静默处理: 每次轮询都会自动收取2-3金豆, 日志过于频繁, 需要排查时再放开
             //if (sproutCollected > 0) {
-            //    Log.farm("金豆夺宝🌱领支金豆(金豆苗)#获得[" + sproutCollected + "金豆]");
+            //    Log.record("金豆夺宝🌱领支金豆(金豆苗)#获得[" + sproutCollected + "金豆]");
             //}
             // 中文金豆概况（写入 farm.log，便于直接查看余额/进度）
             JSONObject jarInfo = index.optJSONObject("jarInfo");

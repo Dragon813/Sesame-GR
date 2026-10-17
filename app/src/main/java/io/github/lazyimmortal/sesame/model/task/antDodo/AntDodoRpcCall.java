@@ -77,6 +77,11 @@ public class AntDodoRpcCall {
         return ApplicationHook.requestString("alipay.antdodo.rpc.h5.queryBookList", args);
     }
 
+    public static String queryBookAnimalList(int pageSize, int pageStart) {
+        String args = "[{\"dangerLevelTag\":\"\",\"pageSize\":" + pageSize + ",\"pageStart\":" + pageStart + "}]";
+        return ApplicationHook.requestString("alipay.antdodo.rpc.h5.queryBookAnimalList", args);
+    }
+
     public static String queryBookInfo(String bookId) {
         return ApplicationHook.requestString("alipay.antdodo.rpc.h5.queryBookInfo",
                 "[{\"bookId\":\"" + bookId + "\"}]");
@@ -105,6 +110,13 @@ public class AntDodoRpcCall {
                 "[{\"targetUserId\":" + targetUserId + "}]");
     }
 
+    // V2刮刮卡: 刮开待刮卡(alipay.antdodo.rpc.h5.scratchCard), 获得森林能量, 仅灰度推送账号支持
+    public static String scratchCard(String animalId, String bookId, String cardInstanceId) {
+        return ApplicationHook.requestString("alipay.antdodo.rpc.h5.scratchCard",
+                "[{\"animalId\":\"" + animalId + "\",\"bookId\":\"" + bookId
+                        + "\",\"cardInstanceId\":\"" + cardInstanceId + "\"}]");
+    }
+
     public static String queryMyCollection(String extendAnimalId) {
         return ApplicationHook.requestString("alipay.antdodo.rpc.h5.queryMyCollection",
                 "[{\"extendAnimalId\":\""+extendAnimalId+"\",\"pageSize\":18,\"pageStart\":\"0\"}]");
@@ -115,5 +127,12 @@ public class AntDodoRpcCall {
                 "[{\"animalId\":\""+animalId+"\",\"targetAnimalId\":\""+targetAnimalId+"\",\"targetCardInstanceId\":\""+targetCardInstanceId+"\",\"targetUserId\":\""+targetUserId+"\"}]");
     }
 
+    public static String queryMyAchievement() {
+        return ApplicationHook.requestString("alipay.antdodo.rpc.h5.queryMyAchievement", "[{}]");
+    }
+
+    public static String queryMedalAndConfig() {
+        return ApplicationHook.requestString("alipay.antdodo.rpc.h5.queryMedalAndConfig", "[{\"calculateV2\":true}]");
+    }
 
 }

@@ -49,6 +49,8 @@ public class BaseModel extends Model {
     @Getter
     public static final IntegerModelField backupConfigDays = new IntegerModelField("backupConfigDays", "按天和修改备份配置保存数(滚动覆盖)", 5);
     @Getter
+    public static final IntegerModelField backupLogDays = new IntegerModelField("backupLogDays", "保留之前日志天数(除runtime)", 1);
+    @Getter
     private static final BooleanModelField newRpc = new BooleanModelField("newRpc", "使用新接口(最低支持v10.3.96.8100)", true);
     @Getter
     private static final BooleanModelField debugMode = new BooleanModelField("debugMode", "开启抓包(含小程序数据)", false);
@@ -103,6 +105,7 @@ public class BaseModel extends Model {
         modelFields.addField(timedTaskModel);
         modelFields.addField(timeoutRestart);
         modelFields.addField(backupConfigDays);
+        modelFields.addField(backupLogDays);
         modelFields.addField(newRpc);
         modelFields.addField(newRpc);
         modelFields.addField(debugMode);

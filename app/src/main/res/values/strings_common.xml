@@ -4,12 +4,17 @@
  <string name="start_message" tools:ignore="MissingTranslation">
 本APP是为了学习研究而开发，免费且开源，禁止用于任何商业用途，并禁止二次修改后闭源发布。请于24小时内卸载本APP。更新QQ群：694474777(需QQ大于64级)，群内互相帮助，无排他性，下载访问https://github.com/Dragon813/Sesame-GR/releases。\n
 \n
+更新日志：1.8.9.3\n
+1、增加神奇物种刮卡功能，配合上之前已有的帮好友抽卡并用自己现存最多卡交换效果更佳；\n
+2、设置-基础中，增加保留之前日志(除运行日志runtime)天数可配置，0天保持原逻辑，1天为保留昨天；\n
+3、将主界面的“好友统计”移到右上三点菜单里面，把主界面原“好友统计”位置改为“信息日志”(info.log)，每轮运行主动获取“查询被水情况”和“查询浇水情况”，记录获取的森林种树信息，合种信息，庄园、小鸡家庭、捐蛋排位，神奇物种、去摸鱼、运动等信息；\n
+4、修复了一些小bug。\n
+\n
 更新日志：1.8.9.2\n
 1、根据“万花千鲤”提供的数据包和测试，在森林新版保护地，增加自动切换至最新开放的保护地图，当前地图的所有动物集齐，且每个动物达到满星可用；\n
 2、新增组队浇水上限，可设置组队浇水最大上限，如果是连续组队浇水，每期开始需加上历史浇水设置上限；\n
 3、在设置-保护中，增加PK赛自动保护小于等于达到等级的古树证书功能；\n
 4、增加真爱合种浇水判断条件，支持调整每日浇水数后重新计算并浇水，同时避免出现status清空后重复浇水的情况。\n
-
 \n
 更新日志：1.8.9.1\n
 1、在设置-基础中，抓包功能除了RPC数据外，新增游戏等小程序数据；\n
@@ -254,6 +259,7 @@
     <string name="forest_log">Forest log</string>
     <string name="farm_log">Farm log</string>
     <string name="other_log">Other log</string>
+    <string name="info_log">Info log</string>
     <string name="runtime_log">Runtime log</string>
     <string name="unactivated">UNACTIVATED</string>
     <string name="tips">Tips</string>

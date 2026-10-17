@@ -117,7 +117,7 @@
                 android:orientation="horizontal">
 
             <Button
-                    android:id="@+id/btn_friend_watch"
+                    android:id="@+id/btn_info_log"
                     android:textAllCaps="false"
                     style="@android:style/Widget.DeviceDefault.Button.Borderless"
                     android:layout_width="match_parent"
@@ -132,7 +132,7 @@
                     android:orientation="vertical"
                     android:paddingTop="10dp"
                     android:paddingBottom="10dp"
-                    android:text="@string/friend_watch"
+                    android:text="@string/info_log"
                     android:textAlignment="gravity"
                     android:textColor="@color/main_button_text"
                     android:textSize="14sp" />

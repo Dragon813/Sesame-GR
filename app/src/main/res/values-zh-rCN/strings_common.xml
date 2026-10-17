@@ -22,6 +22,7 @@
     <string name="forest_log">森林记录</string>
     <string name="farm_log">庄园记录</string>
     <string name="other_log">其他记录</string>
+    <string name="info_log">信息记录</string>
     <string name="runtime_log">运行日志</string>
     <string name="unactivated">未激活</string>
     <string name="tips">提示</string>

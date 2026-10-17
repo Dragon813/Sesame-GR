@@ -541,6 +541,11 @@ public class ProtectEcology extends ModelTask {
             if (levelProtectList == null || levelProtectList.length() == 0) {
                 return;
             }
+            // queryTreeMap响应自带当前段位等级(protectProgress.userRankLevel), 优先于首页排行榜解析值; 段位未知时全部跳过, 避免越级浇水被服务端以"达到该等级后可保护"拒绝
+            int userRankLevel = protectProgress.optInt("userRankLevel", 0);
+            if (userRankLevel <= 0) {
+                userRankLevel = pkUserRankLevel;
+            }
             // 每级各浇水一次(5000g)领取证书
             for (int i = 0; i < levelProtectList.length(); i++) {
                 JSONObject levelObj = levelProtectList.optJSONObject(i);
@@ -549,7 +554,7 @@ public class ProtectEcology extends ModelTask {
                 }
                 int level = levelObj.optInt("level");
                 // 仅可保护小于等于用户当前段位等级的古树
-                if (pkUserRankLevel > 0 && level > pkUserRankLevel) {
+                if (level > userRankLevel) {
                     continue;
                 }
                 // 该级已保护过(protectCount>0)则跳过

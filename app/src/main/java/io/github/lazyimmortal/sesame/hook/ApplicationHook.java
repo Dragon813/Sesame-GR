@@ -296,6 +296,8 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                                 Log.record("应用版本：" + alipayVersion.getVersionString());
                                 Log.record("模块版本：" + modelVersion + "（交流更新QQ群：694474777）");
                                 Log.record("开始执行");
+                                // 每轮信息日志空行分隔(扩展功能按钮的森林日志输出保持不变)
+                                Log.infoNewLine();
                                 try {
                                     int checkInterval = BaseModel.getCheckInterval().getValue();
                                     if (lastExecTime + 2000 > System.currentTimeMillis()) {
@@ -316,6 +318,14 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                                         Toast.show("开始切换用户");
                                         reLogin();
                                         return;
+                                    }
+                                    // 自动统计被浇水与浇水情况(必须在账号一致性校验之后: 多账号切换时UserIdMap好友表已确认是当前账号的,getShowName才能正确转昵称)
+                                    try {
+                                        Status.getWateredFriendToday(true);
+                                        Status.getWateringFriendToday(true);
+                                    } catch (Throwable t) {
+                                        Log.i(TAG, "自动统计浇水情况失败:");
+                                        Log.printStackTrace(TAG, t);
                                     }
                                     lastExecTime = System.currentTimeMillis();
                                     try {

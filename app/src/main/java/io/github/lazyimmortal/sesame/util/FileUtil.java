@@ -795,6 +795,21 @@ public class FileUtil {
         }
         return otherLogFile;
     }
+
+    public static File getInfoLogFile() {
+        File infoLogFile = new File(LOG_DIRECTORY_FILE, Log.getLogFileName("info"));
+        if (infoLogFile.exists() && infoLogFile.isDirectory()) {
+            infoLogFile.delete();
+        }
+        if (!infoLogFile.exists()) {
+            try {
+                infoLogFile.createNewFile();
+            }
+            catch (Throwable ignored) {
+            }
+        }
+        return infoLogFile;
+    }
     
     public static File getErrorLogFile() {
         File errorLogFile = new File(LOG_DIRECTORY_FILE, Log.getLogFileName("error"));
@@ -816,24 +831,65 @@ public class FileUtil {
         if (files == null) {
             return;
         }
+        //保留之前日志天数(除runtime): 0=按原逻辑删除全部非当天日志; N>0=保留前N天的非runtime日志(forest/farm/info等), runtime日志仍只保留当天
+        int keepDays = 0;
+        try {
+            Integer configDays = BaseModel.backupLogDays.getValue();
+            if (configDays != null && configDays > 0) {
+                keepDays = configDays;
+            }
+        } catch (Throwable t) {
+            keepDays = 0;
+        }
         SimpleDateFormat sdf = Log.DATE_FORMAT_THREAD_LOCAL.get();
         if (sdf == null) {
             sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
         }
+        sdf.setLenient(false);
         String today = sdf.format(new Date());
+        long todayMillis;
+        try {
+            todayMillis = sdf.parse(today).getTime();
+        } catch (Throwable t) {
+            todayMillis = System.currentTimeMillis();
+        }
         for (File file : files) {
             String name = file.getName();
+            boolean keep = false;
             if (name.endsWith(today + ".log")) {
-                if (file.length() < 104_857_600) {
-                    continue;
+                //当天日志小于100MB保留, 超过100MB删除后由日志框架重建
+                keep = file.length() < 104_857_600;
+            } else if (keepDays > 0 && !name.startsWith("runtime.")) {
+                //文件名格式: {type}.yyyy-MM-dd.log, 仅保留日期距今1~keepDays天的非runtime日志, 其余(含无法解析日期的文件)按原逻辑删除
+                Long fileDateMillis = parseLogDateMillis(name, sdf);
+                if (fileDateMillis != null) {
+                    long diffDays = Math.round((todayMillis - fileDateMillis) / 86_400_000.0);
+                    keep = diffDays >= 1 && diffDays <= keepDays;
                 }
             }
-            try {
-                file.delete();
+            if (!keep) {
+                try {
+                    file.delete();
+                }
+                catch (Exception e) {
+                    Log.printStackTrace(e);
+                }
             }
-            catch (Exception e) {
-                Log.printStackTrace(e);
-            }
+        }
+    }
+
+    /**
+     * 从日志文件名解析日期(文件名格式 {type}.yyyy-MM-dd.log), 无法解析返回null
+     */
+    private static Long parseLogDateMillis(String name, SimpleDateFormat sdf) {
+        if (!name.endsWith(".log") || name.length() < 15 || name.charAt(name.length() - 15) != '.') {
+            return null;
+        }
+        String dateStr = name.substring(name.length() - 14, name.length() - 4);
+        try {
+            return sdf.parse(dateStr).getTime();
+        } catch (Throwable t) {
+            return null;
         }
     }
     

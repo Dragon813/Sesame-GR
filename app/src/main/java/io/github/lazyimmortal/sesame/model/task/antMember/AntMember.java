@@ -126,6 +126,8 @@ public class AntMember extends ModelTask {
             if (collectSesame.getValue()) {
                 CheckInTaskRpcManager();
                 collectSesame();
+                // 芝麻信用信息记录(仅开启"芝麻粒|领取"时查询)
+                sesameInfo();
             }
             
             //芝麻积攒进度
@@ -848,6 +850,56 @@ public class AntMember extends ModelTask {
         return "";
     }
     
+    /**
+     * 芝麻信用信息记录(信息记录): 查询芝麻分及行为/经济维度进度, 读不到以空格占位
+     */
+    private void sesameInfo() {
+        Integer score = null;
+        String socialName = "";
+        Integer socialCurrent = null;
+        Integer socialTarget = null;
+        String economicName = "";
+        Integer economicCurrent = null;
+        Integer economicTarget = null;
+        Integer collectProcess = null;
+        try {
+            JSONObject jo = new JSONObject(AntMemberRpcCall.queryScoreProgress());
+            if (MessageUtil.checkSuccess(TAG, jo)) {
+                if (jo.has("score")) {
+                    score = jo.optInt("score");
+                }
+                JSONObject social = jo.optJSONObject("socialDimension");
+                if (social != null) {
+                    socialName = social.optString("dimensionName", "");
+                    if (social.has("currentProgress")) {
+                        socialCurrent = social.optInt("currentProgress");
+                    }
+                    if (social.has("targetProgress")) {
+                        socialTarget = social.optInt("targetProgress");
+                    }
+                }
+                JSONObject economic = jo.optJSONObject("economicDimension");
+                if (economic != null) {
+                    economicName = economic.optString("dimensionName", "");
+                    if (economic.has("currentProgress")) {
+                        economicCurrent = economic.optInt("currentProgress");
+                    }
+                    if (economic.has("targetProgress")) {
+                        economicTarget = economic.optInt("targetProgress");
+                    }
+                }
+                JSONObject guide = jo.optJSONObject("newZmScoreGuideInfo");
+                if (guide != null && guide.has("totalCollectProcess")) {
+                    collectProcess = guide.optInt("totalCollectProcess");
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "sesameInfo 查询失败:");
+            Log.printStackTrace(TAG, th);
+        }
+        Log.info("芝麻信用💯[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]芝麻分" + Log.n(score) + ";" + socialName + Log.n(socialCurrent) + "/" + Log.n(socialTarget) + ";" + economicName + Log.n(economicCurrent) + "/" + Log.n(economicTarget) + ";待攒进度" + Log.n(collectProcess) + ";");
+    }
+
     public static void queryAndCollect() {
         try {
             // 1. 查询进度球状态

@@ -204,7 +204,8 @@ public class AntFarm extends ModelTask {
     @Override
     public void run() {
         try {
-            if (enterFarm() == null) {
+            JSONObject farmJo = enterFarm();
+            if (farmJo == null) {
                 return;
             }
 
@@ -415,10 +416,293 @@ public class AntFarm extends ModelTask {
             // 小鸡睡觉&起床
             animalSleepAndWake();
 
+            // 庄园信息记录(基础信息+排行补充合并为一条蚂蚁庄园🐔)
+            String farmExtra = farmExtraInfo();
+            farmInfo(farmJo, farmExtra);
+
         } catch (Throwable t) {
             Log.i(TAG, "AntFarm.start.run err:");
             Log.printStackTrace(TAG, t);
         }
+    }
+
+    /**
+     * 庄园补充信息(信息记录): 动物秀状态/肥料盆进度+荣耀排行榜, 读不到的字段以空格占位, 随庄园模块执行
+     * 返回内容字符串, 由farmInfo合并进蚂蚁庄园🐔主条目输出
+     */
+    private String farmExtraInfo() {
+        String ownStatus = "";
+        String farmShowStatus = "";
+        Double manurePotNum = null;
+        Integer manurePotLimit = null;
+        String rankInfo = "";
+        try {
+            JSONObject jo = new JSONObject(AntFarmRpcCall.queryAnimalShowInfo(UserIdMap.getCurrentUid()));
+            if (MessageUtil.checkMemo(TAG, jo)) {
+                JSONObject ownAnimalShowInfo = jo.optJSONObject("ownAnimalShowInfo");
+                if (ownAnimalShowInfo != null) {
+                    ownStatus = ownAnimalShowInfo.optString("status", "");
+                }
+                farmShowStatus = jo.optString("farmShowStatus", "");
+                JSONArray manurePotList = jo.optJSONArray("manurePotList");
+                if (manurePotList != null && manurePotList.length() > 0) {
+                    JSONObject pot = manurePotList.optJSONObject(0);
+                    if (pot != null) {
+                        if (pot.has("manurePotNum")) {
+                            manurePotNum = pot.optDouble("manurePotNum");
+                        }
+                        if (pot.has("manurePotLimit")) {
+                            manurePotLimit = pot.optInt("manurePotLimit");
+                        }
+                    }
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "farmExtraInfo queryAnimalShowInfo err:");
+            Log.printStackTrace(TAG, th);
+        }
+        try {
+            JSONObject jo = new JSONObject(AntFarmRpcCall.rankingList(0));
+            if (MessageUtil.checkMemo(TAG, jo)) {
+                JSONArray rankingList = jo.optJSONArray("rankingList");
+                if (rankingList != null) {
+                    String currentUid = UserIdMap.getCurrentUid();
+                    StringBuilder top3 = new StringBuilder();
+                    // 捐蛋(爱心分beneScore)前3: 榜单按荣耀排序, 需按beneScore自选前三
+                    JSONObject[] beneTopArr = new JSONObject[3];
+                    for (int i = 0; i < rankingList.length(); i++) {
+                        JSONObject item = rankingList.optJSONObject(i);
+                        if (item == null) {
+                            continue;
+                        }
+                        int rank = item.optInt("rank");
+                        String userId = item.optString("userId", "");
+                        if (userId.equals(currentUid)) {
+                            rankInfo = "我的排名" + rank + "荣耀分" + item.optInt("gloryScore") + "爱心分" + item.optInt("beneScore") + ";";
+                        }
+                        if (top3.length() < 100 && rank <= 3) {
+                            top3.append("第").append(rank).append("[").append(UserIdMap.getShowName(userId))
+                                    .append("]荣耀").append(item.optInt("gloryScore")).append(";");
+                        }
+                        int bene = item.optInt("beneScore");
+                        if (beneTopArr[0] == null || bene > beneTopArr[0].optInt("beneScore")) {
+                            beneTopArr[2] = beneTopArr[1];
+                            beneTopArr[1] = beneTopArr[0];
+                            beneTopArr[0] = item;
+                        } else if (beneTopArr[1] == null || bene > beneTopArr[1].optInt("beneScore")) {
+                            beneTopArr[2] = beneTopArr[1];
+                            beneTopArr[1] = item;
+                        } else if (beneTopArr[2] == null || bene > beneTopArr[2].optInt("beneScore")) {
+                            beneTopArr[2] = item;
+                        }
+                    }
+                    StringBuilder beneTop3 = new StringBuilder();
+                    for (int i = 0; i < beneTopArr.length; i++) {
+                        if (beneTopArr[i] != null) {
+                            beneTop3.append("捐蛋第").append(i + 1).append("[").append(UserIdMap.getShowName(beneTopArr[i].optString("userId", "")))
+                                    .append("]爱心").append(beneTopArr[i].optInt("beneScore")).append(";");
+                        }
+                    }
+                    rankInfo = rankInfo + top3 + beneTop3;
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "farmExtraInfo rankingList err:");
+            Log.printStackTrace(TAG, th);
+        }
+        String manure = manurePotNum == null ? " " : trimDouble(manurePotNum);
+        return "小鸡舞台[" + ownStatus + "/" + farmShowStatus + "]肥料盆" + manure + "/" + Log.n(manurePotLimit) + ";" + rankInfo;
+    }
+
+    /**
+     * 庄园信息记录(信息记录): 复用enterFarm响应, 读不到的字段以空格占位; 排位赛信息仅在开启"排位赛"开关时额外查询
+     * extraInfo为farmExtraInfo补充内容(动物秀/肥料盆/荣耀排行/捐蛋前三), 合并进蚂蚁庄园🐔主条目
+     */
+    private void farmInfo(JSONObject farmJo, String extraInfo) {
+        Integer foodStock = null;
+        Integer foodStockLimit = null;
+        Integer foodInTrough = null;
+        Integer foodInTroughLimit = null;
+        Integer eggAmount = null;
+        Integer gloryScore = null;
+        Integer achievementNum = null;
+        Double moodScore = null;
+        String feedStatus = "";
+        String interactStatus = "";
+        Double eaten = null;
+        Double stolen = null;
+        Double manureNum = null;
+        Integer happyPoint = null;
+        String treeStage = "";
+        String competitionInfo = "";
+        try {
+            if (farmJo != null) {
+                JSONObject farmVO = farmJo.optJSONObject("farmVO");
+                if (farmVO != null) {
+                    if (farmVO.has("foodStock")) {
+                        foodStock = farmVO.optInt("foodStock");
+                    }
+                    if (farmVO.has("foodStockLimit")) {
+                        foodStockLimit = farmVO.optInt("foodStockLimit");
+                    }
+                    JSONObject charityAccountVO = farmVO.optJSONObject("charityAccountVO");
+                    if (charityAccountVO != null) {
+                        if (charityAccountVO.has("gloryScore")) {
+                            gloryScore = charityAccountVO.optInt("gloryScore");
+                        }
+                        if (charityAccountVO.has("achievementNum")) {
+                            achievementNum = charityAccountVO.optInt("achievementNum");
+                        }
+                    }
+                    JSONObject subFarmVO = farmVO.optJSONObject("subFarmVO");
+                    if (subFarmVO != null) {
+                        if (subFarmVO.has("donationEggAmount")) {
+                            eggAmount = subFarmVO.optInt("donationEggAmount");
+                        }
+                        if (subFarmVO.has("foodInTrough")) {
+                            foodInTrough = subFarmVO.optInt("foodInTrough");
+                        }
+                        if (subFarmVO.has("foodInTroughLimit")) {
+                            foodInTroughLimit = subFarmVO.optInt("foodInTroughLimit");
+                        }
+                        JSONArray animals = subFarmVO.optJSONArray("animals");
+                        JSONObject ownAnimal = animals != null && animals.length() > 0 ? animals.optJSONObject(0) : null;
+                        if (ownAnimal != null) {
+                            if (ownAnimal.has("foodHaveEatten")) {
+                                eaten = ownAnimal.optDouble("foodHaveEatten");
+                            }
+                            if (ownAnimal.has("foodHaveStolen")) {
+                                stolen = ownAnimal.optDouble("foodHaveStolen");
+                            }
+                            JSONObject statusVO = ownAnimal.optJSONObject("animalStatusVO");
+                            if (statusVO != null) {
+                                feedStatus = statusVO.optString("animalFeedStatus", "");
+                                interactStatus = statusVO.optString("animalInteractStatus", "");
+                            }
+                        }
+                        JSONObject manureVO = subFarmVO.optJSONObject("manureVO");
+                        JSONArray potList = manureVO != null ? manureVO.optJSONArray("manurePotList") : null;
+                        if (potList != null && potList.length() > 0) {
+                            JSONObject pot = potList.optJSONObject(0);
+                            if (pot != null && pot.has("manurePotNum")) {
+                                manureNum = pot.optDouble("manurePotNum");
+                            }
+                        }
+                    }
+                }
+                JSONObject emotionInfo = farmJo.optJSONObject("emotionInfo");
+                if (emotionInfo != null && emotionInfo.has("finalScore")) {
+                    moodScore = emotionInfo.optDouble("finalScore");
+                }
+                JSONObject orchardInfo = farmJo.optJSONObject("orchardInfo");
+                if (orchardInfo != null) {
+                    JSONObject accountInfo = orchardInfo.optJSONObject("accountInfo");
+                    if (accountInfo != null && accountInfo.has("happyPoint")) {
+                        happyPoint = accountInfo.optInt("happyPoint");
+                    }
+                    treeStage = orchardInfo.optString("treeStage", "");
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "farmInfo 解析失败:");
+            Log.printStackTrace(TAG, th);
+        }
+
+        // 排位赛信息仅在开启"排位赛|自动捐蛋领奖"时查询
+        if (competition.getValue()) {
+            String rankLevelInfo = "";  // 我的排位等级段(最前)
+            String midInfo = "";        // 赛季/项目/轮次段(中间)
+            String lastRankInfo = "";   // 上期排名段(最后,未获取时空格占位)
+            try {
+                JSONObject cJo = new JSONObject(AntFarmRpcCall.queryCompetitionEntranceInfo());
+                if (MessageUtil.checkMemo(TAG, cJo)) {
+                    String seasonName = "";
+                    String endDate = "";
+                    JSONObject conf = cJo.optJSONObject("donationCompetitionActivityConf");
+                    if (conf != null) {
+                        seasonName = conf.optString("name", "");
+                        long endTime = conf.optLong("endTime", 0);
+                        if (endTime > 0) {
+                            endDate = new java.text.SimpleDateFormat("MM-dd", java.util.Locale.getDefault()).format(new java.util.Date(endTime));
+                        }
+                    }
+                    String rankRoundId = cJo.optString("rankRoundId", "");
+                    JSONObject anim = cJo.optJSONObject("animationInfo");
+                    if (anim != null) {
+                        Integer todayDonation = anim.has("todayDonationNum") ? anim.optInt("todayDonationNum") : null;
+                        boolean hasUnReceivedAward = anim.optBoolean("hasUnReceivedAward", false);
+                        Integer rankOrder = null;
+                        Integer contribution = null;
+                        String projectName = "";
+                        Integer roomNumber = null;
+                        String roomProgress = " ";
+                        JSONObject prev = anim.optJSONObject("previousUserRankInfo");
+                        if (prev != null) {
+                            if (prev.has("rankOrder")) {
+                                rankOrder = prev.optInt("rankOrder");
+                            }
+                            if (prev.has("rewardContributionNum")) {
+                                contribution = prev.optInt("rewardContributionNum");
+                            }
+                        }
+                        JSONObject proj = anim.optJSONObject("competitionProjectInfo");
+                        if (proj != null) {
+                            projectName = proj.optString("projectName", "");
+                            if (proj.has("roomNumber")) {
+                                roomNumber = proj.optInt("roomNumber");
+                            }
+                            if (proj.has("roomDonationProgress")) {
+                                roomProgress = trimDouble(proj.optDouble("roomDonationProgress"));
+                            }
+                        }
+                        midInfo = "[" + seasonName + "]今日捐蛋" + Log.n(todayDonation)
+                                + ";项目[" + projectName + "]第" + Log.n(roomNumber) + "间进度" + roomProgress + "%"
+                                + ";轮次" + rankRoundId + "截止" + endDate
+                                + (hasUnReceivedAward ? "有待领奖" : "") + ";";
+                        lastRankInfo = "上期第" + Log.n(rankOrder) + "名贡献" + Log.n(contribution) + ";";
+                    }
+                    // 我的捐蛋排位: donationRankHomeInfo.selfDonationRank(星星或爱心值totalStarNum回退totalContributionNum, 累计捐蛋donationTotal回退donationNum)
+                    JSONObject rJo = new JSONObject(AntFarmRpcCall.enterDonationCompetitionRank());
+                    if (MessageUtil.checkMemo(TAG, rJo)) {
+                        JSONObject homeInfo = rJo.optJSONObject("donationRankHomeInfo");
+                        JSONObject self = homeInfo == null ? null : homeInfo.optJSONObject("selfDonationRank");
+                        if (self != null) {
+                            Integer totalStarNum = self.has("totalStarNum") ? self.optInt("totalStarNum")
+                                    : (self.has("totalContributionNum") ? self.optInt("totalContributionNum") : null);
+                            Integer donationTotal = self.has("donationTotal") ? self.optInt("donationTotal")
+                                    : (self.has("donationNum") ? self.optInt("donationNum") : null);
+                            String levelName = self.optString("levelName", "");
+                            rankLevelInfo = "我的排位等级[" + levelName + "]星星或爱心值" + Log.n(totalStarNum) + "累计捐蛋" + Log.n(donationTotal) + ";";
+                        }
+                    }
+                }
+            } catch (Throwable th) {
+                Log.i(TAG, "farmInfo 排位赛查询失败:");
+                Log.printStackTrace(TAG, th);
+            }
+            // 组合顺序: 我的排位等级(前) → 赛季/项目/轮次(中) → 上期排名(末)
+            competitionInfo = rankLevelInfo + midInfo + lastRankInfo;
+        }
+
+        String mood = moodScore == null ? " " : trimDouble(moodScore);
+        String eat = eaten == null ? " " : trimDouble(eaten);
+        String stolenStr = stolen == null ? " " : trimDouble(stolen);
+        String manure = manureNum == null ? " " : trimDouble(manureNum);
+        Log.info("蚂蚁庄园🐔[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]饲料" + Log.n(foodStock) + "/" + Log.n(foodStockLimit) + "槽内" + Log.n(foodInTrough) + "/" + Log.n(foodInTroughLimit) + ";爱心蛋" + Log.n(eggAmount) + ";光荣分" + Log.n(gloryScore) + "成就" + Log.n(achievementNum) + ";心情" + mood + ";小鸡[" + feedStatus + "/" + interactStatus + "]已吃" + eat + "被偷" + stolenStr + ";肥料" + manure + ";芭芭农场[" + treeStage + "]" + Log.n(happyPoint) + ";" + (extraInfo == null ? "" : extraInfo));
+        //排位赛信息单独列条(未查到不输出)
+        if (!competitionInfo.isEmpty()) {
+            Log.info("庄园排位🏆[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]" + competitionInfo);
+        }
+    }
+
+    /**
+     * 去掉double末尾多余的.0
+     */
+    private static String trimDouble(double d) {
+        if (d == Math.rint(d) && !Double.isInfinite(d)) {
+            return Long.toString((long) d);
+        }
+        return Double.toString(d);
     }
 
     public static void initAntFarmTaskListMap(boolean AutoAntFarmDoFarmTaskList, boolean AutoAntFarmDrawMachineTaskList, boolean drawMachine) {
@@ -1362,25 +1646,7 @@ public class AntFarm extends ModelTask {
                 Log.record("捐蛋排位🥚未查询到当前用户捐赠排行信息");
                 return;
             }
-            JSONObject selfDonationRank = donationRankHomeInfo.optJSONObject("selfDonationRank");
-
-            String nickName = selfDonationRank.optString("nickName");
-            int totalStarNum = 0;
-            if (selfDonationRank.optInt("totalStarNum") != 0) {
-                totalStarNum = selfDonationRank.optInt("totalStarNum");
-            } else if (selfDonationRank.optInt("totalContributionNum") != 0) {
-                totalStarNum = selfDonationRank.optInt("totalContributionNum");
-            }
-            String levelName = selfDonationRank.optString("levelName");
-            int donationTotal = 0;
-            if (selfDonationRank.optInt("donationTotal") != 0) {
-                donationTotal = selfDonationRank.optInt("donationTotal");
-            } else if (selfDonationRank.optInt("donationNum") != 0) {
-                donationTotal = selfDonationRank.optInt("donationNum");
-            }
-            //int rankOrder = selfDonationRank.optInt("rankOrder");
-
-            Log.record("捐蛋排位🥚[" + nickName + "]星星或爱心值" + totalStarNum + "等级[" + levelName + "]累计捐蛋" + donationTotal);
+            // 捐蛋排位的星星/爱心值、等级、累计捐蛋已整合进庄园排位🏆信息日志(farmInfo),此处不再单独输出record
 
             // 检查领取赛季进度奖励
             if (jo.has("seasonDonationProgress")) {
@@ -3715,6 +3981,7 @@ public class AntFarm extends ModelTask {
 
     private void family() {
         if (StringUtil.isEmpty(ownerGroupId)) {
+            Log.info("亲密家庭🏠[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]未获取到家庭ID, 未加入亲密家庭或庄园首页无家庭数据;");
             return;
         }
         // 检查 ExtensionsHandle 是否存在
@@ -3728,14 +3995,22 @@ public class AntFarm extends ModelTask {
             JSONObject joenterFamily = enterFamily();
             JSONObject jo;
             if (joenterFamily == null) {
+                Log.info("亲密家庭🏠[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]进入家庭失败;");
                 return;
             }
-            ownerGroupId = joenterFamily.getString("groupId");
-            int familyAwardNum = joenterFamily.getInt("familyAwardNum");
-            boolean familySignTips = joenterFamily.getBoolean("familySignTips");
+            String enterGroupId = joenterFamily.optString("groupId", "");
+            if (!enterGroupId.isEmpty()) {
+                ownerGroupId = enterGroupId;
+            }
+            int familyAwardNum = joenterFamily.optInt("familyAwardNum", 0);
+            boolean familySignTips = joenterFamily.optBoolean("familySignTips", false);
             JSONObject assignFamilyMemberInfo = joenterFamily.optJSONObject("assignFamilyMemberInfo");
             boolean feedFriendLimit = joenterFamily.optBoolean("feedFriendLimit", false);
-            JSONArray familyAnimals = joenterFamily.getJSONArray("animals");
+            JSONArray familyAnimals = joenterFamily.optJSONArray("animals");
+            if (familyAnimals == null) {
+                Log.info("亲密家庭🏠[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]家庭动物列表为空;");
+                return;
+            }
             JSONArray EatTogetherUserIds = new JSONArray();
             // 修复：创建新的 JSONArray 副本，避免修改原始 familyAnimals
             JSONArray familyAnimalsExceptUser = new JSONArray();
@@ -3747,6 +4022,101 @@ public class AntFarm extends ModelTask {
                     familyAnimalsExceptUser.put(jo);
                 }
             }
+
+            // 亲密家庭排位与成员贡献(动态判断本期/上期):
+            // 本期: activityInfo.familyActivityIntimateRankList + 顶层familyActivityIntimateNumber(活动进行中下发)
+            // 上期: lastActivityInfoVO.lastActivityFamilyIntimateRankList + lastActivityFamilyIntimate(活动刚结束仅剩结算数据)
+            int familyActivityIntimateNumber = joenterFamily.optInt("familyActivityIntimateNumber");
+            JSONObject activityInfo = joenterFamily.optJSONObject("activityInfo");
+            JSONArray intimateRankList = activityInfo == null ? null : activityInfo.optJSONArray("familyActivityIntimateRankList");
+            String intimateLabel = "亲密值";
+            if (intimateRankList == null || intimateRankList.length() == 0) {
+                JSONObject lastActivityInfoVO = joenterFamily.optJSONObject("lastActivityInfoVO");
+                if (lastActivityInfoVO != null) {
+                    intimateRankList = lastActivityInfoVO.optJSONArray("lastActivityFamilyIntimateRankList");
+                    familyActivityIntimateNumber = lastActivityInfoVO.optInt("lastActivityFamilyIntimate");
+                    intimateLabel = "上期亲密值";
+                }
+            }
+            // 排位信息先拼成字符串, 与成员贡献合并为一条日志输出
+            String rankInfo = "";
+            if (intimateRankList != null && intimateRankList.length() > 0) {
+                // 按档位分数降序排列, 找到当前亲密值已达到的最高档
+                long reachedGear = -1;
+                long reachedScore = -1;
+                StringBuilder rankDetail = new StringBuilder();
+                for (int i = 0; i < intimateRankList.length(); i++) {
+                    JSONObject rankItem = intimateRankList.optJSONObject(i);
+                    if (rankItem == null) {
+                        continue;
+                    }
+                    long gear = rankItem.optLong("familyActivityRankIntimateGear");
+                    long score = rankItem.optLong("familyActivityRankIntimateGearScore");
+                    if (rankDetail.length() > 0) {
+                        rankDetail.append(",");
+                    }
+                    rankDetail.append(gear).append("万(亲密值").append(score).append(")");
+                    if (familyActivityIntimateNumber >= score && score > reachedScore) {
+                        reachedScore = score;
+                        reachedGear = gear;
+                    }
+                }
+                rankInfo = "亲密家庭🏠[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]" + intimateLabel + familyActivityIntimateNumber + "排名共"
+                        + intimateRankList.length() + "档[" + rankDetail + "]已达档位"
+                        + (reachedGear >= 0 ? ("前" + reachedGear + "万名") : "无");
+            }
+
+            // 成员贡献: queryFamilyInfo 的 familyMemberInfoList, 解析每人今日/累计亲密值与捐赠次数
+            try {
+                JSONObject joFamilyInfo = new JSONObject(AntFarmRpcCall.queryFamilyInfo());
+                if (MessageUtil.checkMemo(TAG, joFamilyInfo)) {
+                    JSONArray familyMemberInfoList = joFamilyInfo.optJSONArray("familyMemberInfoList");
+                    if (familyMemberInfoList != null && familyMemberInfoList.length() > 0) {
+                        String currentUid = UserIdMap.getCurrentUid();
+                        StringBuilder memberInfo = new StringBuilder("家庭成员");
+                        for (int i = 0; i < familyMemberInfoList.length(); i++) {
+                            JSONObject member = familyMemberInfoList.optJSONObject(i);
+                            if (member == null) {
+                                continue;
+                            }
+                            String userId = member.optString("userId");
+                            String userName = member.optString("userName");
+                            if (StringUtil.isEmpty(userName)) {
+                                userName = UserIdMap.getShowName(userId);
+                            }
+                            int todayIntimateNum = member.optInt("todayIntimateNum");
+                            int totalIntimateNum = member.optInt("totalIntimateNum");
+                            int userDonateCount = member.optInt("userDonateCount");
+                            boolean isSelf = member.optBoolean("currentUser") || userId.equals(currentUid);
+                            memberInfo.append("[").append(userName).append("]");
+                            if (isSelf) {
+                                memberInfo.append("(当前账户)");
+                            }
+                            memberInfo.append("捐蛋").append(userDonateCount)
+                                    .append("累计亲密").append(totalIntimateNum)
+                                    .append("今日亲密").append(todayIntimateNum).append(";");
+                        }
+                        // 排位与成员贡献合并为单行输出(rankInfo为空时成员行补统一前缀)
+                        if (rankInfo.isEmpty()) {
+                            Log.info("亲密家庭🏠[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]" + memberInfo);
+                        } else {
+                            Log.info(rankInfo + ";" + memberInfo);
+                        }
+                    } else if (!rankInfo.isEmpty()) {
+                        // 无成员数据时单独输出排位(信息日志)
+                        Log.info(rankInfo + ";");
+                    }
+                } else if (!rankInfo.isEmpty()) {
+                    Log.info(rankInfo + ";");
+                }
+            } catch (Throwable t) {
+                if (!rankInfo.isEmpty()) {
+                    Log.info(rankInfo + ";");
+                }
+                Log.i(TAG, "queryFamilyInfo parse err:");
+                Log.printStackTrace(TAG, t);
+            }
+
             // 获取家庭成员ID列表
             List<String> familyUserIds = new ArrayList<>();
             JSONArray friendUserIds = new JSONArray();

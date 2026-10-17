@@ -37,6 +37,8 @@ public class UserIdMap {
     
     public synchronized static void initUser(String currentUserId) {
         setCurrentUserId(currentUserId);
+        // 先同步加载本地缓存好友表(含本人), 保证轮次开始的自动统计/信息日志能立即转换昵称; 再由异步任务刷新为最新数据
+        load(currentUserId);
         ApplicationHook.getMainHandler().post(() -> {
             ClassLoader loader;
             try {
@@ -46,13 +48,14 @@ public class UserIdMap {
                 return;
             }
             try {
-                UserIdMap.unload();
                 String selfId = ApplicationHook.getUserId();
                 Class<?> clsUserIndependentCache = loader.loadClass("com.alipay.mobile.socialcommonsdk.bizdata.UserIndependentCache");
                 Class<?> clsAliAccountDaoOp = loader.loadClass("com.alipay.mobile.socialcommonsdk.bizdata.contact.data.AliAccountDaoOp");
                 Object aliAccountDaoOp = XposedHelpers.callStaticMethod(clsUserIndependentCache, "getCacheObj", clsAliAccountDaoOp);
                 List<?> allFriends = (List<?>) XposedHelpers.callMethod(aliAccountDaoOp, "getAllFriends", new Object[0]);
                 if (!allFriends.isEmpty()) {
+                    // 拿到新数据后再清空, 避免查询期间好友表为空导致昵称回退为ID
+                    UserIdMap.unload();
                     Class<?> friendClass = allFriends.get(0).getClass();
                     Field userIdField = XposedHelpers.findField(friendClass, "userId");
                     Field accountField = XposedHelpers.findField(friendClass, "account");

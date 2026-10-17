@@ -196,6 +196,11 @@ public class AntFarmRpcCall {
         return ApplicationHook.requestString("com.alipay.antfarm.rankingList", args1);
     }
 
+    public static String queryAnimalShowInfo(String userId) {
+        String args1 = "[{\"requestType\":\"NORMAL\",\"sceneCode\":\"ORCHARD\",\"source\":\"ANTORCHARD\",\"userId\":\"" + userId + "\",\"version\":\"20260721.01\"}]";
+        return ApplicationHook.requestString("com.alipay.antfarm.queryAnimalShowInfo", args1);
+    }
+
     public static String notifyFriend(String animalId, String notifiedFarmId) {
         String args1 = "[{\"animalId\":\"" + animalId + "\",\"animalType\":\"CHICK\",\"canBeGuest\":true," + "\"notifiedFarmId\":\"" + notifiedFarmId + "\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\"," + "\"source\":\"H5\",\"version\":\"" + VERSION + "\"}]";
         return ApplicationHook.requestString("com.alipay.antfarm.notifyFriend", args1);
@@ -467,6 +472,11 @@ public class AntFarmRpcCall {
     public static String enterFamily() {
         String args = "[{\"fromAnn\":false,\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\"}]";
         return ApplicationHook.requestString("com.alipay.antfarm.enterFamily", args);
+    }
+
+    public static String queryFamilyInfo() {
+        String args = "[{\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\"}]";
+        return ApplicationHook.requestString("com.alipay.antfarm.queryFamilyInfo", args);
     }
 
     /**

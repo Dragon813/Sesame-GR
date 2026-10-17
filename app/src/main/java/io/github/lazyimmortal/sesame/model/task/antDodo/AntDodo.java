@@ -48,6 +48,7 @@ public class AntDodo extends ModelTask {
     private BooleanModelField dodoTaskList;
     private BooleanModelField AutoAntDodoTaskList;
     private SelectModelField AntDodoTaskList;
+    private BooleanModelField scratchCard;
     private BooleanModelField useProp;
     private BooleanModelField useUniversalCardBookCollectedhasCollected;
     private SelectModelField usePropList;
@@ -75,6 +76,7 @@ public class AntDodo extends ModelTask {
         modelFields.addField(dodoTaskList = new BooleanModelField("dodoTaskList", "物种任务", false));
         modelFields.addField(AutoAntDodoTaskList = new BooleanModelField("AutoAntDodoTaskList", "物种任务 | 自动黑白名单", true));
         modelFields.addField(AntDodoTaskList = new SelectModelField("AntDodoTaskList", "物种任务 | 黑名单列表", new LinkedHashSet<>(), AlipayAntDodoTaskList::getList));
+        modelFields.addField(scratchCard = new BooleanModelField("scratchCard", "自动刮卡 | 开启", false));
         modelFields.addField(useProp = new BooleanModelField("useProp", "使用道具 | 开启", false));
         modelFields.addField(usePropList = new SelectModelField("usePropList", "使用道具 | 道具列表", new LinkedHashSet<>(), CustomOption::getAntDodoPropList));
         modelFields.addField(useCollectTimingType = new ChoiceModelField("useCollectTimingType", "抽卡道具 | 使用时机", TimingType.EVERY_DAY, TimingType.nickNames));
@@ -125,16 +127,185 @@ public class AntDodo extends ModelTask {
             if (collectToFriendType.getValue() != CollectToFriendType.NONE) {
                 collectToFriend();
             }
+            if (scratchCard.getValue()) {
+                scratchAnimalCard();
+            }
             if (bookMedal.getValue()) {
                 generateBookMedal();
             }
             if (giftToFriend.getValue()) {
                 giftToFriend();
             }
+
+            // 神奇物种信息记录
+            dodoInfo();
         } catch (Throwable t) {
             Log.i(TAG, "AntoDodo.start.run err:");
             Log.printStackTrace(TAG, t);
         }
+    }
+
+    /**
+     * 神奇物种信息记录(信息记录): 当前图鉴/抽卡余量/收集成就/勋章等级, 读不到的字段以空格占位, 随物种模块执行
+     */
+    private void dodoInfo() {
+        String bookName = "";
+        String endDate = "";
+        Integer totalCount = null;
+        Integer magicCount = null;
+        Integer rareCount = null;
+        Integer commonCount = null;
+        Integer leftFreeQuota = null;
+        Integer collectedCount = null;
+        Integer allMedalCount = null;
+        Integer bookMedalCount = null;
+        String medalName = "";
+        Integer expPoint = null;
+        Integer totalExp = null;
+        try {
+            JSONObject jo = new JSONObject(AntDodoRpcCall.homePage());
+            if (MessageUtil.checkResultCode(TAG, jo)) {
+                JSONObject data = jo.getJSONObject("data");
+                JSONObject animalBook = data.optJSONObject("animalBook");
+                if (animalBook != null) {
+                    bookName = animalBook.optString("name", "");
+                    endDate = animalBook.optString("endDate", "");
+                    if (animalBook.has("totalCount")) {
+                        totalCount = animalBook.optInt("totalCount");
+                    }
+                    if (animalBook.has("magicCount")) {
+                        magicCount = animalBook.optInt("magicCount");
+                    }
+                    if (animalBook.has("rareCount")) {
+                        rareCount = animalBook.optInt("rareCount");
+                    }
+                    if (animalBook.has("commonCount")) {
+                        commonCount = animalBook.optInt("commonCount");
+                    }
+                }
+                JSONArray limitList = data.optJSONArray("limit");
+                if (limitList != null) {
+                    for (int i = 0; i < limitList.length(); i++) {
+                        JSONObject limit = limitList.optJSONObject(i);
+                        if (limit != null && "DAILY_COLLECT".equals(limit.optString("actionCode"))) {
+                            if (limit.has("leftFreeQuota")) {
+                                leftFreeQuota = limit.optInt("leftFreeQuota");
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "dodoInfo homePage err:");
+            Log.printStackTrace(TAG, t);
+        }
+        try {
+            JSONObject jo = new JSONObject(AntDodoRpcCall.queryMyAchievement());
+            if (MessageUtil.checkResultCode(TAG, jo)) {
+                JSONObject data = jo.getJSONObject("data");
+                if (data.has("collectedDisAnimalCount")) {
+                    collectedCount = data.optInt("collectedDisAnimalCount");
+                }
+                if (data.has("allMedalCount")) {
+                    allMedalCount = data.optInt("allMedalCount");
+                }
+                if (data.has("bookMedalCount")) {
+                    bookMedalCount = data.optInt("bookMedalCount");
+                }
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "dodoInfo queryMyAchievement err:");
+            Log.printStackTrace(TAG, t);
+        }
+        try {
+            JSONObject jo = new JSONObject(AntDodoRpcCall.queryMedalAndConfig());
+            if (MessageUtil.checkResultCode(TAG, jo)) {
+                JSONObject data = jo.getJSONObject("data");
+                JSONObject medal = data.optJSONObject("medal");
+                if (medal != null) {
+                    medalName = medal.optString("name", "");
+                    if (medal.has("expPoint")) {
+                        expPoint = medal.optInt("expPoint");
+                    }
+                }
+                if (data.has("totalExp")) {
+                    totalExp = data.optInt("totalExp");
+                }
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "dodoInfo queryMedalAndConfig err:");
+            Log.printStackTrace(TAG, t);
+        }
+        // 当前图鉴收集进度: queryBookList data.bookForUserList[]取bookStatus=DOING(缺省第一个)的collectProgress(格式"9/10")
+        String collectProgress = "";
+        try {
+            JSONObject jo = new JSONObject(AntDodoRpcCall.queryBookList());
+            if (MessageUtil.checkResultCode(TAG, jo)) {
+                JSONObject data = jo.optJSONObject("data");
+                JSONArray bookList = data == null ? null : data.optJSONArray("bookForUserList");
+                if (bookList != null) {
+                    JSONObject target = null;
+                    for (int i = 0; i < bookList.length(); i++) {
+                        JSONObject book = bookList.optJSONObject(i);
+                        if (book != null && "DOING".equals(book.optString("bookStatus"))) {
+                            target = book;
+                            break;
+                        }
+                    }
+                    if (target == null) {
+                        target = bookList.optJSONObject(0);
+                    }
+                    if (target != null) {
+                        collectProgress = target.optString("collectProgress", "");
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "dodoInfo queryBookList err:");
+            Log.printStackTrace(TAG, t);
+        }
+        // 当前图鉴卡片持有总张数(含重复): queryBookAnimalList分页遍历, 每项collectDetail.count累加, hasMore翻页, 最多20页防御
+        Integer cardTotalNum = null;
+        try {
+            int sum = 0;
+            int pageStart = 0;
+            boolean hasMore = false;
+            int page = 0;
+            do {
+                JSONObject jo = new JSONObject(AntDodoRpcCall.queryBookAnimalList(18, pageStart));
+                if (!MessageUtil.checkResultCode(TAG, jo)) {
+                    break;
+                }
+                JSONObject data = jo.optJSONObject("data");
+                if (data == null) {
+                    break;
+                }
+                JSONArray animalList = data.optJSONArray("animalForUserList");
+                if (animalList != null) {
+                    for (int i = 0; i < animalList.length(); i++) {
+                        JSONObject item = animalList.optJSONObject(i);
+                        JSONObject collectDetail = item == null ? null : item.optJSONObject("collectDetail");
+                        if (collectDetail != null) {
+                            sum += collectDetail.optInt("count", 0);
+                        }
+                    }
+                }
+                hasMore = data.optBoolean("hasMore", false);
+                if (hasMore) {
+                    try {
+                        pageStart = Integer.parseInt(data.optString("nextPageStart", "0"));
+                    } catch (NumberFormatException e) {
+                        hasMore = false;
+                    }
+                }
+            } while (hasMore && ++page < 20);
+            cardTotalNum = sum;
+        } catch (Throwable t) {
+            Log.i(TAG, "dodoInfo queryBookAnimalList err:");
+            Log.printStackTrace(TAG, t);
+        }
+        Log.info("神奇物种🦕[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]图鉴[" + bookName + "](" + endDate + "止)卡片" + Log.n(totalCount) + "(神奇" + Log.n(magicCount) + "/稀有" + Log.n(rareCount) + "/普通" + Log.n(commonCount) + ")已集" + (collectProgress.isEmpty() ? " " : collectProgress) + "持卡共" + Log.n(cardTotalNum) + "张今日剩余抽卡" + Log.n(leftFreeQuota) + ";累计收集" + Log.n(collectedCount) + "勋章" + Log.n(allMedalCount) + "(图鉴" + Log.n(bookMedalCount) + ");[" + medalName + "]经验" + Log.n(expPoint) + "/" + Log.n(totalExp) + ";");
     }
 
     public void initAntDodoTaskListMap(boolean AutoAntDodoTaskList, boolean dodoTaskList) {
@@ -287,6 +458,9 @@ public class AntDodo extends ModelTask {
                             data = jo.getJSONObject("data");
                             JSONObject animal = data.getJSONObject("animal");
                             Log.forest("神奇物种🦕每日抽卡" + getAnimalInfo(animal));
+                            if (scratchCard.getValue()) {
+                                scratchNewCard(data);
+                            }
                             checkAnimalAndGiftToFriend(animal);
                         }
                     }
@@ -294,6 +468,83 @@ public class AntDodo extends ModelTask {
             }
         } catch (Throwable t) {
             Log.i(TAG, "collectAnimalCard err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    /**
+     * V2刮刮卡: 账号被灰度推送后, 每日抽卡/帮抽交换/道具获得的卡片会先进入待刮状态,
+     * 在homePage的curCollection[].collectDetail.cardList[]中以scratchable=true/scratched=false标识,
+     * 需逐张调scratchCard刮开领取森林能量(刮开后卡片仍保留在图鉴)。
+     * 不打当日标记, 每轮直接全量检测一遍: 防止标记后又抽到新卡、或12点后帮抽交换得到当期卡漏刮。
+     * 仅scratchCard开关开启且data.showSpeciesV2=true(已推送)时执行; 未推送账号不做任何刮卡调用, 原抽卡逻辑不变。
+     */
+    private void scratchAnimalCard() {
+        try {
+            JSONObject jo = new JSONObject(AntDodoRpcCall.homePage());
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            JSONObject data = jo.optJSONObject("data");
+            //showSpeciesV2=false表示账号未推送刮卡功能, 直接跳过兼容旧版
+            if (data == null || !data.optBoolean("showSpeciesV2", false)) {
+                Log.i(TAG, "scratchAnimalCard skip: showSpeciesV2=false, feature not pushed");
+                return;
+            }
+            JSONArray curCollection = data.optJSONArray("curCollection");
+            if (curCollection == null) {
+                return;
+            }
+            for (int i = 0; i < curCollection.length(); i++) {
+                JSONObject collection = curCollection.optJSONObject(i);
+                if (collection == null) {
+                    continue;
+                }
+                scratchNewCard(collection);
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "scratchAnimalCard err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    /**
+     * 刮开单次获卡响应中待刮的新卡(每日抽卡collect/道具consumeProp/帮抽交换exchange返回体同构):
+     * 节点内含animal与collectDetail.cardList[], 仅刮scratchable=true且scratched=false的卡。
+     * 旧版账号响应无scratchable字段, optBoolean默认false, 不会发起任何刮卡调用。
+     */
+    private void scratchNewCard(JSONObject cardData) {
+        try {
+            if (cardData == null) {
+                return;
+            }
+            JSONObject animal = cardData.optJSONObject("animal");
+            JSONObject collectDetail = cardData.optJSONObject("collectDetail");
+            JSONArray cardList = collectDetail == null ? null : collectDetail.optJSONArray("cardList");
+            if (animal == null || cardList == null) {
+                return;
+            }
+            String animalId = animal.optString("animalId");
+            String bookId = animal.optString("bookId");
+            for (int i = 0; i < cardList.length(); i++) {
+                JSONObject card = cardList.optJSONObject(i);
+                if (card == null || !card.optBoolean("scratchable", false) || card.optBoolean("scratched", false)) {
+                    continue;
+                }
+                String cardInstanceId = card.optString("cardInstanceId");
+                if (cardInstanceId.isEmpty()) {
+                    continue;
+                }
+                JSONObject res = new JSONObject(AntDodoRpcCall.scratchCard(animalId, bookId, cardInstanceId));
+                if (MessageUtil.checkResultCode(TAG, res)) {
+                    JSONObject resData = res.optJSONObject("data");
+                    int energyGram = resData == null ? 0 : resData.optInt("energyGram");
+                    Log.forest("神奇物种🦕刮刮卡" + getAnimalInfo(animal) + "获得" + energyGram + "g能量");
+                    TimeUtil.sleep(500L);
+                }
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "scratchNewCard err:");
             Log.printStackTrace(TAG, t);
         }
     }
@@ -539,8 +790,12 @@ public class AntDodo extends ModelTask {
             jo = jo.getJSONObject("data");
             String propName = jo.getJSONObject("propConfig").getString("propName");
 
-            JSONObject animal = jo.getJSONObject("useResult").optJSONObject("animal");
+            JSONObject useResult = jo.getJSONObject("useResult");
+            JSONObject animal = useResult.optJSONObject("animal");
             Log.forest("使用道具🎭[" + propName + "]" + getAnimalInfo(animal));
+            if (scratchCard.getValue()) {
+                scratchNewCard(useResult);
+            }
             checkAnimalAndGiftToFriend(animal);
             return true;
         } catch (Throwable t) {
@@ -558,8 +813,12 @@ public class AntDodo extends ModelTask {
             }
             jo = jo.getJSONObject("data");
             String propName = jo.getJSONObject("propConfig").getString("propName");
-            JSONObject animal = jo.getJSONObject("useResult").optJSONObject("animal");
+            JSONObject useResult = jo.getJSONObject("useResult");
+            JSONObject animal = useResult.optJSONObject("animal");
             Log.forest("使用道具🎭[" + propName + "]" + getAnimalInfo(animal));
+            if (scratchCard.getValue()) {
+                scratchNewCard(useResult);
+            }
             checkAnimalAndGiftToFriend(animal);
             return true;
         } catch (Throwable th) {
@@ -621,9 +880,13 @@ public class AntDodo extends ModelTask {
                                 if (animalIdChoosCcount > 0) {
                                     JSONObject joExchange = new JSONObject(AntDodoRpcCall.exchange(animalIdChoose, animalId, cardInstanceId, useId));
                                     if (MessageUtil.checkResultCode(TAG, joExchange)) {
-                                        JSONObject collectDetailHave = joExchange.getJSONObject("data").optJSONObject("collectDetail");
-                                        int countHave = collectDetailHave.optInt("count");
+                                        JSONObject exchangeData = joExchange.optJSONObject("data");
+                                        JSONObject collectDetailHave = exchangeData == null ? null : exchangeData.optJSONObject("collectDetail");
+                                        int countHave = collectDetailHave == null ? 0 : collectDetailHave.optInt("count");
                                         Log.forest("帮抽卡换🦕用[" + ecosystemChoose + "]" + nameChoose + "(" + animalIdChoosCcount + ")[" + FantasticLevel.valueOf(fantasticLevelChoose).nickName() + "]与[" + userName + "]交换#获得[" + nameHave + "](" + countHave + ")");
+                                        if (scratchCard.getValue()) {
+                                            scratchNewCard(exchangeData);
+                                        }
                                     }
                                 }
                             }

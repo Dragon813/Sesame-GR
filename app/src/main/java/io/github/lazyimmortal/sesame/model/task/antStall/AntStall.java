@@ -176,11 +176,101 @@ public class AntStall extends ModelTask {
             if (pasteTicketType.getValue() != PasteTicketType.NONE) {
                 pasteTicket();
             }
+
+            // 蚂蚁新村信息记录(复用selfHome响应)
+            stallInfo(selfHome);
         }
         catch (Throwable t) {
             Log.i(TAG, "AntStall.start.run err:");
             Log.printStackTrace(TAG, t);
         }
+    }
+
+    /**
+     * 蚂蚁新村信息记录(信息记录): 复用selfHome响应+村庄进度roadmap, 读不到的字段以空格占位, 随新村模块执行
+     */
+    private void stallInfo(JSONObject selfHome) {
+        String villageName = "";
+        String villageType = "";
+        Integer villageIndex = null;
+        Integer donateCount = null;
+        Integer donateLimit = null;
+        Integer level = null;
+        String currentCoin = "";
+        String donateCoin = "";
+        Integer userDonateCount = null;
+        Integer finishedVillageCount = null;
+        try {
+            if (selfHome != null) {
+                JSONObject currentVillage = selfHome.optJSONObject("currentVillage");
+                if (currentVillage != null) {
+                    villageName = currentVillage.optString("villageName", "");
+                    villageType = currentVillage.optString("villageType", "");
+                    if (currentVillage.has("index")) {
+                        villageIndex = currentVillage.optInt("index");
+                    }
+                    if (currentVillage.has("donateCount")) {
+                        donateCount = currentVillage.optInt("donateCount");
+                    }
+                    if (currentVillage.has("donateLimit")) {
+                        donateLimit = currentVillage.optInt("donateLimit");
+                    }
+                }
+                JSONObject userInfo = selfHome.optJSONObject("userInfo");
+                if (userInfo != null) {
+                    if (userInfo.has("level")) {
+                        level = userInfo.optInt("level");
+                    }
+                    JSONObject coin = userInfo.optJSONObject("currentCoin");
+                    if (coin != null && coin.has("amount")) {
+                        currentCoin = trimDouble(coin.optDouble("amount"));
+                    }
+                    if (userInfo.has("donateCount")) {
+                        userDonateCount = userInfo.optInt("donateCount");
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "stallInfo selfHome err:");
+            Log.printStackTrace(TAG, t);
+        }
+        try {
+            JSONObject jo = new JSONObject(AntStallRpcCall.roadmap());
+            if (MessageUtil.checkResultCode(TAG, jo)) {
+                JSONArray roadList = jo.optJSONArray("roadList");
+                if (roadList != null) {
+                    int finished = 0;
+                    for (int i = 0; i < roadList.length(); i++) {
+                        JSONObject road = roadList.optJSONObject(i);
+                        if (road != null && "FINISH".equals(road.optString("status"))) {
+                            finished++;
+                        }
+                    }
+                    finishedVillageCount = finished;
+                }
+                JSONObject userInfo = jo.optJSONObject("userInfo");
+                if (userInfo != null) {
+                    JSONObject coin = userInfo.optJSONObject("donateCoin");
+                    if (coin != null && coin.has("amount")) {
+                        donateCoin = trimDouble(coin.optDouble("amount"));
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "stallInfo roadmap err:");
+            Log.printStackTrace(TAG, t);
+        }
+        Log.info("蚂蚁新村⛪[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]当前[" + villageName + "](" + villageType + "第" + Log.n(villageIndex) + "村)等级" + Log.n(level) + ";乡村振兴币" + currentCoin + ";本村捐助" + Log.n(donateCount) + "/" + Log.n(donateLimit) + ";累计捐助" + Log.n(userDonateCount) + "次" + donateCoin + "元;已建村庄" + Log.n(finishedVillageCount) + ";");
+    }
+
+    /**
+     * 去掉double末尾多余的.0
+     */
+    private static String trimDouble(double d) {
+        if (d == Math.rint(d) && !Double.isInfinite(d)) {
+            return Long.toString((long) d);
+        }
+        return Double.toString(d);
     }
     
     private static JSONObject querySelfHome() {

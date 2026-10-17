@@ -10,6 +10,7 @@ import com.elvishew.xlog.printer.file.clean.NeverCleanStrategy;
 import com.elvishew.xlog.printer.file.naming.FileNameGenerator;
 import io.github.lazyimmortal.sesame.model.normal.base.BaseModel;
 
+import java.io.FileWriter;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -104,6 +105,14 @@ public class Log {
                     .flattener(new PatternFlattener("{d HH:mm:ss.SSS} {m}"))
                     .build()).build();
 
+    private static final Logger infoLogger = XLog.tag("INFO").printers(
+            new FilePrinter.Builder(FileUtil.LOG_DIRECTORY_FILE.getPath())
+                    .fileNameGenerator(new CustomDateFileNameGenerator("info"))
+                    .backupStrategy(new NeverBackupStrategy())
+                    .cleanStrategy(new NeverCleanStrategy())
+                    .flattener(new PatternFlattener("{d HH:mm:ss.SSS} {m}"))
+                    .build()).build();
+
     private static final Logger errorLogger = XLog.tag("ERROR").printers(
             new FilePrinter.Builder(FileUtil.LOG_DIRECTORY_FILE.getPath())
                     .fileNameGenerator(new CustomDateFileNameGenerator("error"))
@@ -149,6 +158,36 @@ public class Log {
     public static void other(String s) {
         record(s);
         otherLogger.i(s);
+    }
+
+    /* 信息记录: 写入信息日志文件(界面"信息记录"查看)及运行日志, 不写入record记录日志(避免与forest/other等重复) */
+    public static void info(String s) {
+        runtimeLogger.i(s);
+        infoLogger.i(s);
+    }
+
+    /**
+     * 信息记录数值展示: null(接口失败/字段缺失)显示空格, 读到真实值(含0)正常显示
+     */
+    public static String n(Integer value) {
+        return value == null ? " " : Integer.toString(value);
+    }
+
+    /* 信息记录: 仅在信息日志文件追加一个空行, 用于分隔每轮模块执行的信息(绕过XLog时间戳前缀, 不写运行/记录日志) */
+    public static void infoNewLine() {
+        FileWriter writer = null;
+        try {
+            writer = new FileWriter(FileUtil.getInfoLogFile(), true);
+            writer.write("\n");
+        } catch (Throwable ignored) {
+        } finally {
+            if (writer != null) {
+                try {
+                    writer.close();
+                } catch (Exception ignored) {
+                }
+            }
+        }
     }
 
     public static void error(String s) {

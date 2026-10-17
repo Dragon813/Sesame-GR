@@ -140,11 +140,18 @@ public class Status {
     //Log.forest("统计被水🍯
     //Log.forest("统计浇水🚿
     public static void getWateredFriendToday() {
+        getWateredFriendToday(false);
+    }
+
+    /**
+     * 查询被浇水情况: toInfoLog=false走森林日志(扩展功能按钮原行为), true写信息日志(每轮开始自动统计)
+     */
+    public static void getWateredFriendToday(boolean toInfoLog) {
         // 1. 基础统计：浇水好友数量（Map的key数量）
         int friendCount = INSTANCE.wateredFriendLogList.size();
         // 2. 统计总浇水量（遍历Map累加所有value）
         int totalWaterAmount = 0;
-        
+
         // 3. 遍历Map的键值对并输出详细信息
         for (Map.Entry<String, Integer> entry : INSTANCE.wateredFriendLogList.entrySet()) {
             String friendId = entry.getKey();       // 好友ID
@@ -152,19 +159,19 @@ public class Status {
             if (waterAmount == null) {
                 waterAmount = 0;
             }
-            
+
             // 可选：通过UserIdMap获取好友昵称（如果需要显示名称而非ID）
             String friendName = UserIdMap.getShowName(friendId);
-            
+
             // 输出单条明细（日志/控制台）
-            Log.forest("统计被水🍯被["+friendName+"]浇水"+waterAmount+"次");
-            
+            logWaterLog(toInfoLog, "统计被水🍯被["+friendName+"]浇水"+waterAmount+"次");
+
             // 累加总浇水量
             totalWaterAmount += waterAmount;
         }
-        
+
         // 4. 输出汇总统计信息
-        Log.forest("统计被水🍯共计被"+friendCount+"个好友浇水"+ totalWaterAmount+"次#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+        logWaterLog(toInfoLog, "统计被水🍯共计被"+friendCount+"个好友浇水"+ totalWaterAmount+"次#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
     
         // 5. 从ConfigV2读取wateredFriendList配置值
         Map<String, Integer> configWateredFriendList = null;
@@ -193,8 +200,7 @@ public class Status {
                     configTotalWaterAmount += configWaterAmount;
                 }
             }
-            Log.forest("统计被水🍯预计被"+configFriendCount+"个好友浇水"+ configTotalWaterAmount+"次#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
-
+            logWaterLog(toInfoLog, "统计被水🍯预计被"+configFriendCount+"个好友浇水"+ configTotalWaterAmount+"次#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
             // 6.2 对比配置和实际浇水情况，输出差别
             for (Map.Entry<String, Integer> entry : configWateredFriendList.entrySet()) {
                 String friendId = entry.getKey();
@@ -205,9 +211,9 @@ public class Status {
                     int actual = actualWaterAmount == null ? 0 : actualWaterAmount;
                     int diff = configWaterAmount - actual;
                     if (diff > 0) {
-                        Log.forest("统计被水🍯被[" + friendName + "]少浇" + diff + "次");
+                        logWaterLog(toInfoLog, "统计被水🍯被[" + friendName + "]少浇" + diff + "次");
                     } else if (diff < 0) {
-                        Log.forest("统计被水🍯被[" + friendName + "]多浇" + (-diff) + "次");
+                        logWaterLog(toInfoLog, "统计被水🍯被[" + friendName + "]多浇" + (-diff) + "次");
                     }
                 }
             }
@@ -218,10 +224,21 @@ public class Status {
                     Integer actualWaterAmount = entry.getValue();
                     if (actualWaterAmount != null && actualWaterAmount > 0) {
                         String friendName = UserIdMap.getShowName(friendId);
-                        Log.forest("统计被水🍯被[" + friendName + "]多浇" + actualWaterAmount + "次");
+                        logWaterLog(toInfoLog, "统计被水🍯被[" + friendName + "]多浇" + actualWaterAmount + "次");
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * 浇水统计日志输出通道: 按钮查询走森林日志(Log.forest), 每轮自动统计走信息日志(Log.info)
+     */
+    private static void logWaterLog(boolean toInfoLog, String msg) {
+        if (toInfoLog) {
+            Log.info(msg);
+        } else {
+            Log.forest(msg);
         }
     }
 
@@ -318,6 +335,13 @@ public class Status {
     }
     
     public static void getWateringFriendToday() {
+        getWateringFriendToday(false);
+    }
+
+    /**
+     * 查询浇水情况: toInfoLog=false走森林日志(扩展功能按钮原行为), true写信息日志(每轮开始自动统计)
+     */
+    public static void getWateringFriendToday(boolean toInfoLog) {
         // 1. 基础统计：浇水好友数量（Map的key数量）
         int friendCount = INSTANCE.wateringFriendLogList.size();
         // 2. 统计总浇水量（遍历Map累加所有value）
@@ -335,14 +359,14 @@ public class Status {
             String friendName = UserIdMap.getShowName(friendId);
             
             // 输出单条明细（日志/控制台）
-            Log.forest("统计浇水🚿给["+friendName+"]浇水"+waterAmount+"次");
-            
+            logWaterLog(toInfoLog, "统计浇水🚿给["+friendName+"]浇水"+waterAmount+"次");
+
             // 累加总浇水量
             totalWaterAmount += waterAmount;
         }
-        
+
         // 4. 输出汇总统计信息
-        Log.forest("统计浇水🚿共计给"+friendCount+"个好友浇水"+ totalWaterAmount+"次#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+        logWaterLog(toInfoLog, "统计浇水🚿共计给"+friendCount+"个好友浇水"+ totalWaterAmount+"次#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
         
         // 5. 从ConfigV2读取waterFriendList配置值
         Map<String, Integer> configWaterFriendList = null;
@@ -371,7 +395,7 @@ public class Status {
                     configTotalWaterAmount += configWaterAmount;
                 }
             }
-            Log.forest("统计浇水🚿预计给"+configFriendCount+"个好友浇水"+ configTotalWaterAmount+"次#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+            logWaterLog(toInfoLog, "统计浇水🚿预计给"+configFriendCount+"个好友浇水"+ configTotalWaterAmount+"次#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
 
             // 6.2 对比配置和实际浇水情况，输出差别
             for (Map.Entry<String, Integer> entry : configWaterFriendList.entrySet()) {
@@ -383,7 +407,7 @@ public class Status {
                     int actual = actualWaterAmount == null ? 0 : actualWaterAmount;
                     int diff = configWaterAmount - actual;
                     if (diff != 0) {
-                        Log.forest("统计浇水🚿给[" + friendName + "]缺少" + diff + "次");       
+                        logWaterLog(toInfoLog, "统计浇水🚿给[" + friendName + "]缺少" + diff + "次");
                     }
                 }
             }

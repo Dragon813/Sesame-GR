@@ -262,12 +262,186 @@ public class AntSports extends ModelTask {
             //if (neverLand.getValue() && checkAuth()) {
             if (neverLand.getValue()) {
                 neverlandrun();
+                // 悦动健康岛信息记录
+                healthIslandInfo();
+            }
+
+            // 运动信息记录
+            sportsInfo();
+
+            // 行走路线信息记录(仅开启"行走路线"时查询)
+            if (walk.getValue()) {
+                routeInfo();
             }
 
         } catch (Throwable t) {
             Log.i(TAG, "start.run err:");
             Log.printStackTrace(TAG, t);
         }
+    }
+
+    /**
+     * 行走路线信息记录(信息记录): 当前路线/城市/累计走路数据, 读不到的字段以空格占位, 仅walk开关开启时执行
+     */
+    private void routeInfo() {
+        String joinedPathId = "";
+        Integer todayStepCount = null;
+        Integer totalEnergyNum = null;
+        String totalGoDistanceKm = "";
+        String totalGoStepCount = "";
+        String pathName = "";
+        String cityName = "";
+        String themeName = "";             // 当前路线所属主题名(queryPath.path.themeId与queryThemeList条目匹配)
+        String pathThemeId = "";
+        String pathLength = "";
+        String pathStepCount = "";
+        Integer themeCount = null;         // 主题数(queryThemeList.themeList)
+        Integer cityCount = null;          // 城市数(所有主题queryWorldMap的cityList去重)
+        Integer receiveKnowledgeSum = null; // 已收见闻总数(所有城市receiveKnowledgeCount之和)
+        Integer pathCount = null;          // 线路总数(所有城市的cityPathList条数累计)
+        Integer pathCompleteTimes = null;  // 完成所有线路次数(所有城市每条线路completeCount之和)
+        Integer completedPathCount = null; // 服务端累计完成线路次数
+        try {
+            JSONObject jo = new JSONObject(AntSportsRpcCall.queryUser());
+            if (MessageUtil.checkSuccess(TAG, jo)) {
+                JSONObject data = jo.optJSONObject("data");
+                if (data != null) {
+                    joinedPathId = data.optString("joinedPathId", "");
+                    JSONObject myPositionModel = data.optJSONObject("myPositionModel");
+                    if (myPositionModel != null && myPositionModel.has("stepCount")) {
+                        todayStepCount = myPositionModel.optInt("stepCount");
+                    }
+                    if (data.has("totalEnergyNum")) {
+                        totalEnergyNum = data.optInt("totalEnergyNum");
+                    }
+                    totalGoDistanceKm = data.optString("totalGoDistanceKm", "");
+                    totalGoStepCount = data.optString("totalGoStepCount", "");
+                }
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "routeInfo queryUser err:");
+            Log.printStackTrace(TAG, t);
+        }
+        if (!StringUtil.isEmpty(joinedPathId)) {
+            try {
+                JSONObject data = queryPath(joinedPathId);
+                if (data != null) {
+                    JSONObject path = data.optJSONObject("path");
+                    if (path != null) {
+                        pathName = path.optString("name", "");
+                        pathLength = path.optString("pathLength", "");
+                        pathStepCount = path.optString("pathStepCount", "");
+                        pathThemeId = path.optString("themeId", "");
+                    }
+                    JSONObject cityDetailVO = data.optJSONObject("cityDetailVO");
+                    if (cityDetailVO != null) {
+                        cityName = cityDetailVO.optString("name", "");
+                    }
+                    if (data.has("completedPathCount")) {
+                        completedPathCount = data.optInt("completedPathCount");
+                    }
+                }
+            } catch (Throwable t) {
+                Log.i(TAG, "routeInfo queryPath err:");
+                Log.printStackTrace(TAG, t);
+            }
+        }
+        // 主题/城市/线路三级统计(独立容错,失败不影响主输出; 单主题或单城市失败跳过)
+        try {
+            JSONObject joTheme = new JSONObject(AntSportsRpcCall.queryThemeList());
+            if (MessageUtil.checkSuccess(TAG, joTheme)) {
+                JSONObject dataTheme = joTheme.optJSONObject("data");
+                if (dataTheme != null) {
+                    JSONArray themeList = dataTheme.optJSONArray("themeList");
+                    if (themeList != null) {
+                        themeCount = themeList.length();
+                        // 遍历所有主题的世界地图: 收集城市(按cityId去重)与已收见闻总数
+                        Set<String> cityIdSet = new LinkedHashSet<>();
+                        int knowledgeSum = 0;
+                        for (int i = 0; i < themeList.length(); i++) {
+                            JSONObject themeItem = themeList.optJSONObject(i);
+                            if (themeItem == null) {
+                                continue;
+                            }
+                            String themeId = themeItem.optString("themeId", "");
+                            if (StringUtil.isEmpty(themeId)) {
+                                continue;
+                            }
+                            // 匹配当前路线所属主题名
+                            if (!StringUtil.isEmpty(pathThemeId) && pathThemeId.equals(themeId)) {
+                                themeName = themeItem.optString("themeName", "");
+                            }
+                            JSONObject worldMapData = queryWorldMap(themeId);
+                            if (worldMapData == null) {
+                                continue;
+                            }
+                            JSONArray cityList = worldMapData.optJSONArray("cityList");
+                            if (cityList == null) {
+                                continue;
+                            }
+                            for (int j = 0; j < cityList.length(); j++) {
+                                JSONObject cityItem = cityList.optJSONObject(j);
+                                if (cityItem == null) {
+                                    continue;
+                                }
+                                JSONObject knowledge = cityItem.optJSONObject("knowledge");
+                                if (knowledge == null) {
+                                    // 无knowledge数据的条目(如"全国")不计入城市与见闻
+                                    continue;
+                                }
+                                String cityId = cityItem.optString("cityId", "");
+                                if (!cityIdSet.contains(cityId)) {
+                                    cityIdSet.add(cityId);
+                                }
+                                knowledgeSum += knowledge.optInt("receiveKnowledgeCount", 0);
+                            }
+                        }
+                        if (!cityIdSet.isEmpty()) {
+                            cityCount = cityIdSet.size();
+                            receiveKnowledgeSum = knowledgeSum;
+                            // 线路总数与完成次数: 逐城市统计该城市线路条数并累加每条线路完成次数
+                            int totalPathCount = 0;
+                            int totalCompleteTimes = 0;
+                            for (String cityId : cityIdSet) {
+                                if (StringUtil.isEmpty(cityId)) {
+                                    continue;
+                                }
+                                JSONObject cityData = queryCityPath(cityId);
+                                if (cityData == null) {
+                                    continue;
+                                }
+                                JSONArray cityPathList = cityData.optJSONArray("cityPathList");
+                                if (cityPathList == null) {
+                                    continue;
+                                }
+                                totalPathCount += cityPathList.length();
+                                for (int k = 0; k < cityPathList.length(); k++) {
+                                    JSONObject cityPath = cityPathList.optJSONObject(k);
+                                    if (cityPath != null) {
+                                        totalCompleteTimes += cityPath.optInt("completeCount", 0);
+                                    }
+                                }
+                            }
+                            pathCount = totalPathCount;
+                            pathCompleteTimes = totalCompleteTimes;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "routeInfo queryThemeList err:");
+            Log.printStackTrace(TAG, t);
+        }
+        // 当前[主题-城市-路线], 缺失的层级自动省略
+        StringBuilder routeDesc = new StringBuilder();
+        if (!StringUtil.isEmpty(themeName)) {
+            routeDesc.append(themeName).append("-");
+        }
+        if (!StringUtil.isEmpty(cityName)) {
+            routeDesc.append(cityName).append("-");
+        }
+        routeDesc.append(pathName);
+        Log.info("行走路线🚶[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]今日步数" + Log.n(todayStepCount) + ";当前[" + routeDesc + "](" + pathLength + "km/" + pathStepCount + "步);累计走路" + totalGoStepCount + "步/" + totalGoDistanceKm + "km;路线能量" + Log.n(totalEnergyNum) + ";主题" + Log.n(themeCount) + "个;城市" + Log.n(cityCount) + "个见闻" + Log.n(receiveKnowledgeSum) + ";线路" + Log.n(pathCount) + "条完成" + Log.n(pathCompleteTimes) + "次" + (completedPathCount != null ? ";累计完成" + completedPathCount + "次" : "") + ";");
     }
 
     public int tmpStepCount() {
@@ -1391,8 +1565,186 @@ public class AntSports extends ModelTask {
         }
     }
 
+    /**
+     * 运动信息记录(信息记录): 查询今日步数, 读不到以空格占位
+     */
+    private void sportsInfo() {
+        Integer stepCount = null;
+        try {
+            JSONObject jo = new JSONObject(AntSportsRpcCall.queryWalkStep());
+            if (MessageUtil.checkResultCode(TAG, jo) && jo.has("stepCount")) {
+                stepCount = jo.optInt("stepCount");
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "sportsInfo 查询失败:");
+            Log.printStackTrace(TAG, th);
+        }
+        // 好友步数榜前3: walk.ranking.dailySteps rank.data[]按步数降序 {steps,userId}
+        StringBuilder top3 = new StringBuilder();
+        try {
+            JSONObject jo = new JSONObject(AntSportsRpcCall.walkRankingDailySteps());
+            if (MessageUtil.checkResultCode(TAG, jo)) {
+                JSONObject rank = jo.optJSONObject("rank");
+                JSONArray data = rank == null ? null : rank.optJSONArray("data");
+                if (data != null) {
+                    int n = Math.min(3, data.length());
+                    for (int i = 0; i < n; i++) {
+                        JSONObject item = data.optJSONObject(i);
+                        if (item == null) {
+                            continue;
+                        }
+                        top3.append("第").append(i + 1).append("[").append(UserIdMap.getShowName(item.optString("userId", "")))
+                                .append("]").append(item.optInt("steps")).append("步;");
+                    }
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "sportsInfo 榜单查询失败:");
+            Log.printStackTrace(TAG, th);
+        }
+        Log.info("运动步数🏃[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]今日步数" + Log.n(stepCount) + ";" + top3);
+    }
+
+    /**
+     * 抢好友信息记录(信息记录): 复用queryClubHome响应, 解析能量/卡币/健康分/步数/我家好友, 读不到以空格占位
+     */
+    private void clubInfo(JSONObject jo) {
+        Integer energyBalance = null;
+        Integer coinBalance = null;
+        Integer healthScore = null;
+        String healthMessage = "";
+        Integer stepCount = null;
+        Integer roomCount = null;
+        StringBuilder members = new StringBuilder();
+        try {
+            JSONObject assetsInfo = jo.optJSONObject("assetsInfo");
+            if (assetsInfo != null) {
+                if (assetsInfo.has("energyBalance")) {
+                    energyBalance = assetsInfo.optInt("energyBalance");
+                }
+                if (assetsInfo.has("coinBalance")) {
+                    coinBalance = assetsInfo.optInt("coinBalance");
+                }
+            }
+            JSONObject healthInfoModel = jo.optJSONObject("healthInfoModel");
+            if (healthInfoModel != null) {
+                if (healthInfoModel.has("healthScore")) {
+                    healthScore = healthInfoModel.optInt("healthScore");
+                }
+                healthMessage = healthInfoModel.optString("message", "");
+            }
+            JSONObject todayStepInfo = jo.optJSONObject("todayStepInfo");
+            if (todayStepInfo != null && todayStepInfo.has("stepCount")) {
+                stepCount = todayStepInfo.optInt("stepCount");
+            }
+            JSONArray roomList = jo.optJSONArray("roomList");
+            if (roomList != null) {
+                roomCount = roomList.length();
+            }
+            // 我的主人(我被谁买): mainRoom.memberList[0].currentBossId, priceInfo.price为我的售价
+            JSONObject mainRoom = jo.optJSONObject("mainRoom");
+            JSONArray myMemberList = mainRoom != null ? mainRoom.optJSONArray("memberList") : null;
+            JSONObject me = myMemberList != null ? myMemberList.optJSONObject(0) : null;
+            if (me != null) {
+                String bossId = me.optString("currentBossId", "");
+                if (!bossId.isEmpty()) {
+                    Integer myPrice = null;
+                    JSONObject myPriceInfo = me.optJSONObject("priceInfo");
+                    if (myPriceInfo != null && myPriceInfo.has("price")) {
+                        myPrice = myPriceInfo.optInt("price");
+                    }
+                    members.append("我的主人[").append(UserIdMap.getShowName(bossId)).append("]我的售价").append(Log.n(myPrice)).append(";");
+                }
+            }
+            // 我的训练房间: roomId为字符串"cr"+6位房号+用户uid(如cr0000012088312567096623), 先按房号收集成员再按1~N号房列出, 空房显示空格
+            StringBuilder roomSlots = new StringBuilder();
+            if (roomList != null) {
+                java.util.HashMap<Integer, JSONObject> roomMemberMap = new java.util.HashMap<>();
+                for (int i = 0; i < roomList.length(); i++) {
+                    JSONObject room = roomList.optJSONObject(i);
+                    if (room == null) {
+                        continue;
+                    }
+                    String roomIdStr = room.optString("roomId", "");
+                    int roomNum = -1;
+                    if (roomIdStr.length() >= 8 && roomIdStr.startsWith("cr")) {
+                        try {
+                            roomNum = Integer.parseInt(roomIdStr.substring(2, 8));
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                    if (roomNum < 0 || roomMemberMap.containsKey(roomNum)) {
+                        continue;
+                    }
+                    JSONArray memberList = room.optJSONArray("memberList");
+                    if (memberList != null) {
+                        for (int k = 0; k < memberList.length(); k++) {
+                            JSONObject m = memberList.optJSONObject(k);
+                            if (m != null && !m.optString("originBossId", "").isEmpty()) {
+                                roomMemberMap.put(roomNum, m);
+                                break;
+                            }
+                        }
+                    }
+                }
+                int count = roomCount != null ? roomCount : roomList.length();
+                for (int roomNum = 1; roomNum <= count; roomNum++) {
+                    JSONObject member = roomMemberMap.get(roomNum);
+                    if (member == null) {
+                        roomSlots.append(" ;");
+                        continue;
+                    }
+                    Integer price = null;
+                    JSONObject priceInfo = member.optJSONObject("priceInfo");
+                    if (priceInfo != null && priceInfo.has("price")) {
+                        price = priceInfo.optInt("price");
+                    }
+                    boolean training = false;
+                    JSONObject trainInfo = member.optJSONObject("trainInfo");
+                    if (trainInfo != null) {
+                        training = trainInfo.optBoolean("training", false);
+                    }
+                    roomSlots.append("[").append(UserIdMap.getShowName(member.optString("originBossId", ""))).append("]")
+                            .append(training ? "训练中" : "").append("售价").append(Log.n(price)).append(";");
+                }
+            }
+            members.append("我的训练房间").append(Log.n(roomCount)).append("[").append(roomSlots).append("]");
+        } catch (Throwable th) {
+            Log.i(TAG, "clubInfo 解析失败:");
+            Log.printStackTrace(TAG, th);
+        }
+        // 身价前3: queryMemberPriceRanking rank.data[]按身价降序, originBossId为成员uid, price为身价
+        StringBuilder priceTop3 = new StringBuilder();
+        try {
+            JSONObject rankJo = new JSONObject(AntSportsRpcCall.queryMemberPriceRanking());
+            if (MessageUtil.checkResultCode(TAG, rankJo)) {
+                JSONObject rank = rankJo.optJSONObject("rank");
+                JSONArray data = rank == null ? null : rank.optJSONArray("data");
+                if (data != null) {
+                    int n = Math.min(3, data.length());
+                    for (int i = 0; i < n; i++) {
+                        JSONObject item = data.optJSONObject(i);
+                        if (item == null) {
+                            continue;
+                        }
+                        priceTop3.append("第").append(i + 1).append("[")
+                                .append(UserIdMap.getShowName(item.optString("originBossId", "")))
+                                .append("]").append(item.optInt("price", 0)).append(";");
+                    }
+                    if (priceTop3.length() > 0) {
+                        priceTop3.insert(0, "身价榜");
+                    }
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "clubInfo 身价榜查询失败:");
+            Log.printStackTrace(TAG, th);
+        }
+        Log.info("抢夺好友⚡[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]运动能量" + Log.n(energyBalance) + ";卡币" + Log.n(coinBalance) + ";健康分" + Log.n(healthScore) + "(" + healthMessage + ");步数" + Log.n(stepCount) + ";" + members + priceTop3);
+    }
+
     // 抢好友大战
-    // 俱乐部首页，执行抢好友、训练动作、抢购等操作（具体逻辑依赖配置的 clubTrainItemType、clubTradeMemberType 等）
+    // 俱乐部首页，执行抢好友、训练动作、抢购等操作（具体逻辑依赖配置的clubTrainItemType、clubTradeMemberType 等）
     private void queryClubHome() {
         try {
             // 收运动能量
@@ -1400,6 +1752,8 @@ public class AntSports extends ModelTask {
             if (!MessageUtil.checkResultCode(TAG, joBubble)) {
                 return;
             }
+            // 抢好友信息记录(复用首次clubHome响应, 不额外请求)
+            clubInfo(joBubble);
             JSONObject mainRoom = joBubble.getJSONObject("mainRoom");
             if (mainRoom.has("bubbleList")) {
                 JSONArray bubbleList = mainRoom.getJSONArray("bubbleList");
@@ -2402,6 +2756,134 @@ public class AntSports extends ModelTask {
             Log.i(TAG, "run err:");
             Log.printStackTrace(TAG, e);
         }
+    }
+
+    /**
+     * 悦动健康岛信息记录(信息记录): 能量余额/当前岛进度/建筑进度/全岛完成情况, 读不到的字段以空格占位, 仅neverLand开关开启时执行
+     */
+    private void healthIslandInfo() {
+        Integer balance = null;
+        String mapName = "";
+        String branchId = "";
+        String mapId = "";
+        boolean newGame = false;
+        String mapStatus = "";
+        Integer mapEnergyProcess = null;
+        Integer mapEnergyFinal = null;
+        Integer buildingIndex = null;
+        Integer buildingCount = null;
+        Integer buildingEnergyProcess = null;
+        Integer buildingEnergyFinal = null;
+        Integer mapTotal = null;
+        Integer mapFinishCount = null;
+        Integer mapRewardCount = null;
+        // 能量余额: queryUserAccount data.balance
+        try {
+            JSONObject jo = new JSONObject(AntSportsRpcCall.queryUserAccount());
+            if (MessageUtil.checkSuccess(TAG, jo)) {
+                JSONObject data = jo.optJSONObject("data");
+                if (data != null && data.has("balance")) {
+                    balance = Integer.parseInt(data.getString("balance"));
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "healthIslandInfo 能量查询失败:");
+            Log.printStackTrace(TAG, th);
+        }
+        // 当前岛: queryBaseinfo data.mapName/mapId/branchId/newGame
+        try {
+            JSONObject jo = new JSONObject(AntSportsRpcCall.queryBaseinfo());
+            if (MessageUtil.checkSuccess(TAG, jo)) {
+                JSONObject data = jo.optJSONObject("data");
+                if (data != null) {
+                    mapName = data.optString("mapName", "");
+                    branchId = data.optString("branchId", "");
+                    mapId = data.optString("mapId", "");
+                    newGame = data.optBoolean("newGame", false);
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "healthIslandInfo 基础信息查询失败:");
+            Log.printStackTrace(TAG, th);
+        }
+        // 当前岛详情: queryMapInfoNew data.mapStatus/mapEnergyProcess/Final/stageInfo/buildingConfigInfos
+        if (!branchId.isEmpty() && !mapId.isEmpty()) {
+            try {
+                JSONObject jo = new JSONObject(AntSportsRpcCall.queryMapInfoNew(branchId, mapId));
+                if (MessageUtil.checkSuccess(TAG, jo)) {
+                    JSONObject data = jo.optJSONObject("data");
+                    if (data != null) {
+                        mapStatus = data.optString("mapStatus", "");
+                        if (data.has("mapEnergyProcess")) {
+                            mapEnergyProcess = data.optInt("mapEnergyProcess");
+                        }
+                        if (data.has("mapEnergyFinal")) {
+                            mapEnergyFinal = data.optInt("mapEnergyFinal");
+                        }
+                        JSONArray configs = data.optJSONArray("buildingConfigInfos");
+                        if (configs != null) {
+                            buildingCount = configs.length();
+                        }
+                        JSONObject stageInfo = data.optJSONObject("stageInfo");
+                        if (stageInfo != null) {
+                            if (stageInfo.has("buildingIndex")) {
+                                buildingIndex = stageInfo.optInt("buildingIndex") + 1;
+                            }
+                            if (stageInfo.has("buildingEnergyProcess")) {
+                                buildingEnergyProcess = stageInfo.optInt("buildingEnergyProcess");
+                            }
+                            if (stageInfo.has("buildingEnergyFinal")) {
+                                buildingEnergyFinal = stageInfo.optInt("buildingEnergyFinal");
+                            }
+                        }
+                    }
+                }
+            } catch (Throwable th) {
+                Log.i(TAG, "healthIslandInfo 岛屿详情查询失败:");
+                Log.printStackTrace(TAG, th);
+            }
+        }
+        // 全岛总览: queryMapList data.mapList[], 统计完成数与待领奖数
+        try {
+            JSONObject jo = new JSONObject(AntSportsRpcCall.queryMapList());
+            if (MessageUtil.checkSuccess(TAG, jo)) {
+                JSONObject data = jo.optJSONObject("data");
+                JSONArray mapList = data == null ? null : data.optJSONArray("mapList");
+                if (mapList != null) {
+                    mapTotal = mapList.length();
+                    int finish = 0;
+                    int reward = 0;
+                    for (int i = 0; i < mapList.length(); i++) {
+                        JSONObject map = mapList.optJSONObject(i);
+                        if (map == null) {
+                            continue;
+                        }
+                        String status = map.optString("status", "");
+                        if (status.contains("FINISH")) {
+                            finish++;
+                        }
+                        if ("FINISH_NOT_REWARD".equals(status)) {
+                            reward++;
+                        }
+                    }
+                    mapFinishCount = finish;
+                    mapRewardCount = reward;
+                }
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "healthIslandInfo 地图列表查询失败:");
+            Log.printStackTrace(TAG, th);
+        }
+        String statusText = mapStatus;
+        if ("FINISH".equals(mapStatus)) {
+            statusText = "已完成";
+        } else if ("FINISH_NOT_REWARD".equals(mapStatus)) {
+            statusText = "待领奖";
+        }
+        Log.info("悦动健康🚑️[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]能量" + Log.n(balance)
+                + ";岛屿[" + mapName + "]" + (newGame ? "活动岛" : "") + statusText + "进度" + Log.n(mapEnergyProcess) + "/" + Log.n(mapEnergyFinal)
+                + ";建筑第" + Log.n(buildingIndex) + "/" + Log.n(buildingCount) + "栋进度" + Log.n(buildingEnergyProcess) + "/" + Log.n(buildingEnergyFinal)
+                + ";全部岛屿" + Log.n(mapTotal) + "完成" + Log.n(mapFinishCount) + "待领奖" + Log.n(mapRewardCount) + ";");
     }
 
     private void queryMapListSwitch() {

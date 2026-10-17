@@ -32,6 +32,10 @@ public class AntOrchardRpcCall {
         return ApplicationHook.requestString("com.alipay.antorchard.extraInfoGet", "[{\"from\":\"entry\",\"requestType\":\"NORMAL\",\"sceneCode\":\"FUGUO\",\"source\":\"ch_appcenter__chsub_9patch\",\"version\":\"" + VERSION + "\"}]");
     }
 
+    public static String lazyIndex() {
+        return ApplicationHook.requestString("com.alipay.antorchard.orchardLazyIndex", "[{\"appMode\":\"normal\",\"canAddHome\":true,\"currentPlantScene\":\"main\",\"diversionSource\":\"DEFAULT\",\"hasWaitExchange\":true,\"requestType\":\"NORMAL\",\"sceneCode\":\"ORCHARD\",\"source\":\"ch_appcollect__chsub_my-recentlyUsed\",\"version\":\"" + VERSION + "\"}]");
+    }
+
     public static String extraInfoSet() {
         return ApplicationHook.requestString("com.alipay.antorchard.extraInfoSet", "[{\"bizCode\":\"fertilizerPacket\",\"bizParam\":{\"action\":\"queryCollectFertilizerPacket\"},\"requestType\":\"NORMAL\",\"sceneCode\":\"ORCHARD\",\"source\":\"ch_appcenter__chsub_9patch\",\"version\":\"" + VERSION + "\"}]");
     }

@@ -108,6 +108,11 @@ public class AntSportsRpcCall {
         String args = "[{\"appId\":\"healthstep\",\"bizId\":\"donation\",\"chInfo\":\"h5_donation_healthstep\",\"timeZone\":\"Asia/Shanghai\"}]";
         return ApplicationHook.requestString("alipay.antsports.steps.query", args);
     }
+
+    public static String walkRankingDailySteps() {
+        String args = "[{\"apiVersion\":\"MERGE_SERVICE\",\"chInfo\":\"ch_shouquan_shouye\",\"clientOS\":\"android\",\"features\":[\"DAILY_STEPS_RANK_V2\",\"STEP_BATTLE\",\"CLUB_HOME_CARD\",\"NEW_HOME_PAGE_STATIC\",\"CLOUD_SDK_AUTH\",\"STAY_ON_COMPLETE\",\"EXTRA_TREASURE_BOX\",\"NEW_HOME_PAGE_STATIC\",\"SUPPORT_AI\",\"SUPPORT_TAB3\",\"SUPPORT_FLYRABBIT\",\"SUPPORT_NEW_MATCH\",\"EXTERNAL_ADVERTISEMENT_TASK\",\"PROP\",\"PROPV2\",\"ASIAN_GAMES\"],\"scene\":\"default-lite\",\"timeZone\":\"" + timeZone + "\"}]";
+        return ApplicationHook.requestString("alipay.antsports.walk.ranking.dailySteps", args);
+    }
     
     public static String walkDonateSignInfo(int count) {
         return ApplicationHook.requestString("alipay.charity.mobile.donate.walk.walkDonateSignInfo", "[{\"needDonateAction\":false,\"source\":\"walkDonateHome\",\"steps\":" + count + ",\"timezoneId" + "\":\"" + timeZone + "\"}]");
@@ -267,6 +272,10 @@ public class AntSportsRpcCall {
     public static String queryClubHome() {
         return ApplicationHook.requestString("alipay.antsports.club.home.queryClubHome", "[{\"apiVersion\":\"energy" + "\",\"chInfo\":\"healthstep\",\"timeZone\":\"" + timeZone + "\"}]");
     }
+
+    public static String queryMemberPriceRanking() {
+        return ApplicationHook.requestString("alipay.antsports.club.ranking.queryMemberPriceRanking", "[{\"apiVersion\":\"energy\",\"buyMember\":false,\"chInfo\":\"as-account-home-friends\"}]");
+    }
     
     public static String queryClubRoom(String roomId) {
         String args = "[{\"apiVersion\":\"energy\",\"chInfo\":\"healthstep\",\"roomId\":\"" + roomId + "\"}]";
@@ -411,6 +420,12 @@ public class AntSportsRpcCall {
     public static String queryMapInfo(String branchId, String mapId) {
         String arg = "[{\"branchId\":\"" + branchId + "\",\"drilling\":false,\"mapId\":\"" + mapId + "\"}]";
         return ApplicationHook.requestString("com.alipay.neverland.biz.rpc.queryMapInfo", arg);
+    }
+
+    // 悦动健康岛地图详情(含能量进度/建筑阶段), 参数对照抓包queryMapInfoNew
+    public static String queryMapInfoNew(String branchId, String mapId) {
+        String arg = "[{\"branchId\":\"" + branchId + "\",\"mapId\":\"" + mapId + "\",\"source\":\"ch_toufang__yundongshouye\"}]";
+        return ApplicationHook.requestString("com.alipay.neverland.biz.rpc.queryMapInfoNew", arg);
     }
     
     public static String querySign() {
