@@ -253,6 +253,7 @@ public class AntForestV2 extends ModelTask {
     private SelectModelField ecoLifeOptions;
     private BooleanModelField dress;
     private TextModelField dressDetailList;
+    private BooleanModelField readForest;
 
     private static int totalCollected = 0;
     private static int totalHelpCollected = 0;
@@ -363,6 +364,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(medicalHealth = new BooleanModelField("medicalHealth", "医疗健康", false));
         modelFields.addField(greenLife = new BooleanModelField("greenLife", "森林集市", false));
         modelFields.addField(greenRent = new BooleanModelField("greenRent", "绿色租赁", false));
+        modelFields.addField(readForest = new BooleanModelField("readForest", "无纸阅读", false));
         modelFields.addField(youthPrivilege = new BooleanModelField("youthPrivilege", "青春特权 | 森林道具", false));
         modelFields.addField(ecoLife = new BooleanModelField("ecoLife", "绿色行动 | 开启", false));
         modelFields.addField(ecoLifeOptions = new SelectModelField("ecoLifeOptions", "绿色行动 | 选项", new LinkedHashSet<>(), CustomOption::getEcoLifeOptions, "光盘行动需要先手动完成一次"));
@@ -382,6 +384,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(dress = new BooleanModelField("dress", "装扮保护 | 开启", false));
         modelFields.addField(dressDetailList = new TextModelField("dressDetailList", "装扮保护 | " + "装扮信息", ""));
         modelFields.addField(new EmptyModelField("dressDetailListClear", "装扮保护 | 装扮信息清除", () -> dressDetailList.reset()));
+
         return modelFields;
     }
 
@@ -745,9 +748,17 @@ public class AntForestV2 extends ModelTask {
                     // 医疗健康 电子小票 4g*10能量
                     queryForestEnergy("BILL");
                 }
+
+                //无纸阅读: 读免费书攒绿色能量
+                if (readForest.getValue()) {
+                    ReadForestTask.execute();
+                }
+
                 if (dress.getValue()) {
                     dress();
                 }
+
+
 
                 checkAndHandleWhackMole();
 

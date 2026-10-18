@@ -109,6 +109,9 @@ public class AntOrchard extends ModelTask {
     private BooleanModelField GoldenBeansGameCenter;
     private BooleanModelField goldenBeanExchangeManure;
     private IntegerModelField goldenBeanReserveManure;
+    private BooleanModelField receiveOrchardGameStay;
+    private BooleanModelField orchardAutoHarvest;
+    private BooleanModelField orchardAutoPlant;
     private static int fertilizerProgress = 0;
     private static final ArrayList<String> enableSceneList = new ArrayList<>();
     //本轮orchardIndex响应缓存, 供农场信息记录复用, 避免重复请求
@@ -134,7 +137,10 @@ public class AntOrchard extends ModelTask {
         modelFields.addField(orchardSpreadManure = new BooleanModelField("orchardSpreadManure", "农场施肥 | 开启", false));
         modelFields.addField(useBatchSpread = new BooleanModelField("useBatchSpread", "一键施肥5次", false));
         modelFields.addField(orchardSpreadManureSceneList = new SelectAndCountModelField("orchardSpreadManureSceneList", "农场施肥 | 场景列表", new LinkedHashMap<>(), AlipayPlantScene::getList, "请填写每日施肥次数"));
+        modelFields.addField(orchardAutoHarvest = new BooleanModelField("orchardAutoHarvest", "果树自动收获", false));
+        modelFields.addField(orchardAutoPlant = new BooleanModelField("orchardAutoPlant", "果树自动收获 | 自动种植", false));
         modelFields.addField(drawGameCenterAward = new BooleanModelField("drawGameCenterAward", "农场乐园 | 游戏宝箱", true));
+        modelFields.addField(receiveOrchardGameStay = new BooleanModelField("receiveOrchardGameStay", "游戏时长任务 | 开启", false));
         modelFields.addField(orchardDrawListTask = new BooleanModelField("orchardDrawListTask", "农场抽抽乐任务", false));
         modelFields.addField(AutoAntOrchardDrawTaskList = new BooleanModelField("AutoAntOrchardDrawTaskList", "农场抽抽乐任务 | 推荐黑白名单", true));
         modelFields.addField(AntOrchardDrawTaskList = new SelectModelField("AntOrchardDrawTaskList", "农场抽抽乐任务 | 黑名单列表", new LinkedHashSet<>(), AlipayAntOrchardDrawTaskList::getList));
@@ -152,7 +158,7 @@ public class AntOrchard extends ModelTask {
         modelFields.addField(GoldenBeansGameCenter = new BooleanModelField("GoldenBeansGameCenter", "农场金豆乐园 | 游戏宝箱", true));
         modelFields.addField(goldenBeanExchangeManure = new BooleanModelField("goldenBeanExchangeManure", "金豆夺宝 | 肥料换金豆", false));
         modelFields.addField(goldenBeanReserveManure = new IntegerModelField("goldenBeanReserveManure", "金豆夺宝 | 保留肥料数量", 0, 0, null));
-        return modelFields;
+         return modelFields;
     }
 
     @Override
@@ -208,6 +214,11 @@ public class AntOrchard extends ModelTask {
             // 执行农场抽抽乐任务
             if (orchardDrawListTask.getValue()) {
                 orchardDrawListTask();
+            }
+
+            // 完成游戏时长任务: 极速模拟游玩悬浮球游戏领肥料
+            if (receiveOrchardGameStay.getValue()) {
+                AntOrchardGameStayTask.execute();
             }
 
             // 农场信息记录
@@ -743,6 +754,10 @@ public class AntOrchard extends ModelTask {
             if (plantInfo.getBoolean("canExchange")) {
                 Log.farm("农场果树似乎可以兑换了！");
                 Toast.show("芭芭农场果树似乎可以兑换了！");
+                // 自动收获+自动种植
+                if (orchardAutoHarvest.getValue()) {
+                    AntOrchardAutoHarvest.harvest(orchardAutoPlant.getValue());
+                }
             }
             // 更新施肥进度
             if (seedStage.has("totalValue")) {
