@@ -456,8 +456,8 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                         classLoader = remoteClassLoader;
                         if (miniDebugEnabled()) {
                             Log.debug("小程序抓包进程启动[" + processName + "]");
+                            hookMiniProgramNetwork();
                         }
-                        hookMiniProgramNetwork();
                     } catch (Throwable t) {
                         if (miniDebugEnabled()) {
                             Log.debug("小程序抓包进程[" + processName + "]启动失败: " + t.getMessage());
@@ -742,7 +742,9 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                 rpcBridge.load();
                 rpcVersion = rpcBridge.getVersion();
                 // 抓取支付宝小程序网络请求/响应数据
-                hookMiniProgramNetwork();
+                if (miniDebugEnabled()) {
+                    hookMiniProgramNetwork();
+                }
                 if (BaseModel.getStayAwake().getValue()) {
                     try {
                         PowerManager pm = (PowerManager) service.getSystemService(Context.POWER_SERVICE);
