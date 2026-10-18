@@ -104,9 +104,9 @@ public class BaseModel extends Model {
         modelFields.addField(energyTime);
         modelFields.addField(timedTaskModel);
         modelFields.addField(timeoutRestart);
+        modelFields.addField(waitWhenException);
         modelFields.addField(backupConfigDays);
         modelFields.addField(backupLogDays);
-        modelFields.addField(newRpc);
         modelFields.addField(newRpc);
         modelFields.addField(debugMode);
         modelFields.addField(rpcRequestList);

@@ -489,7 +489,7 @@ public class AntDodo extends ModelTask {
             JSONObject data = jo.optJSONObject("data");
             //showSpeciesV2=false表示账号未推送刮卡功能, 直接跳过兼容旧版
             if (data == null || !data.optBoolean("showSpeciesV2", false)) {
-                Log.record("神奇物种🦕神奇物种您的账户未推送刮刮卡操作-尝试刮卡");
+                Log.record("神奇物种🦕您的账户未推送刮刮卡操作-尝试刮卡");
                 //return;
             }
             JSONArray curCollection = data.optJSONArray("curCollection");
