@@ -20,6 +20,7 @@ import io.github.lazyimmortal.sesame.model.task.antForest.AntForestV2;
 import io.github.lazyimmortal.sesame.model.task.antOcean.AntOceanRpcCall;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
+import io.github.lazyimmortal.sesame.util.Statistics;
 import io.github.lazyimmortal.sesame.util.Status;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
 import io.github.lazyimmortal.sesame.util.idMap.AntDodoTaskListMap;
@@ -488,8 +489,8 @@ public class AntDodo extends ModelTask {
             JSONObject data = jo.optJSONObject("data");
             //showSpeciesV2=false表示账号未推送刮卡功能, 直接跳过兼容旧版
             if (data == null || !data.optBoolean("showSpeciesV2", false)) {
-                Log.i(TAG, "scratchAnimalCard skip: showSpeciesV2=false, feature not pushed");
-                return;
+                Log.record("神奇物种🦕神奇物种您的账户未推送刮刮卡操作-尝试刮卡");
+                //return;
             }
             JSONArray curCollection = data.optJSONArray("curCollection");
             if (curCollection == null) {
@@ -540,6 +541,8 @@ public class AntDodo extends ModelTask {
                     JSONObject resData = res.optJSONObject("data");
                     int energyGram = resData == null ? 0 : resData.optInt("energyGram");
                     Log.forest("神奇物种🦕刮刮卡" + getAnimalInfo(animal) + "获得" + energyGram + "g能量");
+                    //刮卡获得的能量计入统计(收), 与森林收取同口径
+                    Statistics.addData(Statistics.DataType.COLLECTED, energyGram);
                     TimeUtil.sleep(500L);
                 }
             }

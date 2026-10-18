@@ -461,6 +461,14 @@ public class AntForestV2 extends ModelTask {
             try {
                 JSONObject friendsObject = new JSONObject(AntForestRpcCall.queryEnergyRanking());
                 if (MessageUtil.checkResultCode(TAG, friendsObject)) {
+                    //每天一次: 复用本轮能量榜响应更新好友统计ta的总能量, 不额外发请求; 取不到数据则不打标记下轮重试
+                    if (!Status.hasFlagToday("FriendWatch::energySummation")) {
+                        int count = FriendWatch.updateEnergySummation(friendsObject);
+                        if (count > 0) {
+                            Status.flagToday("FriendWatch::energySummation");
+                            Log.forest("好友统计🌲好友ta的总能量已更新" + count + "条请移步“好友统计”菜单中查看");
+                        }
+                    }
                     collectFriendsEnergy(friendsObject, "ordinary");
                     int pos = 20;
                     List<String> idList = new ArrayList<>();
@@ -515,6 +523,7 @@ public class AntForestV2 extends ModelTask {
                                             if (collected > 0) {
                                                 //记录被浇水次数
                                                 Status.wateredFriendToday(wateringBubble.getString("userId"));
+                                                FriendWatch.waterFriendWatch(wateringBubble.getString("userId"), true);
                                                 Statistics.addData(Statistics.DataType.WATEREDCOUNT, 1);
                                                 String msg = "收取金球🍯[" + friendShowName + "]的浇水[" + collected + "g]";
                                                 Log.forest(msg + "#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
@@ -1685,7 +1694,10 @@ public class AntForestV2 extends ModelTask {
                         collected += bubble.getInt("collectedEnergy");
                     }
                     if (collected > 0) {
-                        FriendWatch.friendWatch(userId, collected);
+                        //PK森友(名字带(PK森友)后缀)不参与好友统计
+                        if (username == null || !username.endsWith("(PK森友)")) {
+                            FriendWatch.friendWatch(userId, collected, username);
+                        }
                         String str;
                         if (jo.has("bombCardEffect")) {
                             JSONObject bombCardEffect = jo.getJSONObject("bombCardEffect");
@@ -1715,7 +1727,10 @@ public class AntForestV2 extends ModelTask {
                 } else if (jaBubbleLength == 1) {
                     JSONObject bubble = jaBubbles.getJSONObject(0);
                     collected += bubble.getInt("collectedEnergy");
-                    FriendWatch.friendWatch(userId, collected);
+                    //PK森友(名字带(PK森友)后缀)不参与好友统计
+                    if (username == null || !username.endsWith("(PK森友)")) {
+                        FriendWatch.friendWatch(userId, collected, username);
+                    }
                     if (collected > 0) {
                         String str;
                         if (jo.has("bombCardEffect")) {
@@ -2418,6 +2433,7 @@ public class AntForestV2 extends ModelTask {
                     case "SUCCESS":
                         //记录浇水次数
                         Status.wateringFriendToday(userId);
+                        FriendWatch.waterFriendWatch(userId, false);
                         Statistics.addData(Statistics.DataType.WATERINGCOUNT, 1);
                         int currentEnergy = jo.getJSONObject("userBaseInfo").getInt("currentEnergy");
                         Log.forest("好友浇水🚿给[" + UserIdMap.getShowName(userId) + "]浇" + waterEnergy + "g#剩余能量[" + currentEnergy + "g]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");

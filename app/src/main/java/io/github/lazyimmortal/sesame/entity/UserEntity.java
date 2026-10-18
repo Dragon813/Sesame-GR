@@ -25,13 +25,33 @@ public class UserEntity {
 
     private final String fullName;
 
+    private final String headImageUrl;
+
+    private final String firstAlphaChar;
+
+    private final Long friendTime;
+
+    private final Long registerTime;
+
+    private final Boolean isDelete;
+
     public UserEntity(String userId, String account, Integer friendStatus, String realName, String nickName, String remarkName) {
+        this(userId, account, friendStatus, realName, nickName, remarkName, null, null, null, null, null);
+    }
+
+    public UserEntity(String userId, String account, Integer friendStatus, String realName, String nickName, String remarkName,
+                      String headImageUrl, String firstAlphaChar, Long friendTime, Long registerTime, Boolean isDelete) {
         this.userId = userId;
         this.account = account;
         this.friendStatus = friendStatus;
         this.realName = realName;
         this.nickName = nickName;
         this.remarkName = remarkName;
+        this.headImageUrl = headImageUrl;
+        this.firstAlphaChar = firstAlphaChar;
+        this.friendTime = friendTime;
+        this.registerTime = registerTime;
+        this.isDelete = isDelete;
         String showNameTmp;
         if (StringUtil.isEmpty(remarkName)) {
             showNameTmp = nickName;
@@ -80,8 +100,19 @@ public class UserEntity {
 
         private String showName;
 
+        private String headImageUrl;
+
+        private String firstAlphaChar;
+
+        private Long friendTime;
+
+        private Long registerTime;
+
+        private Boolean isDelete;
+
         public UserEntity toEntity() {
-            return new UserEntity(userId, account, friendStatus, realName, nickName, remarkName);
+            return new UserEntity(userId, account, friendStatus, realName, nickName, remarkName,
+                    headImageUrl, firstAlphaChar, friendTime, registerTime, isDelete);
         }
 
     }

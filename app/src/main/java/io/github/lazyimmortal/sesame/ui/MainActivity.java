@@ -258,13 +258,13 @@ public class MainActivity extends BaseActivity {
         menu.add(0, 1, 1, R.string.view_record_file);
         menu.add(0, 2, 2, R.string.view_debug_file);
         menu.add(0, 3, 3, R.string.extensions);
-        menu.add(0, 4, 4, R.string.view_error_log_file);
-        menu.add(0, 5, 5, R.string.export_error_log_file);
-        menu.add(0, 6, 6, R.string.view_runtime_log_file);
-        menu.add(0, 7, 7, R.string.export_runtime_log_file);
-        menu.add(0, 8, 8, R.string.export_the_statistic_file);
-        menu.add(0, 9, 9, R.string.import_the_statistic_file);
-        menu.add(0, 13, 10, R.string.friend_watch);
+        menu.add(0, 13, 4, R.string.friend_watch);
+        menu.add(0, 8, 5, R.string.export_the_statistic_file);
+        menu.add(0, 9, 6, R.string.import_the_statistic_file);
+        menu.add(0, 4, 7, R.string.view_error_log_file);
+        menu.add(0, 5, 8, R.string.export_error_log_file);
+        menu.add(0, 6, 9, R.string.view_runtime_log_file);
+        menu.add(0, 7, 10, R.string.export_runtime_log_file);
         menu.add(0, 10, 11, R.string.hide_the_application_icon).setCheckable(true).setChecked(state > PackageManager.COMPONENT_ENABLED_STATE_ENABLED);
         menu.add(0, 11, 12, R.string.language_simplified_chinese).setCheckable(true).setChecked(AppConfig.INSTANCE.getLanguageSimplifiedChinese());
         menu.add(0, 12, 13, R.string.settings);
@@ -344,7 +344,7 @@ public class MainActivity extends BaseActivity {
                 break;
 
             case 13:
-                ListDialog.show(this, getString(R.string.friend_watch), FriendWatch.getList(), SelectModelFieldFunc.newMapInstance(), false, ListDialog.ListType.SHOW);
+                selectFriendWatchUid();
                 break;
             
             case 10:
@@ -412,6 +412,32 @@ public class MainActivity extends BaseActivity {
             intent.putExtra("userName", userNameArray[index]);
         }
         startActivity(intent);
+    }
+
+    /**
+     * 好友统计: 先选择账号(数据按账号分目录存储), 再展示该账号统计列表
+     */
+    private void selectFriendWatchUid() {
+        //跳过index=0的"默认"占位项, 仅列出真实账号
+        int realCount = userEntityArray.length - 1;
+        if (realCount <= 0) {
+            ToastUtil.show(this, "暂无账号数据");
+            return;
+        }
+        String[] accountNames = new String[realCount];
+        for (int i = 0; i < realCount; i++) {
+            accountNames[i] = userNameArray[i + 1];
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.friend_watch)
+                .setItems(accountNames, (dialog, which) -> {
+                    UserEntity userEntity = userEntityArray[which + 1];
+                    String userId = userEntity.getUserId();
+                    String title = getString(R.string.friend_watch) + "-" + userEntity.getShowName();
+                    ListDialog.show(this, title, FriendWatch.getList(userId), SelectModelFieldFunc.newMapInstance(), false, ListDialog.ListType.SHOW);
+                })
+                .setPositiveButton(R.string.cancel, null)
+                .show();
     }
     
     private void updateSubTitle(RunType runType) {

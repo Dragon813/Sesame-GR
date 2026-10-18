@@ -218,6 +218,21 @@ public class ListDialog {
         }
         
         searchText = v.findViewById(R.id.edt_find);
+        //输入即实时过滤: 用户名/userID/统计正文任一包含关键字的条目全部列出, 清空恢复全量
+        searchText.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                ListAdapter.get(searchText.getContext()).filter(s == null ? null : s.toString());
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+            }
+        });
         lv_list = v.findViewById(R.id.lv_list);
         lv_list.setAdapter(ListAdapter.getClear(c));
         lv_list.setOnItemClickListener((p1, p2, p3, p4) -> {

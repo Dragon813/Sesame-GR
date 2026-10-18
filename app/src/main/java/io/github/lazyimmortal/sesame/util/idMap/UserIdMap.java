@@ -63,6 +63,11 @@ public class UserIdMap {
                     Field nickNameField = XposedHelpers.findField(friendClass, "nickName");
                     Field remarkNameField = XposedHelpers.findField(friendClass, "remarkName");
                     Field friendStatusField = XposedHelpers.findField(friendClass, "friendStatus");
+                    Field headImageUrlField = XposedHelpers.findField(friendClass, "headImageUrl");
+                    Field firstAlphaCharField = XposedHelpers.findField(friendClass, "firstAlphaChar");
+                    Field friendTimeField = XposedHelpers.findField(friendClass, "version");
+                    Field registerTimeField = XposedHelpers.findField(friendClass, "extVersion");
+                    Field isDeleteField = XposedHelpers.findField(friendClass, "isDelete");
                     UserEntity selfEntity = null;
                     for (Object userObject : allFriends) {
                         try {
@@ -72,7 +77,13 @@ public class UserIdMap {
                             String nickName = (String) nickNameField.get(userObject);
                             String remarkName = (String) remarkNameField.get(userObject);
                             Integer friendStatus = (Integer) friendStatusField.get(userObject);
-                            UserEntity userEntity = new UserEntity(userId, account, friendStatus, name, nickName, remarkName);
+                            String headImageUrl = (String) headImageUrlField.get(userObject);
+                            String firstAlphaChar = (String) firstAlphaCharField.get(userObject);
+                            Long friendTime = (Long) friendTimeField.get(userObject);
+                            Long registerTime = (Long) registerTimeField.get(userObject);
+                            Boolean isDelete = (Boolean) isDeleteField.get(userObject);
+                            UserEntity userEntity = new UserEntity(userId, account, friendStatus, name, nickName, remarkName,
+                                    headImageUrl, firstAlphaChar, friendTime, registerTime, isDelete);
                             if (Objects.equals(selfId, userId)) {
                                 selfEntity = userEntity;
                             }
@@ -85,6 +96,17 @@ public class UserIdMap {
                     UserIdMap.saveSelf(selfEntity);
                 }
                 UserIdMap.save(selfId);
+                //预下载全部好友头像到磁盘缓存(已缓存的跳过), 打开好友统计时本地秒出图
+                try {
+                    List<String> avatarUrls = new ArrayList<>();
+                    for (UserEntity ue : userMap.values()) {
+                        if (ue.getHeadImageUrl() != null && !ue.getHeadImageUrl().isEmpty()) {
+                            avatarUrls.add(ue.getHeadImageUrl());
+                        }
+                    }
+                    io.github.lazyimmortal.sesame.ui.ListAdapter.predownloadAvatars(avatarUrls);
+                } catch (Throwable ignored) {
+                }
             } catch (Throwable t) {
                 Log.i("checkUnknownId.run err:");
                 Log.printStackTrace(t);

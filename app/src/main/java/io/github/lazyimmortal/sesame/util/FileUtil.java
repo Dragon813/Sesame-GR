@@ -650,12 +650,15 @@ public class FileUtil {
         return exportedStatisticsFile;
     }
     
-    public static File getFriendWatchFile() {
-        File friendWatchFile = new File(MAIN_DIRECTORY_FILE, "friendWatch.json");
-        if (friendWatchFile.exists() && friendWatchFile.isDirectory()) {
-            friendWatchFile.delete();
+    /**
+     * 按账号分目录的好友统计文件, 与friend.json/self.json同目录, 多账号互不干扰
+     */
+    public static File getFriendWatchFile(String userId) {
+        File file = new File(CONFIG_DIRECTORY_FILE + "/" + userId, "friendWatch.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
         }
-        return friendWatchFile;
+        return file;
     }
     
     public static File getWuaFile() {
