@@ -13,7 +13,10 @@ import org.json.JSONObject;
 import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 
 @SuppressLint("SimpleDateFormat")
@@ -54,6 +57,96 @@ public class JsonUtil {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * 无损回写校验：rewritten 必须完整包含 source 的全部数据（只允许改格式，不允许丢键/改值）。
+     * 用于配置加载时的格式化回写——防止内存残留值把磁盘数据覆盖丢失。
+     * 判定不了就返回 false（调用方应保留磁盘原文）。
+     */
+    public static boolean isRewriteLossless(String sourceJson, String rewrittenJson) {
+        try {
+            return dataContainedIn(MAPPER.readTree(sourceJson), MAPPER.readTree(rewrittenJson));
+        } catch (Throwable t) {
+            Log.printStackTrace(t);
+            return false;
+        }
+    }
+
+    /** source 的每个键都必须在 rewritten 中存在且值被包含（键消失即不无损） */
+    private static boolean dataContainedIn(JsonNode source, JsonNode rewritten) {
+        if (source == null || source.isNull()) {
+            return true;
+        }
+        if (source.isObject()) {
+            if (rewritten == null || !rewritten.isObject()) {
+                return false;
+            }
+            Iterator<Map.Entry<String, JsonNode>> it = source.fields();
+            while (it.hasNext()) {
+                Map.Entry<String, JsonNode> entry = it.next();
+                JsonNode rewrittenValue = rewritten.get(entry.getKey());
+                if (rewrittenValue == null) {
+                    // 只允许改格式、不许改数据：键消失即判定不无损
+                    return false;
+                }
+                if (!dataContainedIn(entry.getValue(), rewrittenValue)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (source.isArray()) {
+            if (rewritten == null || !rewritten.isArray()) {
+                return false;
+            }
+            if (isScalarArray(source)) {
+                // 标量数组（Set 类名单）：顺序无意义，按重数比（minSdk21 不用 Map.merge/computeIfPresent，手动计数）
+                if (!isScalarArray(rewritten)) {
+                    return false;
+                }
+                Map<String, Integer> need = new HashMap<>();
+                for (JsonNode node : source) {
+                    String key = node.toString();
+                    Integer count = need.get(key);
+                    need.put(key, count == null ? 1 : count + 1);
+                }
+                for (JsonNode node : rewritten) {
+                    String key = node.toString();
+                    Integer count = need.get(key);
+                    if (count != null) {
+                        need.put(key, count - 1);
+                    }
+                }
+                for (Integer left : need.values()) {
+                    if (left != null && left > 0) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            // 对象数组：不许变短，逐位同值
+            if (rewritten.size() < source.size()) {
+                return false;
+            }
+            for (int i = 0; i < source.size(); i++) {
+                if (!dataContainedIn(source.get(i), rewritten.get(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return source.equals(rewritten);
+    }
+
+    /** 元素全是标量（Set 的序列化形式） */
+    private static boolean isScalarArray(JsonNode array) {
+        for (JsonNode node : array) {
+            if (node.isObject() || node.isArray()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static JsonParser getJsonParser(String body) {

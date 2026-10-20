@@ -762,10 +762,11 @@ public class AntSports extends ModelTask {
                                     name = null;
                                 }
                                 //Log.other("      " + name + "(" + cityId + ")");
-                                if (cityId.equals("000000") || cityId.equals("232700") || cityId.equals("620900") || cityId.equals("653100") || cityId.equals("710100")) {
+                                String queryCityPathJson = AntSportsRpcCall.queryCityPath(cityId);
+                                if (queryCityPathJson == null) {
                                     continue;
                                 }
-                                JSONObject queryCityPathJo = new JSONObject(AntSportsRpcCall.queryCityPath(cityId));
+                                JSONObject queryCityPathJo = new JSONObject(queryCityPathJson);
                                 if (MessageUtil.checkSuccess(TAG, queryCityPathJo)) {
                                     JSONObject queryCityPathData = queryCityPathJo.getJSONObject("data");
                                     //获取城市包含的路线
@@ -962,7 +963,12 @@ public class AntSports extends ModelTask {
     private JSONObject queryCityPath(String cityId) {
         JSONObject city = null;
         try {
-            JSONObject jo = new JSONObject(AntSportsRpcCall.queryCityPath(cityId));
+            String json = AntSportsRpcCall.queryCityPath(cityId);
+            if (json == null) {
+                // 被RPC层过滤的占位城市(000000等)不发请求直接跳过
+                return null;
+            }
+            JSONObject jo = new JSONObject(json);
             if (MessageUtil.checkSuccess(TAG, jo)) {
                 city = jo.getJSONObject("data");
             }
@@ -1097,9 +1103,6 @@ public class AntSports extends ModelTask {
             JSONArray cityList = theme.getJSONArray("cityList");
             for (int i = 0; i < cityList.length(); i++) {
                 String cityId = cityList.getJSONObject(i).getString("cityId");
-                if (cityId.equals("000000") || cityId.equals("232700") || cityId.equals("620900") || cityId.equals("653100") || cityId.equals("710100")) {
-                    continue;
-                }
                 JSONObject city = queryCityPath(cityId);
                 if (city == null) {
                     continue;

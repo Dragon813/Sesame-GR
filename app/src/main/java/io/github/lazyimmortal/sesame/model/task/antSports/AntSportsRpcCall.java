@@ -154,7 +154,16 @@ public class AntSportsRpcCall {
     }
     
     // 查询城市路线
+    /** 占位/特殊城市(全国000000、大兴安岭232700、酒泉620900、喀什653100、台北710100)无实际线路，统一在RPC层过滤不发请求 */
+    private static boolean isFilteredCity(String cityId) {
+        return "000000".equals(cityId) || "232700".equals(cityId) || "620900".equals(cityId)
+                || "653100".equals(cityId) || "710100".equals(cityId);
+    }
+
     public static String queryCityPath(String cityId) {
+        if (isFilteredCity(cityId)) {
+            return null;
+        }
         String args = "[{\"cityId\":\"" + cityId + "\"}]";
         return ApplicationHook.requestString("com.alipay.sportsplay.biz.rpc.walk.queryCityPath", args);
     }

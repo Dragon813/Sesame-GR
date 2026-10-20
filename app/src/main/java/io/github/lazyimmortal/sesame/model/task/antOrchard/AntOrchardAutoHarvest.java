@@ -6,8 +6,8 @@ import android.net.Uri;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 import io.github.lazyimmortal.sesame.hook.ApplicationHook;
@@ -18,7 +18,7 @@ import io.github.lazyimmortal.sesame.util.MessageUtil;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
 
 /**
- * 芭芭农场自动收获+自动种植: 果树可兑换时静默拉取种成记录并兜底打开兑换页面, 随后按优先级自动种植下一棵
+ * 芭芭农场自动收获+自动种植: 果树可兑换时静默拉取种成记录并兜底打开兑换页面, 随后读取种子列表默认种第一个有库存的种子
  */
 public class AntOrchardAutoHarvest {
     private static final String TAG = "AntOrchardAutoHarvest";
@@ -26,14 +26,6 @@ public class AntOrchardAutoHarvest {
 
     // 固定兑换链接(静默拉取失败时兜底打开)
     private static final String FIXED_EXCHANGE_URL = "https://pages-fast.m.taobao.com/wow/z/hdwk/farm-ssr/tmfarm-harvest?disableNav=YES&spm=farm";
-
-    // 选种优先级: 苹果 > 梨子 > 柠檬 > 芒果
-    private static final String[][] PRIORITY_SEEDS = {
-            {"glpg", "苹果"},
-            {"xjxl", "梨子"},
-            {"hnm", "柠檬"},
-            {"ynym", "芒果"}
-    };
 
     private static final Random RANDOM = new Random();
 
@@ -83,7 +75,7 @@ public class AntOrchardAutoHarvest {
     }
 
     /**
-     * 自动种植: 按优先级选有库存的种子种下
+     * 自动种植: 读取种子列表, 默认选第一个有库存的种子种下
      */
     public static boolean autoPlant() {
         try {
@@ -91,7 +83,7 @@ public class AntOrchardAutoHarvest {
 
             TimeUtil.sleep(getRandomDelay());
 
-            String[] selected = selectSeedByPriority();
+            String[] selected = selectFirstSeed();
             if (selected == null) {
                 Log.record(LOG_TAG + "无可用种子库存，跳过种植");
                 return false;
@@ -99,7 +91,7 @@ public class AntOrchardAutoHarvest {
 
             String seedCode = selected[0];
             String seedName = selected[1];
-            Log.record(LOG_TAG + "选中种子: " + seedName);
+            Log.record(LOG_TAG + "默认选第一个种: " + seedName);
 
             TimeUtil.sleep(getRandomDelay());
 
@@ -122,9 +114,11 @@ public class AntOrchardAutoHarvest {
     }
 
     /**
-     * 按优先级选择有库存的种子, 返回{seedCode, seedName}, 均无库存返回null
+     * 读取种子列表: 输出可选种子[种子1、种子2...], 默认选第一个有库存的
+     *
+     * @return {seedCode, seedName}, 无可用种子返回null
      */
-    public static String[] selectSeedByPriority() {
+    public static String[] selectFirstSeed() {
         try {
             String result = AntOrchardRpcCall.orchardSeedList();
             JSONObject jo = new JSONObject(result);
@@ -135,22 +129,39 @@ public class AntOrchardAutoHarvest {
             JSONObject taobaoData = new JSONObject(jo.getString("taobaoData"));
             JSONArray seedList = taobaoData.getJSONArray("seedList");
 
-            Map<String, Boolean> inventoryMap = new HashMap<>();
+            List<String> options = new ArrayList<>();
+            String[] first = null;
             for (int i = 0; i < seedList.length(); i++) {
                 JSONObject seed = seedList.getJSONObject(i);
-                inventoryMap.put(seed.getString("seedCode"), seed.optBoolean("hasInventory", false));
-            }
-
-            for (String[] seed : PRIORITY_SEEDS) {
-                Boolean hasInventory = inventoryMap.get(seed[0]);
-                if (hasInventory != null && hasInventory) {
-                    return new String[]{seed[0], seed[1]};
+                if (!seed.optBoolean("hasInventory", false)) {
+                    continue;
+                }
+                String seedCode = seed.optString("seedCode");
+                String seedName = seed.optString("seedTitle");
+                if (seedCode == null || seedCode.length() == 0) {
+                    continue;
+                }
+                options.add(seedName);
+                if (first == null) {
+                    first = new String[]{seedCode, seedName};
                 }
             }
-            Log.i(TAG, "优先水果均无库存");
-            return null;
+            if (options.isEmpty()) {
+                Log.record(LOG_TAG + "可选种子为空(均无库存)");
+            } else {
+                StringBuilder sb = new StringBuilder("[");
+                for (int i = 0; i < options.size(); i++) {
+                    if (i > 0) {
+                        sb.append("、");
+                    }
+                    sb.append(options.get(i));
+                }
+                sb.append("]");
+                Log.record(LOG_TAG + "可选种子" + sb );
+            }
+            return first;
         } catch (Throwable t) {
-            Log.i(TAG, "selectSeedByPriority err:");
+            Log.i(TAG, "selectFirstSeed err:");
             Log.printStackTrace(TAG, t);
             return null;
         }
@@ -212,7 +223,7 @@ public class AntOrchardAutoHarvest {
     private static String silentFetchExchange() {
         try {
             String data = "{\"bizParam\":\"{}\",\"bizType\":\"plantTree.showFruitList\"}";
-            return MtopCaller.call(ApplicationHook.getClassLoader(), "mtop.tmall.record.commonapi.get", data);
+            return MtopCaller.call(ApplicationHook.getClassLoader(), "mtop.tmall.farm.commonapi.get", data);
         } catch (Throwable t) {
             Log.i(TAG, "silentFetchExchange err: " + t);
             return null;

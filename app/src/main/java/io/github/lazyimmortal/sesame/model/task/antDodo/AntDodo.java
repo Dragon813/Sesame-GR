@@ -674,6 +674,20 @@ public class AntDodo extends ModelTask {
         }
     }
 
+    // 图鉴列表分页查询：服务器偶发SYSTEM_ERROR(retryable=true)，短暂等待后重试一次
+    private static String queryBookListWithRetry(int pageSize, int pageStart) {
+        String res = AntDodoRpcCall.queryBookList(pageSize, pageStart);
+        try {
+            JSONObject jo = new JSONObject(res);
+            if (!jo.optBoolean("success", false) && jo.optBoolean("retryable", false)) {
+                TimeUtil.sleep(2000L);
+                res = AntDodoRpcCall.queryBookList(pageSize, pageStart);
+            }
+        } catch (Throwable ignored) {
+        }
+        return res;
+    }
+
     // 使用万能卡
     private Boolean usePropUniversalCard(String propId, String propType) {
         try {
@@ -681,7 +695,7 @@ public class AntDodo extends ModelTask {
             int pageStart = 0;
             JSONObject animal = null;
             do {
-                JSONObject jo = new JSONObject(AntDodoRpcCall.queryBookList(9, pageStart));
+                JSONObject jo = new JSONObject(queryBookListWithRetry(9, pageStart));
                 if (!MessageUtil.checkResultCode(TAG, jo)) {
                     break;
                 }
@@ -919,7 +933,7 @@ public class AntDodo extends ModelTask {
             boolean hasMore;
             int pageStart = 0;
             do {
-                JSONObject jo = new JSONObject(AntDodoRpcCall.queryBookList(9, pageStart));
+                JSONObject jo = new JSONObject(queryBookListWithRetry(9, pageStart));
                 if (!MessageUtil.checkResultCode(TAG, jo)) {
                     break;
                 }
@@ -1021,7 +1035,7 @@ public class AntDodo extends ModelTask {
             boolean hasMore;
             int pageStart = 0;
             do {
-                JSONObject jo = new JSONObject(AntDodoRpcCall.queryBookList(9, pageStart));
+                JSONObject jo = new JSONObject(queryBookListWithRetry(9, pageStart));
                 if (!MessageUtil.checkResultCode(TAG, jo)) {
                     break;
                 }

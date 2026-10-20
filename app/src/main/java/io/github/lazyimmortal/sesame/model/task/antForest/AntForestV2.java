@@ -2975,11 +2975,12 @@ public class AntForestV2 extends ModelTask {
                 boolean canPlayGame = joEnergyRainHome.getBoolean("canPlayGame");
 
                 if (canPlayGame) {
-                    // 检查今日是否需要执行
-                    if (!Status.hasFlagToday("EnergyRain::PlayGame")) {
+                    // 检查今日是否需要执行（每日最多3次）
+                    if (!Status.hasFlagToday("EnergyRain::PlayGame") && Status.getCountToday("EnergyRain::PlayGame") < 3) {
                         Log.record("是否可以能量雨游戏: " + canPlayGame);
                         // 检查并处理游戏任务
                         boolean hasTaskToProcess = checkAndDoEndGameTask();
+                        Status.incrCountToday("EnergyRain::PlayGame");
                         TimeUtil.sleep(4000);
                     }
                 }
@@ -3921,8 +3922,8 @@ public class AntForestV2 extends ModelTask {
                     if (mapAvailability.equals("AVAILABLE") && currentMap) {
                         mapCode = currentRegionMap.optString("mapCode");
                         JSONObject displayInfo = currentRegionMap.optJSONObject("displayInfo");
-                        JSONObject mapDisplay = displayInfo.optJSONObject("mapDisplay");
-                        mapNameText = mapDisplay.optString("mapNameText");
+                        JSONObject mapDisplay = displayInfo != null ? displayInfo.optJSONObject("mapDisplay") : null;
+                        mapNameText = mapDisplay != null ? mapDisplay.optString("mapNameText") : mapCode;
                     }
                 }
             }
@@ -4227,7 +4228,7 @@ public class AntForestV2 extends ModelTask {
                                 }
                                 String rewardCode = Result.optString("rewardCode");
                                 JSONObject triggerData = Result.optJSONObject("triggerData");
-                                int energy = triggerData.optInt("energy");
+                                int energy = triggerData != null ? triggerData.optInt("energy") : 0;
                                 if (rewardCode.contains("energy")) {
                                     Log.forest("新保护地🌲掷骰事件领取[" + rewardCode + "]" + energy + "g能量");
                                     Toast.show("新保护地🌲掷骰事件领取" + energy + "g能量");
@@ -5201,7 +5202,16 @@ public class AntForestV2 extends ModelTask {
                 return;
             }
 
-            int serverRemaining = miscJo.optJSONObject("combineHandlerVOMap").optJSONObject("teamCanWaterCount").optInt("waterCount", 0);
+            JSONObject combineVOMap = miscJo.optJSONObject("combineHandlerVOMap");
+            JSONObject canWaterCount = combineVOMap != null ? combineVOMap.optJSONObject("teamCanWaterCount") : null;
+            if (canWaterCount == null) {
+                Log.record("queryMiscInfo 响应缺少官方剩余额度字段(combineHandlerVOMap.teamCanWaterCount)，跳过本轮");
+                if (needReturn) {
+                    updateUserConfiginTeam(!needReturn);
+                }
+                return;
+            }
+            int serverRemaining = canWaterCount.optInt("waterCount", 0);
             Log.record("组队状态检查:目标剩余" + userRemainingQuota + "g;官方剩余" + serverRemaining + "g;背包能量" + currentEnergy + "g;组队合种浇水上限" + userWaterMax + "g");
 
             if (serverRemaining < 10) {

@@ -39,7 +39,9 @@ public class MessageUtil {
 
     public static Boolean checkMemo(String tag, JSONObject jo) {
         try {
-            if (!"SUCCESS".equals(jo.optString("memo"))) {
+            String memo = jo.optString("memo");
+            // 部分RPC成功时memo为"成功"(如orchardLazyIndex)
+            if (!"SUCCESS".equals(memo) && !"成功".equals(memo)) {
                 if (jo.has("memo")) {
                     printErrorMessage(tag, jo, "memo");
                 } else {

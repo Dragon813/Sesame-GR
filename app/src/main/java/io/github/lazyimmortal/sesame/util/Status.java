@@ -49,9 +49,14 @@ public class Status {
     
     // member
     private final Set<String> memberPointExchangeBenefitLogList = new HashSet<>();
+    // 金豆夺宝当日已兑换金豆数（key=入口，如ZHIMA；跨天随unload自动重置）
+    private final Map<String, Integer> goldenBeanExchangeLogList = new HashMap<>();
     
     // other
     private final Set<String> flagLogList = new HashSet<>();
+
+    // 通用每日计数（key=标记，跨天随unload自动重置）
+    private final Map<String, Integer> dayCountLogList = new HashMap<>();
     
     // 保存时间
     private Long saveTime = 0L;
@@ -75,6 +80,16 @@ public class Status {
             INSTANCE.flagLogList.add(tag);
             save();
         }
+    }
+
+    public static int getCountToday(String tag) {
+        Integer count = INSTANCE.dayCountLogList.get(tag);
+        return count == null ? 0 : count;
+    }
+
+    public static void incrCountToday(String tag) {
+        INSTANCE.dayCountLogList.put(tag, getCountToday(tag) + 1);
+        save();
     }
     
     //在写入status中时，重要数据提前记录Uid,一定程度上避免因支付宝账号切换导致标记到下一个账号的少数情况
@@ -482,6 +497,17 @@ public class Status {
     
     public static Boolean canMemberPointExchangeBenefitToday(String benefitId) {
         return !INSTANCE.memberPointExchangeBenefitLogList.contains(benefitId);
+    }
+
+    public static int getGoldenBeanExchangeCountToday(String key) {
+        Integer count = INSTANCE.goldenBeanExchangeLogList.get(key);
+        return count == null ? 0 : count;
+    }
+
+    public static void goldenBeanExchangeToday(String key, int beanCount) {
+        int total = getGoldenBeanExchangeCountToday(key) + beanCount;
+        INSTANCE.goldenBeanExchangeLogList.put(key, total);
+        save();
     }
     
     public static void memberPointExchangeBenefitToday(String benefitId) {

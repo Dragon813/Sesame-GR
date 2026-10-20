@@ -18,13 +18,28 @@ public class GoldenBeanRpcCall {
     private static final String SOURCE = "babafarm";
     private static final String BIZ_TYPE = "MASTER";
 
+    // 芝麻炼金入口参数（抓包 RPC.txt 2026-10-19：从炼金页进入金豆夺宝）
+    public static final String BIZ_TYPE_ZHIMA = "ZHIMA";
+    public static final String SOURCE_ZHIMA = "lianjin";
+    public static final String VERSION_ZHIMA = "20260901.01";
+
     /**
      * 金豆夺宝首页数据
      * 返回 signInfo（签到）/manureExchangeInfo（肥料换豆）/taskList（任务）/jarInfo（罐子进度）等
      */
     public static String index() {
+        return index(BIZ_TYPE, SOURCE, VERSION);
+    }
+
+    /**
+     * 金豆夺宝首页数据（指定入口）
+     *
+     * @param bizType MASTER=芭芭农场入口 / ZHIMA=芝麻炼金入口
+     * @param source  babafarm=农场 / lianjin=炼金
+     */
+    public static String index(String bizType, String source, String version) {
         return ApplicationHook.requestString("com.alipay.goldenbean.index",
-                "[{\"bizType\":\"" + BIZ_TYPE + "\",\"darwinSceneList\":[\"indexLayoutTwo\",\"indexPreRequestCacheAB\",\"taskFlowHandGuide\"],\"source\":\"" + SOURCE + "\",\"version\":\"" + VERSION + "\"}]");
+                "[{\"bizType\":\"" + bizType + "\",\"darwinSceneList\":[\"indexLayoutTwo\",\"indexPreRequestCacheAB\",\"taskFlowHandGuide\"],\"source\":\"" + source + "\",\"version\":\"" + version + "\"}]");
     }
 
     /**
@@ -33,8 +48,15 @@ public class GoldenBeanRpcCall {
      * @param signKey 当日签到 key，取自 index 响应 signInfo.currentSignKey（形如 2026-08-18）
      */
     public static String sign(String signKey) {
+        return sign(BIZ_TYPE, SOURCE, VERSION, signKey);
+    }
+
+    /**
+     * 每日签到领金豆（指定入口）
+     */
+    public static String sign(String bizType, String source, String version, String signKey) {
         return ApplicationHook.requestString("com.alipay.goldenbean.sign",
-                "[{\"bizType\":\"" + BIZ_TYPE + "\",\"signKey\":\"" + signKey + "\",\"source\":\"" + SOURCE + "\",\"version\":\"" + VERSION + "\"}]");
+                "[{\"bizType\":\"" + bizType + "\",\"signKey\":\"" + signKey + "\",\"source\":\"" + source + "\",\"version\":\"" + version + "\"}]");
     }
 
     /**
@@ -43,8 +65,15 @@ public class GoldenBeanRpcCall {
      * @param syncTypeList 例如 JAR_INFO,SIGN,TASK_LIST,EXCHANGE_MANURE 等，以逗号分隔的裸值
      */
     public static String sync(String syncTypeList) {
+        return sync(BIZ_TYPE, SOURCE, VERSION, syncTypeList);
+    }
+
+    /**
+     * 数据刷新（指定入口）
+     */
+    public static String sync(String bizType, String source, String version, String syncTypeList) {
         return ApplicationHook.requestString("com.alipay.goldenbean.sync",
-                "[{\"bizType\":\"" + BIZ_TYPE + "\",\"source\":\"" + SOURCE + "\",\"syncTypeList\":[" + syncTypeList + "],\"version\":\"" + VERSION + "\"}]");
+                "[{\"bizType\":\"" + bizType + "\",\"source\":\"" + source + "\",\"syncTypeList\":[" + syncTypeList + "],\"version\":\"" + version + "\"}]");
     }
 
     /**
@@ -53,8 +82,17 @@ public class GoldenBeanRpcCall {
      * @param exchangeBeanAmount 本次要兑换的金豆数量（等于消耗的肥料数量）
      */
     public static String manureExchange(int exchangeBeanAmount) {
+        return manureExchange(BIZ_TYPE, SOURCE, VERSION, exchangeBeanAmount);
+    }
+
+    /**
+     * 芝麻粒换金豆（指定入口；炼金入口1芝麻=beanReward金豆，每日上限1w金豆，最低80金豆）
+     *
+     * @param exchangeBeanAmount 本次要兑换的金豆数量（服务端按 beanReward 折算消耗芝麻粒）
+     */
+    public static String manureExchange(String bizType, String source, String version, int exchangeBeanAmount) {
         return ApplicationHook.requestString("com.alipay.goldenbean.manureExchange",
-                "[{\"bizType\":\"" + BIZ_TYPE + "\",\"exchangeBeanAmount\":" + exchangeBeanAmount + ",\"source\":\"" + SOURCE + "\",\"version\":\"" + VERSION + "\"}]");
+                "[{\"bizType\":\"" + bizType + "\",\"exchangeBeanAmount\":" + exchangeBeanAmount + ",\"source\":\"" + source + "\",\"version\":\"" + version + "\"}]");
     }
 
     /**
@@ -74,6 +112,23 @@ public class GoldenBeanRpcCall {
     public static String trigger(String taskId, String triggerType) {
         return ApplicationHook.requestString("com.alipay.goldenbean.trigger",
                 "[{\"bizType\":\"" + BIZ_TYPE + "\",\"source\":\"" + SOURCE + "\",\"taskId\":\"" + taskId + "\",\"triggerType\":\"" + triggerType + "\",\"version\":\"" + VERSION + "\"}]");
+    }
+
+    /**
+     * 用App首页入口source重访金豆主页(触发"常用来访"任务, 服务端在访问瞬间自动发奖, 响应含receptionAwardCount)
+     */
+    public static String indexFromHome() {
+        return ApplicationHook.requestString("com.alipay.goldenbean.index",
+                "[{\"bizType\":\"" + BIZ_TYPE + "\",\"source\":\"ch_appcenter__chsub_commonapp\",\"version\":\"" + VERSION + "\"}]");
+    }
+
+    /**
+     * 收取浮动金豆
+     * @param assetId 浮动豆assetId(取自sync响应floatingBeans[].assetId)
+     */
+    public static String collect(String assetId) {
+        return ApplicationHook.requestString("com.alipay.goldenbean.collect",
+                "[{\"assetIds\":[\"" + assetId + "\"],\"bizType\":\"" + BIZ_TYPE + "\",\"source\":\"" + SOURCE + "\",\"version\":\"" + VERSION + "\"}]");
     }
 
     /**
@@ -101,11 +156,20 @@ public class GoldenBeanRpcCall {
      *
      * @param taskType 任务类型，取自 taskList 的 spmExtend.iepTaskTracer（通常等于 taskId）
      */
-    public static String finishTask(String sceneCode,String taskType) {
+    public static String finishTask(String sceneCode, String taskType) {
+        return finishTask(BIZ_TYPE, SOURCE, VERSION, sceneCode, taskType);
+    }
+
+    /**
+     * 完成金豆夺宝任务（指定入口；炼金入口 scene 为 GOLDEN_BEAN_ZHIMA_LIST）
+     *
+     * @param taskType 任务类型，取自 taskList 的 taskId
+     */
+    public static String finishTask(String bizType, String source, String version, String sceneCode, String taskType) {
         String userId = UserIdMap.getCurrentUid();
         String outBizNo = userId + System.currentTimeMillis();
         return ApplicationHook.requestString("com.alipay.antieptask.finishTaskantorchard",
-                "[{\"bizType\":\"" + BIZ_TYPE + "\",\"finishBusinessInfo\":{\"bizType\":\"" + BIZ_TYPE + "\"},\"outBizNo\":\"" + outBizNo + "\",\"sceneCode\":\""+sceneCode+"\",\"source\":\"" + SOURCE + "\",\"taskType\":\"" + taskType + "\",\"version\":\"" + VERSION + "\"}]");
+                "[{\"bizType\":\"" + bizType + "\",\"finishBusinessInfo\":{\"bizType\":\"" + bizType + "\"},\"outBizNo\":\"" + outBizNo + "\",\"sceneCode\":\"" + sceneCode + "\",\"source\":\"" + source + "\",\"taskType\":\"" + taskType + "\",\"version\":\"" + version + "\"}]");
     }
 
     /**
@@ -113,9 +177,18 @@ public class GoldenBeanRpcCall {
      *
      * @param taskType 任务类型
      */
-    public static String receiveTaskAward(String sceneCode,String taskType) {
+    public static String receiveTaskAward(String sceneCode, String taskType) {
+        return receiveTaskAward(BIZ_TYPE, SOURCE, VERSION, sceneCode, taskType);
+    }
+
+    /**
+     * 领取金豆夺宝任务奖励（指定入口）
+     *
+     * @param taskType 任务类型
+     */
+    public static String receiveTaskAward(String bizType, String source, String version, String sceneCode, String taskType) {
         return ApplicationHook.requestString("com.alipay.antieptask.receiveTaskAwardantorchard",
-                "[{\"bizInfo\":{\"bizType\":\"" + BIZ_TYPE + "\"},\"bizType\":\"" + BIZ_TYPE + "\",\"ignoreLimit\":true,\"sceneCode\":\""+sceneCode+"\",\"source\":\"" + SOURCE + "\",\"taskType\":\"" + taskType + "\",\"version\":\"" + VERSION + "\"}]");
+                "[{\"bizInfo\":{\"bizType\":\"" + bizType + "\"},\"bizType\":\"" + bizType + "\",\"ignoreLimit\":true,\"sceneCode\":\"" + sceneCode + "\",\"source\":\"" + source + "\",\"taskType\":\"" + taskType + "\",\"version\":\"" + version + "\"}]");
     }
 
     /**

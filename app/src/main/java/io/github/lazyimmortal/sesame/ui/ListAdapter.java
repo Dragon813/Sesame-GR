@@ -392,6 +392,14 @@ public class ListAdapter extends BaseAdapter {
         if (!dir.exists()) {
             dir.mkdirs();
         }
+        //在该目录放置.nomedia文件, 阻止系统媒体扫描器索引, 头像图片不会出现在相册
+        File nomedia = new File(dir, ".nomedia");
+        if (!nomedia.exists()) {
+            try {
+                nomedia.createNewFile();
+            } catch (Throwable ignored) {
+            }
+        }
         return new File(dir, md5(url) + ".png");
     }
 

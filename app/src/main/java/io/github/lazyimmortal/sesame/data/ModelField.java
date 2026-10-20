@@ -118,7 +118,12 @@ public class ModelField<T> implements Serializable {
     }
 
     public void reset() {
-        value = defaultValue;
+        if (defaultValue == null) {
+            value = null;
+            return;
+        }
+        // JSON往返生成新实例：防止任务代码就地修改value集合时把defaultValue一并污染
+        value = JsonUtil.parseObject(JsonUtil.toJsonString(defaultValue), valueType);
     }
 
     @JsonIgnore

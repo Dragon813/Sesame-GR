@@ -319,6 +319,14 @@ public class AntMemberRpcCall {
     }
 
     /**
+     * 生活记录坚持做-推送打卡（joinActivity返回recordId后调用，即完成任务）
+     */
+    public static String promisePushActivity(String recordId) {
+        return ApplicationHook.requestString("com.antgroup.zmxy.zmmemberop.biz.rpc.promise.PromiseRpcManager.pushActivity",
+                "[{\"recordId\":\"" + recordId + "\"}]");
+    }
+
+    /**
      * 查询生活记录明细
      *
      * @param recordId recordId
@@ -545,6 +553,22 @@ public class AntMemberRpcCall {
      */
     public static String feedBackSesameTaskNew(String taskTemplateId) {
         String requestData = "[{\"actionType\":\"TO_COMPLETE\",\"bizType\":\"LIFE_RECORD\",\"sceneCode\":\"zml\",\"templateId\":\"" + taskTemplateId + "\",\"version\":\"new\"}]";
+        return ApplicationHook.requestString("com.antgroup.zmxy.zmmemberop.biz.rpc.creditaccumulate.CreditAccumulateStrategyRpcManager.taskFeedback", requestData);
+    }
+
+    /**
+     * 芝麻粒炼金-攒粒任务领取（sceneCode=alchemy，与会员页zml任务区分）
+     */
+    public static String joinSesameGrainTask(String taskTemplateId) {
+        String requestData = "[{\"chInfo\":\"seasameList\",\"joinFromOuter\":false,\"sceneCode\":\"alchemy\",\"templateId\":\"" + taskTemplateId + "\"}]";
+        return ApplicationHook.requestString("com.antgroup.zmxy.zmmemberop.biz.rpc.promise.PromiseRpcManager.joinActivity", requestData);
+    }
+
+    /**
+     * 芝麻粒炼金-攒粒任务回调（TO_COMPLETE，version=alchemy）
+     */
+    public static String feedBackSesameGrainTask(String taskTemplateId) {
+        String requestData = "[{\"actionType\":\"TO_COMPLETE\",\"bizType\":\"LIFE_RECORD\",\"sceneCode\":\"alchemy\",\"templateId\":\"" + taskTemplateId + "\",\"version\":\"alchemy\"}]";
         return ApplicationHook.requestString("com.antgroup.zmxy.zmmemberop.biz.rpc.creditaccumulate.CreditAccumulateStrategyRpcManager.taskFeedback", requestData);
     }
 

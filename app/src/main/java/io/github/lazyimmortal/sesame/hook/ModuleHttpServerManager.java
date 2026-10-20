@@ -52,22 +52,40 @@ public class ModuleHttpServerManager {
         // 3. 启动逻辑：先停旧服务，再启新服务
         try {
             stop(); // 先停止旧实例（如果存在）
-            
-            // 创建并启动新服务器
-            ModuleHttpServer newServer = new ModuleHttpServer(port, secretToken);
-            // 启动NanoHTTPD：参数1=读取超时，参数2=是否异步启动
-            newServer.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
-            
-            server = newServer;
-            // 原Kotlin中注释的日志可根据需要启用
-            Log.record("服务启动🚀HTTP: http://127.0.0.1:" + port);
-            Log.record("标记令牌🔑Token: " + secretToken);
-            
+            startWithRetry(port, secretToken);
         } catch (Exception e) {
             Log.printStackTrace("HTTP 服务启动失败", e);
         }
     }
-    
+
+    // 进程重启后旧实例端口可能未立即释放(EADDRINUSE)，间隔重试最多3次
+    private void startWithRetry(int port, String secretToken) throws Exception {
+        Exception lastError = null;
+        for (int attempt = 0; attempt < 3; attempt++) {
+            try {
+                ModuleHttpServer newServer = new ModuleHttpServer(port, secretToken);
+                // 启动NanoHTTPD：参数1=读取超时，参数2=是否异步启动
+                newServer.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
+                server = newServer;
+                // 原Kotlin中注释的日志可根据需要启用
+                Log.record("服务启动🚀HTTP: http://127.0.0.1:" + port);
+                Log.record("标记令牌🔑Token: " + secretToken);
+                return;
+            } catch (Exception e) {
+                lastError = e;
+                if (attempt < 2) {
+                    try {
+                        Thread.sleep(1000L);
+                    } catch (InterruptedException ignored) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+        throw lastError != null ? lastError : new IllegalStateException("HTTP 服务启动失败");
+    }
+
     /**
      * 停止服务（同步方法保证线程安全）
      */

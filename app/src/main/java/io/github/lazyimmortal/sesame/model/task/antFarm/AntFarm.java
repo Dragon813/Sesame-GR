@@ -2242,7 +2242,8 @@ public class AntFarm extends ModelTask {
         try {
             String title = task.getString("title");
             String bizKey = task.getString("bizKey");
-            if (bizKey.contains("HEART_DONAT") || bizKey.equals("BAIDUJS_202512") || bizKey.equals("BABAFARM_TB")) {
+            // monthlyCard=爱心美食月卡(需真实开通付费月卡):RPC申报服务端永不置完成,直接跳过避免每轮空转
+            if (bizKey.contains("HEART_DONAT") || bizKey.equals("BAIDUJS_202512") || bizKey.equals("BABAFARM_TB") || bizKey.equals("monthlyCard")) {
                 return false;
             }
             if (Objects.equals(title, "庄园小视频")) {
@@ -4134,7 +4135,9 @@ public class AntFarm extends ModelTask {
                 String animalFeedStatus = animalStatusVO.getString("animalFeedStatus");
                 String animalInteractStatus = animalStatusVO.getString("animalInteractStatus");
                 if (AnimalInteractStatus.HOME.name().equals(animalInteractStatus) && AnimalFeedStatus.HUNGRY.name().equals(animalFeedStatus)) {
-                    if (familyOptions.getValue().contains("familyFeed")) {
+                    // 预判：enterFamily下发feedFriendLimit=true或当日已触发391(帮喂上限为账号级)，跳过家庭帮喂
+                    if (familyOptions.getValue().contains("familyFeed") && !feedFriendLimit
+                            && !Status.hasFlagToday("farm::feedFriendAnimalLimit")) {
                         feedFriendAnimal(farmId);
                     }
                 }

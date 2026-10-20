@@ -937,10 +937,12 @@ public class FileUtil {
         else {
             f.getParentFile().mkdirs();
         }
+        // 原子写入：先写同目录临时文件再rename替换，防止写入中途进程被杀/存储抖动把原文件截断成损坏JSON
+        File tmp = new File(f.getParentFile(), f.getName() + ".tmp");
         boolean success = false;
         FileWriter fw = null;
         try {
-            fw = new FileWriter(f);
+            fw = new FileWriter(tmp);
             fw.write(s);
             fw.flush();
             success = true;
@@ -949,6 +951,23 @@ public class FileUtil {
             Log.printStackTrace(TAG, t);
         }
         close(fw);
+        if (success) {
+            success = tmp.renameTo(f);
+            if (!success) {
+                // 个别文件系统rename目标存在时不覆盖：删原文件后重试(此时临时文件内容完整，风险窗口远小于直接截断原文件)
+                if (f.exists() && f.delete()) {
+                    success = tmp.renameTo(f);
+                } else if (!f.exists()) {
+                    success = tmp.renameTo(f);
+                }
+            }
+            if (!success) {
+                Log.error(TAG + "#原子写入rename失败: " + f.getPath());
+                tmp.delete();
+            }
+        } else {
+            tmp.delete();
+        }
         return success;
     }
     

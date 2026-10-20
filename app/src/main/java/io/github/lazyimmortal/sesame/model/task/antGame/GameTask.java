@@ -30,7 +30,10 @@ public enum GameTask {
     Forest_slxcc("森林小车车", "2060170000363691", "zfb_slxcc", "slxcc_game_kaiche_every_10", "lianyun_senlin_leyuan", "1.0.1", 3),
     Forest_sljyd("森林救援队(能量雨)", "2021005113684028", "zfb_sljydx", "sljyd_game_xiaochu_every_10", "lianyun_senlin_leyuan", "1.0.1", 3),
     // 金豆乐园：复用农场/庄园同款游戏，channel=goldenbean，用于刷金豆砸蛋机会
-    GoldenBean_ncscc("农场上车车", "2060170000356601", "zfb_ncscc", "ncscc_game_kaiche_every_10", "goldenbean", "1.0.2", 2);
+    GoldenBean_ncscc("农场上车车", "2060170000356601", "zfb_ncscc", "ncscc_game_kaiche_every_10", "goldenbean", "1.0.2", 2),
+    GoldenBean_ddply("对对碰乐园", "2021004149679303", "zfb_ddply", "ddply_game_xiaochu_every_5", "goldenbean", "1.0.14", 4),
+    GoldenBean_slxcc("森林小车车", "2060170000363691", "zfb_slxcc", "slxcc_game_kaiche_every_10", "goldenbean", "1.0.1", 2),
+    GoldenBean_sljyd("森林救援队", "2021005113684028", "zfb_sljydx", "sljyd_game_xiaochu_every_10", "goldenbean", "1.0.1", 3);
     //Forest_sgbhsd("三国冰河时代", "2021004173661702", "zfb_sgbhsd", "cclyx_sgbhsd_3c_zm10c", "lianyun_senlin_leyuan", "0.94.1", 3);
 
     // 不良人：破局 —— 抓包确认 action_code=blrpj_game_zhaomu_every_10（每10次1个），channel=lianyun_senlin_leyuan
