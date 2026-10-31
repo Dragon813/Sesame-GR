@@ -6,6 +6,7 @@ import java.util.Map;
  * OAuth2 授权码处理器
  * 提供获取 OAuth2 授权码的接口（对应原Kotlin的AuthCodeHandler）
  */
+@SuppressWarnings("deprecation") // NanoHTTPD getParms() 已弃用但行为与 getParameters() 不同，保留原实现
 public class AuthCodeHandler implements io.github.lazyimmortal.sesame.hook.HttpHandler {
     
     /**

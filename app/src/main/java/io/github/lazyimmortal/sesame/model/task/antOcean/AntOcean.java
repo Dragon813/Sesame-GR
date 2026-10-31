@@ -25,6 +25,7 @@ import io.github.lazyimmortal.sesame.util.Status;
 import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
 import io.github.lazyimmortal.sesame.util.idMap.AntOceanAntiepTaskListMap;
+import io.github.lazyimmortal.sesame.model.base.TaskAlternative;
 import io.github.lazyimmortal.sesame.util.idMap.AntOceanFishBlackListMap;
 import io.github.lazyimmortal.sesame.util.idMap.PathThemeMapListMap;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
@@ -928,7 +929,14 @@ public class AntOcean extends ModelTask {
             }
             JSONObject bizInfo = new JSONObject(task.getString("bizInfo"));
             String taskTitle = bizInfo.optString("taskTitle");
-            //黑名单任务跳过
+            //第1步：待完成的游戏任务（不在游戏任务黑名单里的直接调备用接口完成）
+            if (TaskAlternative.handleGameTask("AntOceanAntiepTaskList", taskTitle, "TODO",
+                    task.optString("taskType"), task.optString("sceneCode"), task.optString("sceneCode"), "ANTFOCEAN")) {
+                //备用接口只是伪申报，服务端任务状态仍为 TODO，立即领奖会报「任务未完成,无法领取」；
+                //等下一轮列表变为 FINISHED 后再走正常领奖流程
+                return false;
+            }
+            //第2步：黑名单任务跳过
             if (AntOceanAntiepTaskList.getValue().contains(taskTitle)) {
                 return false;
             }
@@ -1395,6 +1403,11 @@ public class AntOcean extends ModelTask {
                 }
                 // 处理其他 TODO 状态任务
                 if ("TODO".equals(taskStatus)) {
+                    //游戏任务先走 doFarmTask 伪申报（sceneCode/source 固定 ANTFARM/H5，与模组无关）
+                    if (TaskAlternative.handleGameTask("AntOceanFishBlackList", taskTitle, taskStatus,
+                            taskType, "ANTAIFISH", "ANTAIFISH", "ANTAIFISH")) {
+                        continue;
+                    }
                     if (antfishFinishTask(taskTitle, taskType)) {
                         if (antfishReceiveTaskAward(taskType)) {
                             Log.forest("摸鱼任务🎖️领取[" + taskTitle + "]获得摸鱼次数*" + awardCount);

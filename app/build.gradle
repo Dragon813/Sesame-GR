@@ -70,6 +70,11 @@ android {
     }
 }
 
+tasks.withType(JavaCompile).configureEach {
+    // 关闭 javac lint 提示（Java 8 源/目标弃用、unchecked、deprecation 注记），保持构建输出干净
+    options.compilerArgs += ['-Xlint:none']
+}
+
 dependencies {
     //noinspection GradleCompatible
     implementation 'com.android.support:appcompat-v7:28.0.0'

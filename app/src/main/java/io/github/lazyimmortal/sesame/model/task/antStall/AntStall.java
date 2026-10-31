@@ -18,6 +18,7 @@ import io.github.lazyimmortal.sesame.model.task.antFarm.AntFarm.TaskStatus;
 import io.github.lazyimmortal.sesame.model.task.readingDada.ReadingDada;
 import io.github.lazyimmortal.sesame.util.*;
 import io.github.lazyimmortal.sesame.util.idMap.AntFarmDoFarmTaskListMap;
+import io.github.lazyimmortal.sesame.model.base.TaskAlternative;
 import io.github.lazyimmortal.sesame.util.idMap.AntStallTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
@@ -773,18 +774,26 @@ public class AntStall extends ModelTask {
                 String taskType = task.getString("taskType");
                 JSONObject bizInfo = new JSONObject(task.getString("bizInfo"));
                 String title = bizInfo.getString("title");
-                //黑名单任务跳过
+                //第1步：可领奖任务优先领奖
+                if (!Objects.equals(TaskStatus.TODO.name(), taskStatus)) {
+                    receiveTaskAward(taskType, title);
+                    continue;
+                }
+                //第2步：待完成的游戏任务（不在游戏任务黑名单里的直接调备用接口完成）
+                if (TaskAlternative.handleGameTask("AntStallTaskList", title, taskStatus,
+                        taskType, "ANTSTALL_TASK", "ANTSTALL_TASK", "AST")) {
+                    continue;
+                }
+                //第3步：黑名单任务跳过
                 if (AntStallTaskList.getValue().contains(title)) {
                     continue;
                 }
                 
-                if (Objects.equals(TaskStatus.TODO.name(), taskStatus)) {
-                    if (!doStallTask(task, title)) {
-                        continue;
-                    }
-                    Log.farm("新村任务🧾完成[" + title + "]");
-                    TimeUtil.sleep(1000);
+                if (!doStallTask(task, title)) {
+                    continue;
                 }
+                Log.farm("新村任务🧾完成[" + title + "]");
+                TimeUtil.sleep(1000);
                 receiveTaskAward(taskType, title);
             }
             //为了防止异常，新村任务只做一次
@@ -803,7 +812,7 @@ public class AntStall extends ModelTask {
             String taskType = task.getString("taskType");
             JSONObject bizInfo = new JSONObject(task.getString("bizInfo"));
             if (Objects.equals("VISIT_AUTO_FINISH", bizInfo.getString("actionType")) || taskTypeList.contains(taskType)) {
-                return finishTask(taskType, title);
+                return finishTask(taskType, title, bizInfo.optString("taskDesc", ""));
             }
             switch (taskType) {
                 case "ANTSTALL_NORMAL_DAILY_QA":
@@ -910,7 +919,7 @@ public class AntStall extends ModelTask {
         }
     }
     
-    private static Boolean finishTask(String taskType, String title) {
+    private static Boolean finishTask(String taskType, String title, String taskDesc) {
         // String s = AntStallRpcCall.finishTask(FriendIdMap.currentUid + "_" + taskType, taskType);
         try {
             JSONObject jo = new JSONObject(AntStallRpcCall.finishTask(taskType));
@@ -996,6 +1005,11 @@ public class AntStall extends ModelTask {
                 }
                 JSONObject jo = new JSONObject(AntStallRpcCall.achieveBeShareP2P(friendUserId));
                 TimeUtil.sleep(5000);
+                // 600000026 人传人分享已过期：分享失效属正常态，静默跳过并标记今日不再助力该好友
+                if ("600000026".equals(jo.optString("code"))) {
+                    Status.flagToday("stall::shareP2PLimit::" + friendUserId);
+                    continue;
+                }
                 if (MessageUtil.checkSuccess(TAG, jo)) {
                     Log.farm("新村助力🎉助力[" + UserIdMap.getMaskName(friendUserId) + "]成功");
                     Status.stallShareP2PToday(friendUserId);

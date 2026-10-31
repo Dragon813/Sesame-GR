@@ -1,5 +1,12 @@
 package io.github.lazyimmortal.sesame.model.task.antForest;
 
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
+import android.os.Build;
+import android.telephony.TelephonyManager;
+import android.util.DisplayMetrics;
+
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
@@ -11,6 +18,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Random;
+
+import io.github.lazyimmortal.sesame.hook.ApplicationHook;
 
 /**
  * 森林无纸阅读 HTTP 客户端: 直连 https://m.zhangwenwh.com/api (小程序自有网关, 不走支付宝RPC)
@@ -37,6 +46,11 @@ public final class ReadForestRpcCall {
         body.put("app_id", APP_ID);
         body.put("cid", "7001");
         return post("/authorization", body, null, getReferer(version, null, null));
+    }
+
+    /* 校验缓存token是否仍有效: 带token请求authorization, 有效时返回data="success" */
+    public static String checkToken(String token, String version) throws Exception {
+        return post("/authorization", new JSONObject(), token, getReferer(version, null, null));
     }
 
     /* 首页书城: 获取免费书列表 */
@@ -104,8 +118,69 @@ public final class ReadForestRpcCall {
         return base + "#pages/index/index";
     }
 
+    /**
+     * 动态拼装 User-Agent，按小程序真实请求头对齐：
+     * 设备/系统/Chrome 取自系统 http.agent；MYWeb/nt/ws 等按真实格式追加。
+     */
     private static String getBaseUserAgent() {
-        return "Mozilla/5.0 (Linux; Android 11; M2006J10C Build/RP1A.200720.011; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/105.0.5195.148 MYWeb/0.11.0.241014163223 UWS/3.22.2.9999 UCBS/3.22.2.9999_220000000000 Mobile Safari/537.36 NebulaSDK/1.8.100112 Nebula AlipayDefined(nt:WIFI,ws:393|0|2.75) AliApp(AP/10.6.58.8000) AlipayClient/10.6.58.8000 Language/zh-Hans isConcaveScreen/false Region/CNAriver/1.0.0 ChannelId(" + (RANDOM.nextInt(10) + 1) + ")";
+        String systemUa = System.getProperty("http.agent");
+        if (systemUa == null || systemUa.isEmpty()) {
+            systemUa = "Mozilla/5.0 (Linux; Android 11)";
+        }
+        // 真实 UA 里 Mobile Safari/537.36 位于 UCBS 之后，系统 UA 末尾自带的那份要去掉
+        String base = systemUa.replace(" Mobile Safari/537.36", "").trim();
+        String alipayVer = ApplicationHook.getAlipayVersion().getVersionString();
+        return base
+                + " MYWeb/1.11.126.260911211123 UWS/3.22.2.9999 UCBS/3.22.2.9999_220000000000"
+                + " Mobile Safari/537.36 NebulaSDK/1.8.100112 Nebula"
+                + " AlipayDefined(nt:" + networkType() + ",ws:" + screenSpec() + ")"
+                + " AliApp(AP/" + alipayVer + ") AlipayClient/" + alipayVer
+                + " Language/zh-Hans isConcaveScreen/true"
+                + " Region/CNAriver/" + alipayVer + " DTN/2.0";
+    }
+
+    /** 当前网络类型(WIFI/5G/4G)，取不到按 WIFI。 */
+    private static String networkType() {
+        try {
+            Context context = ApplicationHook.getContext();
+            if (context != null) {
+                ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    NetworkCapabilities caps = cm.getNetworkCapabilities(cm.getActiveNetwork());
+                    if (caps != null) {
+                        if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                            return "WIFI";
+                        }
+                        if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+                                if (tm != null && tm.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_NR) {
+                                    return "5G";
+                                }
+                            }
+                            return "4G";
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return "WIFI";
+    }
+
+    /** 屏幕规格(宽|0|密度)，取不到用 393|0|2.75。 */
+    private static String screenSpec() {
+        try {
+            Context context = ApplicationHook.getContext();
+            if (context != null) {
+                DisplayMetrics dm = context.getResources().getDisplayMetrics();
+                int width = Math.round(dm.widthPixels / dm.density);
+                float density = Math.round(dm.density * 100) / 100f;
+                return width + "|0|" + density;
+            }
+        } catch (Throwable ignored) {
+        }
+        return "393|0|2.75";
     }
 
     private static Map<String, String> getHeaders(String token, String referer) {
@@ -114,6 +189,9 @@ public final class ReadForestRpcCall {
         headers.put("content-type", "application/json;charset=UTF-8");
         headers.put("referer", referer == null ? "" : referer);
         headers.put("user-agent", getBaseUserAgent());
+        headers.put("x-requested-with", "com.eg.android.AlipayGphone");
+        headers.put("x-mass-tappid", APP_ID);
+        headers.put("accept-language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7");
         headers.put("x-release-type", "ONLINE");
         if (token != null) {
             headers.put("authorization", "Bearer " + token);

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -67,6 +68,55 @@ public class JsonUtil {
     public static boolean isRewriteLossless(String sourceJson, String rewrittenJson) {
         try {
             return dataContainedIn(MAPPER.readTree(sourceJson), MAPPER.readTree(rewrittenJson));
+        } catch (Throwable t) {
+            Log.printStackTrace(t);
+            return false;
+        }
+    }
+
+    /**
+     * 合并磁盘 JSON 与内存序列化结果：以内存版本为准（含新增字段），
+     * 磁盘中当前版本已删除/不认识的键原样保留，避免旧配置丢失。
+     * 返回格式化后的 JSON 文本；失败返回 null。
+     */
+    public static String mergeKeepingSourceKeys(String sourceJson, String rewrittenJson) {
+        try {
+            JsonNode source = MAPPER.readTree(sourceJson);
+            JsonNode rewritten = MAPPER.readTree(rewrittenJson);
+            if (rewritten == null) {
+                return sourceJson;
+            }
+            JsonNode merged = mergeNode(source, rewritten);
+            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(merged);
+        } catch (Throwable t) {
+            Log.printStackTrace(t);
+            return null;
+        }
+    }
+
+    /** 对象逐键合并：内存没有的键取磁盘原值，其余以内存值为准；数组/标量以内存值为准 */
+    private static JsonNode mergeNode(JsonNode source, JsonNode rewritten) {
+        if (source != null && source.isObject() && rewritten.isObject()) {
+            ObjectNode merged = ((ObjectNode) rewritten).deepCopy();
+            Iterator<Map.Entry<String, JsonNode>> it = source.fields();
+            while (it.hasNext()) {
+                Map.Entry<String, JsonNode> entry = it.next();
+                JsonNode rewrittenValue = merged.get(entry.getKey());
+                if (rewrittenValue == null) {
+                    merged.set(entry.getKey(), entry.getValue().deepCopy());
+                } else {
+                    merged.set(entry.getKey(), mergeNode(entry.getValue(), rewrittenValue));
+                }
+            }
+            return merged;
+        }
+        return rewritten;
+    }
+
+    /** 忽略空白/缩进差异，比较两份 JSON 的数据是否一致 */
+    public static boolean isSameData(String jsonA, String jsonB) {
+        try {
+            return MAPPER.readTree(jsonA).equals(MAPPER.readTree(jsonB));
         } catch (Throwable t) {
             Log.printStackTrace(t);
             return false;

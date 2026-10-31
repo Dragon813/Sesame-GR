@@ -40,6 +40,9 @@ import java.util.Set;
 
 import io.github.lazyimmortal.sesame.util.*;
 import io.github.lazyimmortal.sesame.util.idMap.AntFarmDoFarmTaskListMap;
+import io.github.lazyimmortal.sesame.model.base.TaskAlternative;
+import io.github.lazyimmortal.sesame.model.normal.base.BaseModel;
+import io.github.lazyimmortal.sesame.util.idMap.MiniGameTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.AntOrchardDrawTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.AntOrchardTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.GoldenBeansTaskListMap;
@@ -981,12 +984,10 @@ public class AntOrchard extends ModelTask {
                 handleSignTask(jo.getJSONObject("signTaskInfo"));
             }
 
-            // 处理任务列表
+            // 处理任务列表：先领已完成任务奖励，再逐项完成
             JSONArray taskArray = jo.getJSONArray("taskList");
+            triggerTbTask(taskArray);
             handleTaskList(taskArray);
-
-            // 触发已完成任务的奖励
-            triggerTbTask();
         } catch (Throwable t) {
             Log.i(TAG, "orchardListTask err:");
             Log.printStackTrace(TAG, t);
@@ -1041,6 +1042,12 @@ public class AntOrchard extends ModelTask {
                 String groupId = jo.optString("groupId", "");
                 JSONObject displayConfig = jo.optJSONObject("taskDisplayConfig");
                 String title = displayConfig != null ? displayConfig.optString("title", "未知任务") : "未知任务";
+                //第2步：待完成的游戏任务（不在游戏任务黑名单里的直接调备用接口完成）
+                if (TaskAlternative.handleGameTask("AntOrchardTaskList", title, taskStatus,
+                        jo.optString("taskId"), jo.optString("sceneCode"), "ORCHARD", "H5")) {
+                    continue;
+                }
+                //第3步：黑名单任务跳过
                 if (AntOrchardTaskList.getValue().contains(title)) {
                     continue;
                 }
@@ -1145,43 +1152,28 @@ public class AntOrchard extends ModelTask {
     }
 
     /**
-     * 触发淘宝任务奖励（领取所有已完成任务的奖励）
+     * 领取传入任务列表中已完成任务的奖励（复用同一份任务列表，不再重复拉取）
      */
-    private void triggerTbTask() {
+    private void triggerTbTask(JSONArray taskList) {
         try {
-            String response = AntOrchardRpcCall.orchardListTask();
-            JSONObject jo = new JSONObject(response);
-
-            if (MessageUtil.checkResultCode(TAG, jo)) {
-                JSONArray taskList = jo.getJSONArray("taskList");
-                for (int i = 0; i < taskList.length(); i++) {
-                    JSONObject task = taskList.getJSONObject(i);
-                    if (!"FINISHED".equals(task.getString("taskStatus"))) {
-                        continue;
-                    }
-
-                    String title = task.getJSONObject("taskDisplayConfig").getString("title");
-                    int awardCount = task.optInt("awardCount", 0);
-                    String taskId = task.getString("taskId");
-                    String taskPlantType = task.getString("taskPlantType");
-
-                    // 跳过淘宝类型的任务（需要手动操作）
-                    //if ("TAOBAO".equals(taskPlantType)) {
-                    //    continue;
-                    //}
-
-                    String triggerResponse = AntOrchardRpcCall.triggerTbTask(taskId, taskPlantType);
-                    JSONObject triggerJo = new JSONObject(triggerResponse);
-                    //检查并标记黑名单任务
-                    MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOrchardTaskList", title, triggerJo);
-                    if (MessageUtil.checkResultCode(TAG, triggerJo)) {
-                        Log.farm("肥料领取🎖️任务[" + title + "]奖励#获得[" + awardCount + "g]");
-                    } else {
-                        //Log.record("领取奖励失败: " + triggerJo.toString());
-                    }
+            for (int i = 0; i < taskList.length(); i++) {
+                JSONObject task = taskList.getJSONObject(i);
+                if (!"FINISHED".equals(task.getString("taskStatus"))) {
+                    continue;
                 }
-            } else {
-                Log.record("获取任务列表失败: " + jo.getString("resultDesc"));
+
+                String title = task.getJSONObject("taskDisplayConfig").getString("title");
+                int awardCount = task.optInt("awardCount", 0);
+                String taskId = task.getString("taskId");
+                String taskPlantType = task.getString("taskPlantType");
+
+                String triggerResponse = AntOrchardRpcCall.triggerTbTask(taskId, taskPlantType);
+                JSONObject triggerJo = new JSONObject(triggerResponse);
+                //检查并标记黑名单任务
+                MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOrchardTaskList", title, triggerJo);
+                if (MessageUtil.checkResultCode(TAG, triggerJo)) {
+                    Log.farm("肥料领取🎖️任务[" + title + "]奖励#获得[" + awardCount + "g]");
+                }
             }
         } catch (Throwable t) {
             Log.i(TAG, "triggerTbTask err:");
@@ -1218,6 +1210,8 @@ public class AntOrchard extends ModelTask {
                 String taskSceneCode = taskBaseInfo.getString("sceneCode");
                 String taskStatus = taskBaseInfo.getString("taskStatus");
                 String taskType = taskBaseInfo.getString("taskType");
+                // doFarmTask 备用接口业务键：listTaskantorchard 任务项无 bizKey 字段，用 taskType 兜底
+                String bizKey = taskType;
 
                 JSONObject taskRights = taskInfo.getJSONObject("taskRights");
                 int rightsTimes = taskRights.getInt("rightsTimes");
@@ -1227,9 +1221,26 @@ public class AntOrchard extends ModelTask {
                     continue;
                 }
 
-                //黑名单任务跳过
-                if (!AntOrchardDrawTaskList.getValue().contains(taskName)) {
-                    if (TaskStatus.TODO.name().equals(taskStatus)) {
+                //第1步：可领奖任务优先领奖
+                if (TaskStatus.FINISHED.name().equals(taskStatus)) {
+                    JSONObject joReceiveTaskAwardantorchard = new JSONObject(AntOrchardRpcCall.receiveTaskAwardantorchard(taskType, taskSceneCode));
+                    if (MessageUtil.checkSuccess(TAG, joReceiveTaskAwardantorchard)) {
+                        int incAwardCount = joReceiveTaskAwardantorchard.getInt("incAwardCount");
+                        Log.farm("农场寻宝🎖️领取[" + taskName + "]获得抽奖*" + incAwardCount);
+                    }
+                    continue;
+                }
+                //第2步：待完成的游戏任务（不在游戏任务黑名单里的直接调备用接口完成）
+                //抓包确认：listTaskantorchard 的 bizInfo 只取标题，描述不参与判断
+                if (TaskAlternative.handleGameTask("AntOrchardDrawTaskList", taskName, taskStatus,
+                        bizKey, taskSceneCode, "ORCHARD", "ANTFARM_ORCHARD")) {
+                    continue;
+                }
+                //第3步：黑名单任务跳过
+                if (AntOrchardDrawTaskList.getValue().contains(taskName)) {
+                    continue;
+                }
+                if (TaskStatus.TODO.name().equals(taskStatus)) {
                         for (int j = 0; j < (rightsTimesLimit - rightsTimes); j++) {
                             JSONObject joFinishTaskantorchard = new JSONObject(AntOrchardRpcCall.finishTaskantorchard(taskType, taskSceneCode));
                             //检查并标记黑名单任务
@@ -1244,14 +1255,6 @@ public class AntOrchard extends ModelTask {
                             }
                             TimeUtil.sleep(1000);
                         }
-                    }
-                }
-                if (TaskStatus.FINISHED.name().equals(taskStatus)) {
-                    JSONObject joReceiveTaskAwardantorchard = new JSONObject(AntOrchardRpcCall.receiveTaskAwardantorchard(taskType, taskSceneCode));
-                    if (MessageUtil.checkSuccess(TAG, joReceiveTaskAwardantorchard)) {
-                        int incAwardCount = joReceiveTaskAwardantorchard.getInt("incAwardCount");
-                        Log.farm("农场寻宝🎖️领取[" + taskName + "]获得抽奖*" + incAwardCount);
-                    }
                 }
             }
 
@@ -1385,6 +1388,12 @@ public class AntOrchard extends ModelTask {
 
                 String result = AntOrchardRpcCall.achieveBeShareP2P(friendId);
                 JSONObject jo = new JSONObject(result);
+                // 600000026 人传人分享已过期：分享失效属正常态，静默跳过并标记
+                if ("600000026".equals(jo.optString("code"))) {
+                    Status.flagToday("orchardAssist:" + friendId, userId);
+                    TimeUtil.sleep(5000);
+                    continue;
+                }
                 if (MessageUtil.checkResultCode(TAG, jo)) {
                     Log.farm("芭芭农场🌳助力好友[" + UserIdMap.getShowName(friendId) + "]");
                 } else if ("600000027".equals(jo.optString("code"))) {

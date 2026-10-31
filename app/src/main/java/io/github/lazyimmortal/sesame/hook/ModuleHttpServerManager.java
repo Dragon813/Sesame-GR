@@ -54,8 +54,23 @@ public class ModuleHttpServerManager {
             stop(); // 先停止旧实例（如果存在）
             startWithRetry(port, secretToken);
         } catch (Exception e) {
-            Log.printStackTrace("HTTP 服务启动失败", e);
+            // 端口被占用(EADDRINUSE)通常是旧实例仍在运行，属正常态，降级为运行日志不打错误堆栈
+            if (isAddressInUse(e)) {
+                Log.i(TAG, "startIfNeeded: 端口 " + port + " 已被占用，视为已有HTTP服务实例在运行，跳过启动");
+            } else {
+                Log.printStackTrace("HTTP 服务启动失败", e);
+            }
         }
+    }
+
+    private static boolean isAddressInUse(Throwable t) {
+        while (t != null) {
+            if (t instanceof java.net.BindException) {
+                return true;
+            }
+            t = t.getCause();
+        }
+        return false;
     }
 
     // 进程重启后旧实例端口可能未立即释放(EADDRINUSE)，间隔重试最多3次

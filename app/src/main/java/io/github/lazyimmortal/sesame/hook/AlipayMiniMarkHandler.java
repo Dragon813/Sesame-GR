@@ -8,6 +8,7 @@ import java.util.Map;
  * 支付宝小程序标记处理器
  * 提供获取支付宝小程序标记的接口（对应原Kotlin的AlipayMiniMarkHandler）
  */
+@SuppressWarnings("deprecation") // NanoHTTPD getParms() 已弃用但行为与 getParameters() 不同，保留原实现
 public class AlipayMiniMarkHandler implements io.github.lazyimmortal.sesame.hook.HttpHandler {
     
     /**

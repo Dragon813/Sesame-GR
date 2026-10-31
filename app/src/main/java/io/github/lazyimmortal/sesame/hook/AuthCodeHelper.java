@@ -19,7 +19,8 @@ public class AuthCodeHelper {
      */
     public static void init(ClassLoader loader) {
         classLoader = loader;
-        Log.record("Oauth2AuthCodeHelper 初始化完成");
+        // 注意: 此处不能用Log.record, attach阶段BaseModel可能未加载会NPE
+        Log.i("Oauth2AuthCodeHelper 初始化完成");
     }
     
     /**

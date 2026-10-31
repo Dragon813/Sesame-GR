@@ -254,11 +254,21 @@ public class AntFarmRpcCall {
     }
 
     public static String recordFarmGame(String gameType) {
+        return recordFarmGame(gameType, 50);
+    }
+
+    /**
+     * 上报游戏成绩
+     *
+     * @param foodDivisor 飞行赛饲料系数：服务器对 foodCount 与 score 的一致性校验可能变化，
+     *                    默认按 score/50 计算，异常时由调用方改用 score/100 重试
+     */
+    public static String recordFarmGame(String gameType, int foodDivisor) {
         String uuid = getUuid();
         String md5String = getMD5(uuid);
         int score = RandomScore(gameType);
         if ("flyGame".equals(gameType)) {
-            int foodCount = score / 50;
+            int foodCount = score / foodDivisor;
             return ApplicationHook.requestString("com.alipay.antfarm.recordFarmGame", "[{\"foodCount\":" + foodCount + ",\"gameType\":\"flyGame\",\"md5\":\"" + md5String + "\"," + "\"requestType\":\"RPC\",\"sceneCode\":\"FLAYGAME\",\"score\":" + score + ",\"source" + "\":\"ANTFARM\"," + "\"toolTypes\":\"ACCELERATETOOL,SHARETOOL,NONE\",\"uuid\":\"" + uuid + "\",\"version\":\"\"}]");
         }
         return ApplicationHook.requestString("com.alipay.antfarm.recordFarmGame", "[{\"gameType\":\"" + gameType + "\",\"md5\":\"" + md5String + "\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"score\":" + score + ",\"source\":\"H5\",\"toolTypes\":\"STEALTOOL,ACCELERATETOOL,SHARETOOL\"," + "\"uuid\":\"" + uuid + "\"}]");

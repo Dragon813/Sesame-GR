@@ -25,6 +25,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Map;
 
+@SuppressWarnings("deprecation") // TabHost 为兼容旧版 Android 保留
 public class SettingsActivity extends BaseActivity {
     
     private static final Integer EXPORT_REQUEST_CODE = 1;

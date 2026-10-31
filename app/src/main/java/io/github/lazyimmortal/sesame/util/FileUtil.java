@@ -604,7 +604,15 @@ public class FileUtil {
         }
         return file;
     }
-    
+
+    public static File getMiniGameTaskListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "MiniGameTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+
     public static File getAntSportsTaskListMapFile() {
         File file = new File(MAIN_DIRECTORY_FILE, "AntSportsTask.json");
         if (file.exists() && file.isDirectory()) {

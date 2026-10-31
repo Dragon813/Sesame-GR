@@ -191,10 +191,19 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                     context = (Context) param.args[0];
                     alipayVersion = new AlipayVersion(context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionName);
+                    // 各初始化独立try-catch, 互不影响, 避免一个失败导致AuthCodeHelper未初始化
                     try {
                         AlipayMiniMarkHelper.init(classLoader);
+                    } catch (Throwable t) {
+                        Log.printStackTrace(t);
+                    }
+                    try {
                         AuthCodeHelper.init(classLoader);
                         AuthCodeHelper.getAuthCode("2021005114632037");
+                    } catch (Throwable t) {
+                        Log.printStackTrace(t);
+                    }
+                    try {
                         // ========== 关键改动：异步执行 initSimplePageManager，不阻塞 ==========
                         // 用线程直接执行（项目中大量使用 Thread 方式，贴合风格）
                         //new Thread(() -> {
@@ -454,10 +463,9 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                     try {
                         context = (Context) param.args[0];
                         classLoader = remoteClassLoader;
-                        if (miniDebugEnabled()) {
-                            Log.debug("小程序抓包进程启动[" + processName + "]");
-                            hookMiniProgramNetwork();
-                        }
+                        // 子进程启动早期外部存储可能还读不到配置，miniDebugEnabled() 会误判为关闭导致 hook 永不安装；
+                        // 延迟轮询开关，确认打开后才安装（未开抓包的用户不会安装，避免 1.8.9 的启动卡死闪退问题）
+                        scheduleMiniHookInstall();
                     } catch (Throwable t) {
                         if (miniDebugEnabled()) {
                             Log.debug("小程序抓包进程[" + processName + "]启动失败: " + t.getMessage());
@@ -1249,6 +1257,41 @@ public class ApplicationHook implements IXposedHookLoadPackage {
         installDeferredNetworkHook();
     }
 
+    /** 子进程 hook 延迟安装是否已调度（每个进程只调度一次） */
+    private static volatile boolean miniHookInstallScheduled = false;
+
+    /**
+     * 子进程启动时外部存储可能尚未就绪，miniDebugEnabled() 会误判为关闭；
+     * 后台等待约 30 秒（每 5 秒复查一次，受 10 秒缓存约束），开关可读且为打开时才安装 hook。
+     * 未开抓包的用户不会安装 hook，避免 1.8.9 无条件安装导致启动卡死闪退的问题。
+     */
+    private void scheduleMiniHookInstall() {
+        if (miniHookInstallScheduled) {
+            return;
+        }
+        miniHookInstallScheduled = true;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (int i = 0; i < 6; i++) {
+                    try {
+                        if (miniDebugEnabled()) {
+                            hookMiniProgramNetwork();
+                            Log.debug("小程序抓包进程启动[" + processName + "]");
+                            return;
+                        }
+                    } catch (Throwable ignored) {
+                    }
+                    try {
+                        Thread.sleep(5000L);
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+                }
+            }
+        }, "sesame-mini-hook").start();
+    }
+
     private void tryHookMiniNetworkClass(String className) {
         if (deferredHookedClasses.contains(className)) {
             return;
@@ -1504,10 +1547,10 @@ public class ApplicationHook implements IXposedHookLoadPackage {
             "alicdn.com", "tbcdn.cn", "alipayobjects.com", "gtimg.cn"
     };
 
-    /** 静态资源后缀（按 ? 之前的路径判断）：命中即不记录 */
+    /** 静态资源后缀（按 ? 之前的路径判断）：命中即不记录；不包含 .json，避免误过滤返回 JSON 的业务接口 */
     private static final String[] MINI_STATIC_SUFFIX = {
             ".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico",
-            ".svg", ".woff", ".woff2", ".ttf", ".html", ".htm", ".mp4", ".mp3", ".json"
+            ".svg", ".woff", ".woff2", ".ttf", ".html", ".htm", ".mp4", ".mp3"
     };
 
     /**
@@ -1613,8 +1656,8 @@ public class ApplicationHook implements IXposedHookLoadPackage {
     private static final String ASYNC_REQUEST_HANDLER_CLASS =
             "com.alipay.android.phone.wallet.aompnetwork.request.AsyncRequestHandler";
 
-    /** 单条日志最大长度，防止走子记录等超长内容刷爆日志 */
-    private static final int MAX_LOG_LEN = 20000;
+    /** 单条日志最大长度：过小的上限会把游戏大响应截断（如邮件列表/背包），这里放宽到 20 万字符 */
+    private static final int MAX_LOG_LEN = 200000;
 
     /** 已 hook 过的类名（跨 loadClass 多次回调去重） */
     private static final Set<String> deferredHookedClasses =

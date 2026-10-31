@@ -144,7 +144,10 @@ public class AntMember extends ModelTask {
             if (collectSesame.getValue()) {
                 CheckInTaskRpcManager();
                 collectSesame();
-                // 芝麻信用信息记录(仅开启"芝麻粒|领取"时查询)
+            }
+            // 芝麻信用信息记录(芝麻粒数据受"芝麻粒|领取"开关控制, 芝麻炼金数据随炼金相关开关)
+            if (collectSesame.getValue() || sesameAlchemy.getValue() || sesameAlchemySign.getValue()
+                    || sesameAlchemyGoldenBean.getValue() || sesameAlchemyBeanExchange.getValue() || pointTreasureBox.getValue()) {
                 sesameInfo();
             }
             // 攒粒任务（炼金页queryListV3 version=alchemy，独立开关）
@@ -917,7 +920,7 @@ public class AntMember extends ModelTask {
             // 1. 获取AntOrchard类
             Class<?> antOrchardClass = Class.forName("io.github.lazyimmortal.sesame.model.task.antOrchard.AntOrchard");
             // 2. 实例化类（若方法是静态的，无需实例化）
-            Object antOrchardInstance = antOrchardClass.newInstance();
+            Object antOrchardInstance = antOrchardClass.getDeclaredConstructor().newInstance();
             // 3. 获取私有方法getWua()
             java.lang.reflect.Method getWuaMethod = antOrchardClass.getDeclaredMethod("getWua");
             // 4. 取消访问检查
@@ -938,7 +941,7 @@ public class AntMember extends ModelTask {
     }
     
     /**
-     * 芝麻信用信息记录(信息记录): 查询芝麻分及行为/经济维度进度, 读不到以空格占位
+     * 芝麻信用信息记录(信息记录): 查询芝麻分及行为/经济维度进度 + 芝麻粒余额(受"芝麻粒|领取"开关控制) + 芝麻炼金数据, 读不到以空格占位
      */
     private void sesameInfo() {
         Integer score = null;
@@ -949,6 +952,13 @@ public class AntMember extends ModelTask {
         Integer economicCurrent = null;
         Integer economicTarget = null;
         Integer collectProcess = null;
+        Integer sesamePoint = null;
+        Integer alchemyLevel = null;
+        Integer alchemyDone = null;
+        Integer alchemyCap = null;
+        Integer alchemyRemain = null;
+        Integer alchemyCost = null;
+        Integer goldBalance = null;
         try {
             JSONObject jo = new JSONObject(AntMemberRpcCall.queryScoreProgress());
             if (MessageUtil.checkSuccess(TAG, jo)) {
@@ -980,11 +990,83 @@ public class AntMember extends ModelTask {
                     collectProcess = guide.optInt("totalCollectProcess");
                 }
             }
+            // 芝麻粒余额: 芝麻信用首页 pointEntryVO.pointAmount(仅开启"芝麻粒|领取"时查询)
+            if (collectSesame.getValue()) {
+                JSONObject homeJo = new JSONObject(AntMemberRpcCall.queryHome());
+                TimeUtil.sleep(300);
+                if (MessageUtil.checkResultCode(TAG, homeJo)) {
+                    JSONObject pointEntry = homeJo.optJSONObject("pointEntryVO");
+                    if (pointEntry != null && pointEntry.has("pointAmount")) {
+                        sesamePoint = pointEntry.optInt("pointAmount");
+                    }
+                }
+            }
+            // 芝麻炼金: queryHome(data.alchemyNum=今日剩余次数, finishAlchemyCount=今日累计已炼次数)
+            JSONObject alchemyJo = new JSONObject(AlchemyRpcCall.queryHome());
+            TimeUtil.sleep(300);
+            if (MessageUtil.checkResultCode(TAG, alchemyJo)) {
+                JSONObject data = alchemyJo.optJSONObject("data");
+                if (data != null) {
+                    if (data.has("currentLevel")) {
+                        alchemyLevel = data.optInt("currentLevel");
+                    }
+                    if (data.has("finishAlchemyCount")) {
+                        alchemyDone = data.optInt("finishAlchemyCount");
+                    }
+                    if (data.has("alchemyDailyCap")) {
+                        alchemyCap = data.optInt("alchemyDailyCap");
+                    }
+                    if (data.has("alchemyNum")) {
+                        alchemyRemain = data.optInt("alchemyNum");
+                    }
+                    if (data.has("alchemyCostZml")) {
+                        alchemyCost = data.optInt("alchemyCostZml");
+                    }
+                    if (data.has("goldBalance")) {
+                        goldBalance = data.optInt("goldBalance");
+                    }
+                }
+            }
         } catch (Throwable th) {
             Log.i(TAG, "sesameInfo 查询失败:");
             Log.printStackTrace(TAG, th);
         }
-        Log.info("芝麻信用💯[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]芝麻分" + Log.n(score) + ";" + socialName + Log.n(socialCurrent) + "/" + Log.n(socialTarget) + ";" + economicName + Log.n(economicCurrent) + "/" + Log.n(economicTarget) + ";待攒进度" + Log.n(collectProcess) + ";");
+        StringBuilder info = new StringBuilder();
+        info.append("芝麻信用💯[").append(UserIdMap.getShowName(UserIdMap.getCurrentUid())).append("]")
+                .append("芝麻分").append(Log.n(score)).append(";")
+                .append(socialName).append(Log.n(socialCurrent)).append("/").append(Log.n(socialTarget)).append(";")
+                .append(economicName).append(Log.n(economicCurrent)).append("/").append(Log.n(economicTarget)).append(";")
+                .append("待攒进度").append(Log.n(collectProcess)).append(";");
+        // 芝麻粒相关数据受开关控制
+        if (collectSesame.getValue()) {
+            info.append("芝麻粒余额").append(Log.n(sesamePoint)).append(";");
+        }
+        // 芝麻炼金数据(字段缺失时对应段不输出, 兼容旧响应)
+        StringBuilder alchemyPart = new StringBuilder();
+        if (alchemyLevel != null) {
+            alchemyPart.append("等级").append(alchemyLevel);
+        }
+        if (alchemyDone != null) {
+            alchemyPart.append("今日累计").append(alchemyDone)
+                    .append(alchemyCap != null ? "/" + alchemyCap : "").append("次");
+        }
+        StringBuilder extra = new StringBuilder();
+        if (alchemyRemain != null) {
+            extra.append("剩").append(alchemyRemain).append("次");
+        }
+        if (alchemyCost != null) {
+            extra.append(extra.length() > 0 ? "," : "").append("每次").append(alchemyCost).append("粒");
+        }
+        if (extra.length() > 0) {
+            alchemyPart.append("(").append(extra).append(")");
+        }
+        if (goldBalance != null) {
+            alchemyPart.append("金币").append(goldBalance);
+        }
+        if (alchemyPart.length() > 0) {
+            info.append("芝麻炼金").append(alchemyPart).append(";");
+        }
+        Log.info(info.toString());
     }
 
     /**
@@ -1208,8 +1290,12 @@ public class AntMember extends ModelTask {
             String response = ApplicationHook.requestString("com.alipay.gamecenteruprod.biz.rpc.v3.queryPointBallList", "[{}]");
             JSONObject jsonObject = new JSONObject(response);
             if (MessageUtil.checkSuccess(TAG, jsonObject)) {
-                JSONArray pointBallList = jsonObject.getJSONObject("data").getJSONArray("pointBallList");
-                if (pointBallList.length() > 0) {
+                JSONObject dataObj = jsonObject.optJSONObject("data");
+                if (dataObj == null) {
+                    return;
+                }
+                JSONArray pointBallList = dataObj.optJSONArray("pointBallList");
+                if (pointBallList != null && pointBallList.length() > 0) {
                     batchReceivePointBall();
                 }
             }
@@ -1231,13 +1317,14 @@ public class AntMember extends ModelTask {
         try {
             JSONObject jsonObject = new JSONObject(AntMemberRpcCall.queryPointBallList());
             if (MessageUtil.checkSuccess(TAG, jsonObject)) {
-                JSONObject dataObj = jsonObject.getJSONObject("data");
-                if (dataObj.has("signInBallModule")) {
-                    JSONObject signInModule = dataObj.getJSONObject("signInBallModule");
-                    if (!signInModule.getBoolean("signInStatus")) {
-                        if (dailySignIn()) {
-                            Status.flagToday("gameCenterSignIn");
-                        }
+                JSONObject dataObj = jsonObject.optJSONObject("data");
+                if (dataObj == null) {
+                    return;
+                }
+                JSONObject signInModule = dataObj.optJSONObject("signInBallModule");
+                if (signInModule != null && !signInModule.optBoolean("signInStatus")) {
+                    if (dailySignIn()) {
+                        Status.flagToday("gameCenterSignIn");
                     }
                 }
             }

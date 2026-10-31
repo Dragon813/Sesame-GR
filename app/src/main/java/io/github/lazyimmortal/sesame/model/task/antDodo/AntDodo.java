@@ -24,6 +24,7 @@ import io.github.lazyimmortal.sesame.util.Statistics;
 import io.github.lazyimmortal.sesame.util.Status;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
 import io.github.lazyimmortal.sesame.util.idMap.AntDodoTaskListMap;
+import io.github.lazyimmortal.sesame.model.base.TaskAlternative;
 import io.github.lazyimmortal.sesame.util.idMap.AntOceanFishBlackListMap;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
@@ -242,7 +243,8 @@ public class AntDodo extends ModelTask {
         String collectProgress = "";
         try {
             JSONObject jo = new JSONObject(AntDodoRpcCall.queryBookList());
-            if (MessageUtil.checkResultCode(TAG, jo)) {
+            // 服务端偶发SYSTEM_ERROR(retryable)属临时故障，本轮静默跳过
+            if (!isTransientSystemError(jo) && MessageUtil.checkResultCode(TAG, jo)) {
                 JSONObject data = jo.optJSONObject("data");
                 JSONArray bookList = data == null ? null : data.optJSONArray("bookForUserList");
                 if (bookList != null) {
@@ -597,13 +599,21 @@ public class AntDodo extends ModelTask {
 
     private Boolean finishTask(String sceneCode, String taskType, String taskTitle) {
         try {
-            //黑名单任务跳过
+            //第1步：待完成的游戏任务（不在游戏任务黑名单里的直接调备用接口完成）
+            if (TaskAlternative.handleGameTask("AntDodoTaskList", taskTitle, "TODO", taskType, sceneCode, sceneCode, "af-biodiversity")) {
+                return true;
+            }
+            //第2步：黑名单任务跳过
             if (AntDodoTaskList.getValue().contains(taskTitle)) {
                 return false;
             }
             JSONObject jo = new JSONObject(AntDodoRpcCall.finishTask(sceneCode, taskType));
             //检查并标记黑名单任务
             MessageUtil.checkResultCodeAndMarkTaskBlackList("AntDodoTaskList", taskTitle, jo);
+            // 400000040 不支持rpc调用：该任务需在游戏内完成，已自动拉黑，静默跳过
+            if ("400000040".equals(jo.optString("code"))) {
+                return false;
+            }
             if (MessageUtil.checkSuccess(TAG, jo)) {
                 Log.forest("神奇物种🦕完成[" + taskTitle + "]");
                 return true;
@@ -674,18 +684,30 @@ public class AntDodo extends ModelTask {
         }
     }
 
-    // 图鉴列表分页查询：服务器偶发SYSTEM_ERROR(retryable=true)，短暂等待后重试一次
+    // 图鉴列表分页查询：服务器偶发SYSTEM_ERROR(retryable=true)，逐次退避最多重试3次
     private static String queryBookListWithRetry(int pageSize, int pageStart) {
         String res = AntDodoRpcCall.queryBookList(pageSize, pageStart);
-        try {
-            JSONObject jo = new JSONObject(res);
-            if (!jo.optBoolean("success", false) && jo.optBoolean("retryable", false)) {
-                TimeUtil.sleep(2000L);
-                res = AntDodoRpcCall.queryBookList(pageSize, pageStart);
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                JSONObject jo = new JSONObject(res);
+                if (!jo.optBoolean("success", false) && jo.optBoolean("retryable", false)) {
+                    Log.i(TAG, "图鉴分页查询[" + pageStart + "]系统异常，第" + attempt + "次重试");
+                    TimeUtil.sleep(1500L * attempt);
+                    res = AntDodoRpcCall.queryBookList(pageSize, pageStart);
+                    continue;
+                }
+            } catch (Throwable ignored) {
             }
-        } catch (Throwable ignored) {
+            break;
         }
         return res;
+    }
+
+    /* 图鉴查询等接口偶发SYSTEM_ERROR(retryable=true)属服务端临时故障，重试无效时本轮静默跳过，不打错误日志 */
+    private static boolean isTransientSystemError(JSONObject jo) {
+        return !jo.optBoolean("success", false)
+                && "SYSTEM_ERROR".equals(jo.optString("resultCode"))
+                && jo.optBoolean("retryable", false);
     }
 
     // 使用万能卡
@@ -696,6 +718,10 @@ public class AntDodo extends ModelTask {
             JSONObject animal = null;
             do {
                 JSONObject jo = new JSONObject(queryBookListWithRetry(9, pageStart));
+                // 重试后仍是SYSTEM_ERROR(retryable)属服务端临时故障，本轮静默跳过
+                if (isTransientSystemError(jo)) {
+                    break;
+                }
                 if (!MessageUtil.checkResultCode(TAG, jo)) {
                     break;
                 }
@@ -934,6 +960,10 @@ public class AntDodo extends ModelTask {
             int pageStart = 0;
             do {
                 JSONObject jo = new JSONObject(queryBookListWithRetry(9, pageStart));
+                // 重试后仍是SYSTEM_ERROR(retryable)属服务端临时故障，本轮静默跳过
+                if (isTransientSystemError(jo)) {
+                    break;
+                }
                 if (!MessageUtil.checkResultCode(TAG, jo)) {
                     break;
                 }
@@ -1036,6 +1066,10 @@ public class AntDodo extends ModelTask {
             int pageStart = 0;
             do {
                 JSONObject jo = new JSONObject(queryBookListWithRetry(9, pageStart));
+                // 重试后仍是SYSTEM_ERROR(retryable)属服务端临时故障，本轮静默跳过
+                if (isTransientSystemError(jo)) {
+                    break;
+                }
                 if (!MessageUtil.checkResultCode(TAG, jo)) {
                     break;
                 }

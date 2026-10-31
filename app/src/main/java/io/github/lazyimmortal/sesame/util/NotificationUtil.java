@@ -10,6 +10,7 @@ import lombok.Getter;
 import io.github.lazyimmortal.sesame.data.RuntimeInfo;
 import io.github.lazyimmortal.sesame.model.normal.base.BaseModel;
 
+@SuppressWarnings("deprecation") // Notification 旧接口为兼容 API 21 保留
 public class NotificationUtil {
     private static Context context;
     private static final int NOTIFICATION_ID = 99;

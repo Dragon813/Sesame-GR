@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.net.SocketTimeoutException;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
@@ -25,6 +26,7 @@ public final class ReadForestTask {
     private static final String APP_ID = "2021003114652763";
     private static final String PREF_NAME = "sesame_forest_read";
     private static final String FINISHED_KEY = "finished_books";
+    private static final String TOKEN_KEY = "token";
     private static final String DONE_FLAG = "Forest::readForest";
     private static final Random RANDOM = new Random();
     private static final String TAG = "森林阅读📖";
@@ -46,34 +48,44 @@ public final class ReadForestTask {
                 return;
             }
             Log.record(TAG + "开始执行自动阅读任务(多本连读模式)");
-            String authCode = AuthCodeHelper.getAuthCode(APP_ID);
+            // miniMark 供每个请求头使用；重新登录时也作为登录参数传入
             String miniMark = AlipayMiniMarkHelper.getAlipayMiniMark(APP_ID, VERSION);
-            if (isEmpty(authCode)) {
-                Log.record(TAG + "authCode为空，自动阅读任务失败");
-                return;
-            }
-            if (isEmpty(miniMark)) {
-                Log.i(TAG, "miniMark为空，继续尝试登录");
-            }
-            String loginResponse = ReadForestRpcCall.login(authCode, miniMark, VERSION);
-            if (isEmpty(loginResponse)) {
-                Log.record(TAG + "登录失败: 返回为空");
-                return;
-            }
-            JSONObject loginJo = new JSONObject(loginResponse);
-            if (loginJo.optInt("code") != 2000) {
-                Log.record(TAG + "登录失败: " + loginJo.optString("msg"));
-                return;
-            }
-            JSONObject loginData = loginJo.optJSONObject("data");
-            if (loginData == null) {
-                Log.record(TAG + "登录失败: 缺少token");
-                return;
-            }
-            String token = loginData.optString("token");
-            if (isEmpty(token)) {
-                Log.record(TAG + "登录失败: token为空");
-                return;
+            ReadForestRpcCall.setMiniMark(miniMark);
+            // 优先复用缓存token(带token校验有效)，失效再用authCode重新登录
+            String token = loadCachedToken(context);
+            if (!isEmpty(token) && isTokenValid(token)) {
+                Log.i(TAG, "复用缓存token");
+            } else {
+                token = "";
+                String authCode = AuthCodeHelper.getAuthCode(APP_ID);
+                if (isEmpty(authCode)) {
+                    Log.record(TAG + "authCode为空，自动阅读任务失败");
+                    return;
+                }
+                if (isEmpty(miniMark)) {
+                    Log.i(TAG, "miniMark为空，继续尝试登录");
+                }
+                String loginResponse = ReadForestRpcCall.login(authCode, miniMark, VERSION);
+                if (isEmpty(loginResponse)) {
+                    Log.record(TAG + "登录失败: 返回为空");
+                    return;
+                }
+                JSONObject loginJo = new JSONObject(loginResponse);
+                if (loginJo.optInt("code") != 2000) {
+                    Log.record(TAG + "登录失败: " + loginJo.optString("msg"));
+                    return;
+                }
+                JSONObject loginData = loginJo.optJSONObject("data");
+                if (loginData == null) {
+                    Log.record(TAG + "登录失败: 缺少token");
+                    return;
+                }
+                token = loginData.optString("token");
+                if (isEmpty(token)) {
+                    Log.record(TAG + "登录失败: token为空");
+                    return;
+                }
+                saveCachedToken(context, token);
             }
             JSONObject finishedBooks = loadFinishedBooks(context, userScope());
             Set<String> triedBooks = new HashSet<>();
@@ -149,6 +161,7 @@ public final class ReadForestTask {
         }
         int lastEnergy = -1;
         int noGainCount = 0;
+        int noDataCount = 0;
         while (chapterData != null) {
             String chapterId = chapterData.optString("id");
             String nextId = chapterData.optString("next_id");
@@ -159,32 +172,44 @@ public final class ReadForestTask {
             if (lastEnergy == -1) {
                 EnergyProgress firstProgress = readEnergyProgress(token, bookId, chapterId);
                 if (!firstProgress.hasData) {
-                    lastEnergy = 0;
-                } else {
-                    if (firstProgress.current >= firstProgress.total) {
-                        return Boolean.TRUE;
-                    }
-                    lastEnergy = firstProgress.current;
+                    Log.record(TAG + "[" + bookName + "]初始进度查询失败,跳过此书");
+                    return Boolean.FALSE;
                 }
+                if (firstProgress.current >= firstProgress.total) {
+                    return Boolean.TRUE;
+                }
+                lastEnergy = firstProgress.current;
             }
             ReadForestRpcCall.updateReadingTime(bookId, chapterId, RANDOM.nextInt(668) + 333, token, VERSION);
             ReadForestRpcCall.setReadRecently(bookId, chapterId, chapterName, token, VERSION);
             TimeUtil.sleep(1000);
             EnergyProgress progress = readEnergyProgress(token, bookId, chapterId);
-            int gain = progress.current - lastEnergy;
-            if (gain > 0) {
-                Log.forest(TAG + "[" + bookName + "]进度(" + progress.current + "/"+ progress.total+")获得能量" + gain + "g");
-                noGainCount = 0;
+            if (progress.hasData) {
+                noDataCount = 0;
+                int gain = progress.current - lastEnergy;
+                if (gain > 0) {
+                    Log.forest(TAG + "[" + bookName + "]进度(" + progress.current + "/"+ progress.total+")获得能量" + gain + "g");
+                    noGainCount = 0;
+                } else {
+                    Log.record(TAG+"[" + bookName + "]进度同步: " + progress.current + "/" + progress.total);
+                    noGainCount++;
+                }
+                if (progress.current >= progress.total) {
+                    return Boolean.TRUE;
+                }
+                if (noGainCount >= 5) {
+                    Log.record(TAG + "[" + bookName + "]连续5章无能量增加，可能达到此书上限，跳过");
+                    return Boolean.FALSE;
+                }
             } else {
-                Log.record(TAG+"[" + bookName + "]进度同步: " + progress.current + "/" + progress.total);
-                noGainCount++;
-            }
-            if (progress.current >= progress.total) {
-                return Boolean.TRUE;
-            }
-            if (noGainCount >= 5) {
-                Log.record(TAG + "[" + bookName + "]连续5章无能量增加，可能达到此书上限，跳过");
-                return Boolean.FALSE;
+                // 查询进度失败(网络超时兜底):保持 lastEnergy 不变、不计无能量次数,继续读下一章;
+                // 下次成功查询时 gain=新进度-旧lastEnergy 会自然补记本次已上报时长的能量,避免记录丢失
+                noDataCount++;
+                Log.record(TAG + "[" + bookName + "]进度查询失败,继续阅读下一章(能量累计到下次记录)");
+                if (noDataCount >= 5) {
+                    Log.record(TAG + "[" + bookName + "]连续5章进度查询失败,网络异常,跳过");
+                    return Boolean.FALSE;
+                }
             }
             if (isEmpty(nextId) || "null".equals(nextId) || "0".equals(nextId)) {
                 markFinished(context, finishedBooks, bookId, bookName);
@@ -195,13 +220,24 @@ public final class ReadForestTask {
             if (chapterData == null) {
                 return Boolean.FALSE;
             }
-            lastEnergy = progress.current;
+            if (progress.hasData) {
+                lastEnergy = progress.current;
+            }
         }
         return Boolean.FALSE;
     }
 
     private static EnergyProgress readEnergyProgress(String token, String bookId, String chapterId) throws Exception {
-        String response = ReadForestRpcCall.checkEnergy(token, VERSION, bookId, chapterId);
+        // 查询进度接口偶发网络超时:本地重试一次消化偶发抖动,避免抛异常刷日志;持续超时则兜底返回
+        String response = null;
+        for (int attempt = 0; attempt < 2; attempt++) {
+            try {
+                response = ReadForestRpcCall.checkEnergy(token, VERSION, bookId, chapterId);
+                break;
+            } catch (SocketTimeoutException e) {
+                TimeUtil.sleep(1000);
+            }
+        }
         if (isEmpty(response)) {
             return new EnergyProgress(false, 0, TOTAL_FALLBACK);
         }
@@ -249,6 +285,30 @@ public final class ReadForestTask {
                     .putString(FINISHED_KEY + "_" + userScope(), finishedBooks.toString())
                     .apply();
         } catch (Exception unused) {
+        }
+    }
+
+    private static boolean isTokenValid(String token) {
+        try {
+            String response = ReadForestRpcCall.checkToken(token, VERSION);
+            return !isEmpty(response) && new JSONObject(response).optInt("code") == 2000;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private static String loadCachedToken(Context context) {
+        try {
+            return context.getSharedPreferences(PREF_NAME, 0).getString(TOKEN_KEY + "_" + userScope(), "");
+        } catch (Throwable t) {
+            return "";
+        }
+    }
+
+    private static void saveCachedToken(Context context, String token) {
+        try {
+            context.getSharedPreferences(PREF_NAME, 0).edit().putString(TOKEN_KEY + "_" + userScope(), token).apply();
+        } catch (Throwable ignored) {
         }
     }
 

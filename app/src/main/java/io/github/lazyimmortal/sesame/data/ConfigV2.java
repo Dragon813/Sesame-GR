@@ -148,6 +148,13 @@ public class ConfigV2 {
     }*/
 
     public static Boolean isModify(String userId) {
+        // 有字段级基线时，以基线为准：自上次同步以来有任何字段改动才算修改。
+        // 这样磁盘上旧版本残留的多余字段不会被误判为「内存与磁盘不一致」。
+        if (!valueBaseline.isEmpty()) {
+            return !collectChangedFields().isEmpty();
+        }
+        // 无基线（load 未执行等场景）时，退回到磁盘包含关系判断：
+        // 内存中的配置全部被磁盘包含 → 用户没改过配置，不走保存/重载流程
         String json = null;
         File configV2File;
         if (StringUtil.isEmpty(userId)) {
@@ -160,7 +167,13 @@ public class ConfigV2 {
         }
         if (json != null) {
             String formatted = INSTANCE.toSaveStr();
-            return formatted == null || !formatted.equals(json);
+            if (formatted == null) {
+                return true;
+            }
+            if (JsonUtil.isRewriteLossless(formatted, json)) {
+                return false;
+            }
+            return true;
         }
         return true;
     }
@@ -182,6 +195,14 @@ public class ConfigV2 {
             return true;
         }
         String json = INSTANCE.toSaveStr();
+        // 落盘时保留磁盘上旧版本遗留/已删除字段的键，避免升级后保存把旧数据删掉
+        File diskFile = StringUtil.isEmpty(userId) ? FileUtil.getDefaultConfigV2File() : FileUtil.getConfigV2File(userId);
+        if (diskFile.exists()) {
+            String merged = JsonUtil.mergeKeepingSourceKeys(FileUtil.readFromFile(diskFile), json);
+            if (merged != null) {
+                json = merged;
+            }
+        }
         boolean success;
         if (StringUtil.isEmpty(userId)) {
             userId = "默认";
@@ -222,16 +243,6 @@ public class ConfigV2 {
             if (configV2File.exists()) {
                 String json = FileUtil.readFromFile(configV2File);
                 JsonUtil.copyMapper().readerForUpdating(INSTANCE).readValue(json);
-                String formatted = INSTANCE.toSaveStr();
-                if (formatted != null && !formatted.equals(json)) {
-                    // 回写只允许改格式、不许改数据；判定不过就保留磁盘原文，防止内存残留值覆盖丢失
-                    if (!JsonUtil.isRewriteLossless(json, formatted)) {
-                        Log.record("配置加载结果与磁盘数据不一致，已跳过格式化回写以免覆盖丢失: " + userName);
-                    } else {
-                        Log.i(TAG, "格式化配置: " + userName);
-                        FileUtil.write2File(formatted, configV2File);
-                    }
-                }
             } else {
                 // 账号配置文件不存在：可能是存储故障/误删，先尝试从滚动备份恢复，避免直接重置为默认
                 if (restoreFromBackup(userId, configV2File, userName)) {
@@ -270,6 +281,15 @@ public class ConfigV2 {
             }
         }
         INSTANCE.setInit(true);
+        // 确保磁盘包含当前版本全部字段：新增字段落盘；已删除/旧版本不认识的键原样保留
+        if (configV2File != null && configV2File.exists()) {
+            String diskJson = FileUtil.readFromFile(configV2File);
+            String merged = JsonUtil.mergeKeepingSourceKeys(diskJson, INSTANCE.toSaveStr());
+            if (merged != null && !JsonUtil.isSameData(diskJson, merged)) {
+                Log.i(TAG, "补充新增字段并格式化配置: " + userName);
+                FileUtil.write2File(merged, configV2File);
+            }
+        }
         // 记录内存配置归属账号与同步文本基线，供 save() 的跨账号守卫与磁盘冲突合并使用
         loadedUserId = StringUtil.isEmpty(userId) ? "" : userId;
         lastSyncedText = configV2File != null && configV2File.exists() ? FileUtil.readFromFile(configV2File) : null;

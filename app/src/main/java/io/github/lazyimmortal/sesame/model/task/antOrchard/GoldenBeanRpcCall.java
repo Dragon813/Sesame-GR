@@ -13,9 +13,9 @@ import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
  */
 public class GoldenBeanRpcCall {
 
-    // 抓包中固定的版本号与来源
-    private static final String VERSION = "20260803.01";
-    private static final String SOURCE = "babafarm";
+    // 抓包中固定的版本号与来源（VERSION/SOURCE 供 doFarmTask 伪申报与 M 项目传参保持一致）
+    public static final String VERSION = "20260803.01";
+    public static final String SOURCE = "babafarm";
     private static final String BIZ_TYPE = "MASTER";
 
     // 芝麻炼金入口参数（抓包 RPC.txt 2026-10-19：从炼金页进入金豆夺宝）

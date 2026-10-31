@@ -5,12 +5,29 @@ import org.json.JSONObject;
 import io.github.lazyimmortal.sesame.data.ConfigV2;
 import io.github.lazyimmortal.sesame.data.ModelFields;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectModelField;
+import io.github.lazyimmortal.sesame.model.base.TaskAlternative;
 import io.github.lazyimmortal.sesame.model.task.antMember.AntMember;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
 public class MessageUtil {
     private static final String TAG = MessageUtil.class.getSimpleName();
     private static final String UNKNOWN_TAG = "Unknown TAG";
+
+    /** 400000040「不支持rpc调用」；它不等于任务做不了，见 {@link TaskAlternative}。 */
+    public static final String CODE_UNSUPPORTED_RPC = "400000040";
+
+    /** 失败响应是否命中"接口不支持调用"（按错误码优先，文案兜底）。 */
+    public static boolean isUnsupportedRpc(JSONObject jo) {
+        if (jo == null) {
+            return false;
+        }
+        if (CODE_UNSUPPORTED_RPC.equals(jo.optString("code", "").trim())
+                || CODE_UNSUPPORTED_RPC.equals(jo.optString("errorCode", "").trim())) {
+            return true;
+        }
+        String desc = jo.optString("desc", "");
+        return desc.contains("不支持rpc调用") || desc.contains("不支持RPC调用");
+    }
 
     public static JSONObject newJSONObject(String str) {
         try {
@@ -160,6 +177,51 @@ public class MessageUtil {
             Log.printStackTrace(TAG, t);
         }
         return false;
+    }
+
+    /**
+     * 任务列表（listTitle）的中文名称，用于日志与设置界面显示；未登记的返回原值。
+     *
+     * <p>与 {@link #checkResultCodeAndMarkTaskBlackList} 里各 case 的备注保持一致。
+     */
+    public static String getTaskListName(String listTitle) {
+        if (listTitle == null || listTitle.isEmpty()) {
+            return "";
+        }
+        switch (listTitle) {
+            case "AntForestVitalityTaskList":
+                return "活力值";
+            case "AntForestHuntTaskList":
+                return "森林抽抽乐";
+            case "MonopolyTaskList":
+                return "保护地";
+            case "AntFarmDoFarmTaskList":
+                return "饲料";
+            case "AntFarmDrawMachineTaskList":
+                return "装扮抽抽乐";
+            case "AntDodoTaskList":
+                return "神奇物种";
+            case "AntOceanAntiepTaskList":
+                return "海洋普通任务";
+            case "AntOceanFishBlackList":
+                return "海洋去摸鱼";
+            case "AntOrchardTaskList":
+                return "肥料";
+            case "AntOrchardDrawTaskList":
+                return "农场抽抽乐";
+            case "GoldenBeansTaskList":
+                return "金豆";
+            case "AntStallTaskList":
+                return "新村";
+            case "AntSportsTaskList":
+                return "运动";
+            case "AntMemberTaskList":
+                return "会员";
+            case "MemberCreditSesameTaskList":
+                return "芝麻信用芝麻粒";
+            default:
+                return listTitle;
+        }
     }
 
     public static void checkResultCodeAndMarkTaskBlackList(String listTitle, String taskTitle, JSONObject jo) {

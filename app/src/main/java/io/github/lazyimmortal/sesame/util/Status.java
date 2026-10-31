@@ -16,6 +16,7 @@ import java.io.File;
 import java.util.*;
 
 @Data
+@SuppressWarnings("unchecked")
 public class Status {
     
     private static final String TAG = Status.class.getSimpleName();
@@ -57,6 +58,9 @@ public class Status {
 
     // 通用每日计数（key=标记，跨天随unload自动重置）
     private final Map<String, Integer> dayCountLogList = new HashMap<>();
+
+    // 游戏任务每日提交次数（key=任务名称+描述+任务列表，跨天随unload自动重置）
+    private final Map<String, Integer> gameTaskSubmitLogList = new HashMap<>();
     
     // 保存时间
     private Long saveTime = 0L;
@@ -89,6 +93,17 @@ public class Status {
 
     public static void incrCountToday(String tag) {
         INSTANCE.dayCountLogList.put(tag, getCountToday(tag) + 1);
+        save();
+    }
+
+    /** 该游戏任务（任务名称+描述+任务列表）今日已提交次数。 */
+    public static int getGameTaskSubmitCountToday(String key) {
+        Integer count = INSTANCE.gameTaskSubmitLogList.get(key);
+        return count == null ? 0 : count;
+    }
+
+    public static void incrGameTaskSubmitToday(String key) {
+        INSTANCE.gameTaskSubmitLogList.put(key, getGameTaskSubmitCountToday(key) + 1);
         save();
     }
     

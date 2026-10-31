@@ -2925,15 +2925,17 @@ public class AntSports extends ModelTask {
                         String branchId = map.getString("branchId");
                         //boolean newIsLandFlg = map.optBoolean("newIsLandFlg");
 
-                        if (!mapName.equals(thismapName)) {
-                            //if (!status.contains("FINISH") && !newIsLandFlg) {
-                            if (!status.contains("FINISH")) {
-                                JSONObject jo = new JSONObject(AntSportsRpcCall.mapChooseFree(branchId, mapId));
-                                if (MessageUtil.checkSuccess("mapChooseFree", jo)) {
-                                    Log.other("悦动健康🚑️切换到[" + mapName + "](" + mapId + ")#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
-                                    break;
-                                }
-                            }
+                        if (mapName.equals(thismapName)) {
+                            continue;
+                        }
+                        // OFFLINE 岛不可进入,选中会报 MAP_BRANCH_STATUS_WRONG(地图分支状态不对)
+                        if (status.contains("FINISH") || "OFFLINE".equals(status)) {
+                            continue;
+                        }
+                        JSONObject jo = new JSONObject(AntSportsRpcCall.mapChooseFree(branchId, mapId));
+                        if (MessageUtil.checkSuccess("mapChooseFree", jo)) {
+                            Log.other("悦动健康🚑️切换到[" + mapName + "](" + mapId + ")#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                            break;
                         }
                     }
                     queryBaseInfoAndProcess();

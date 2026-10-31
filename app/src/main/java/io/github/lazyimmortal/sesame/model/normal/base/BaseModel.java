@@ -7,6 +7,7 @@ import org.json.JSONObject;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectAndCountModelField;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.SelectModelField;
@@ -30,45 +31,53 @@ import io.github.lazyimmortal.sesame.util.idMap.*;
  * 基础配置模块
  */
 public class BaseModel extends Model {
-     @Getter
-    private static final BooleanModelField stayAwake = new BooleanModelField("stayAwake", "保持唤醒", true);
     @Getter
-    private static final IntegerModelField.MultiplyIntegerModelField checkInterval = new IntegerModelField.MultiplyIntegerModelField("checkInterval", "执行间隔(分钟)", 50, 1, 12 * 60, 60_000);
+    private static BooleanModelField stayAwake;
     @Getter
-    private static final ListModelField.ListJoinCommaToStringModelField execAtTimeList = new ListModelField.ListJoinCommaToStringModelField("execAtTimeList", "定时执行(关闭:-1)", ListUtil.newArrayList("065530", "2359", "24"));
+    private static IntegerModelField.MultiplyIntegerModelField checkInterval;
     @Getter
-    private static final ListModelField.ListJoinCommaToStringModelField wakenAtTimeList = new ListModelField.ListJoinCommaToStringModelField("wakenAtTimeList", "定时唤醒(关闭:-1)", ListUtil.newArrayList("0650", "2350"));
+    private static ListModelField.ListJoinCommaToStringModelField execAtTimeList;
     @Getter
-    private static final ListModelField.ListJoinCommaToStringModelField energyTime = new ListModelField.ListJoinCommaToStringModelField("energyTime", "只收能量时间(范围)", ListUtil.newArrayList("0700-0731"));
+    private static ListModelField.ListJoinCommaToStringModelField wakenAtTimeList;
     @Getter
-    private static final ChoiceModelField timedTaskModel = new ChoiceModelField("timedTaskModel", "定时任务模式", TimedTaskModel.SYSTEM, TimedTaskModel.nickNames);
+    private static ListModelField.ListJoinCommaToStringModelField energyTime;
     @Getter
-    private static final BooleanModelField timeoutRestart = new BooleanModelField("timeoutRestart", "超时重启", true);
+    private static ChoiceModelField timedTaskModel;
     @Getter
-    private static final IntegerModelField.MultiplyIntegerModelField waitWhenException = new IntegerModelField.MultiplyIntegerModelField("waitWhenException", "异常等待时间(分钟)", 60, 0, 24 * 60, 60_000);
+    private static BooleanModelField timeoutRestart;
     @Getter
-    public static final IntegerModelField backupConfigDays = new IntegerModelField("backupConfigDays", "按天和修改备份配置保存数(滚动覆盖)", 5);
+    private static IntegerModelField.MultiplyIntegerModelField waitWhenException;
     @Getter
-    public static final IntegerModelField backupLogDays = new IntegerModelField("backupLogDays", "保留之前日志天数(除runtime)", 1);
+    public static IntegerModelField backupConfigDays;
     @Getter
-    private static final BooleanModelField newRpc = new BooleanModelField("newRpc", "使用新接口(最低支持v10.3.96.8100)", true);
+    public static IntegerModelField backupLogDays;
     @Getter
-    private static final BooleanModelField debugMode = new BooleanModelField("debugMode", "开启抓包(含小程序数据)", false);
+    private static BooleanModelField newRpc;
     @Getter
-    private static final SelectAndCountModelField rpcRequestList = new SelectAndCountModelField("rpcRequestList", "RPC请求列表及每日执行数(慎用)", new LinkedHashMap<>(), AlipayrpcRequest::getList, "请填写每日执行次数");
+    private static BooleanModelField debugMode;
+
+    /** 单个游戏任务的每日提交上限（所有任务共用该值，0=不提交，仅自动收集）；计数按项记录在 Status，跨天自动重置。 */
     @Getter
-    private static final SelectModelField rpcRequestTaskList= new SelectModelField("rpcRequestTaskList", "RPC可选任务列表(长按列表中的项仅移除用，内容需打开rpcResquest.json文件配置)", new LinkedHashSet<>(), AlipayrpcRequest::getList,"长按删除RPC列表项用");
+    private static IntegerModelField maxGameTaskSubmitPerDay;
+
+    /** 每个账号独立配置：勾选的「游戏任务 + 任务列表」不执行，默认空=全部执行。 */
     @Getter
-    private static final BooleanModelField batteryPerm = new BooleanModelField("batteryPerm", "为支付宝申请后台运行权限", true);
+    private static SelectModelField miniGameTaskDisallowList;
+
     @Getter
-    private static final BooleanModelField recordLog = new BooleanModelField("recordLog", "记录日志", true);
+    private static SelectAndCountModelField rpcRequestList;
     @Getter
-    private static final BooleanModelField showToast = new BooleanModelField("showToast", "气泡提示", true);
-    //public static final BooleanModelField closeCaptchaDialogVPN = new BooleanModelField("closeCaptchaDialogVPN", "关闭请检查是否使用了代理软件或VPN", false);
+    private static SelectModelField rpcRequestTaskList;
     @Getter
-    private static final IntegerModelField toastOffsetY = new IntegerModelField("toastOffsetY", "气泡纵向偏移", 0);
+    private static BooleanModelField batteryPerm;
     @Getter
-    private static final BooleanModelField enableOnGoing = new BooleanModelField("enableOnGoing", "开启状态栏禁删", false);
+    private static BooleanModelField recordLog;
+    @Getter
+    private static BooleanModelField showToast;
+    @Getter
+    private static IntegerModelField toastOffsetY;
+    @Getter
+    private static BooleanModelField enableOnGoing;
     
     @Override
     public String getName() {
@@ -85,6 +94,15 @@ public class BaseModel extends Model {
         return "启用模块";
     }
     
+    /** 该「任务名称 + 任务列表」是否被当前账号设为不允许执行。 */
+    public static boolean isMiniGameTaskDisallowed(String taskTitle, String listTitle) {
+        Set<String> value = miniGameTaskDisallowList.getValue();
+        if (value == null) {
+            return false;
+        }
+        return value.contains(MiniGameTaskListMap.key(taskTitle, listTitle));
+    }
+
     public void boot(ClassLoader classLoader) {
         /*// 配置已加载，更新验证码Hook状态
         try {
@@ -97,26 +115,28 @@ public class BaseModel extends Model {
     @Override
     public ModelFields getFields() {
         ModelFields modelFields = new ModelFields();
-        modelFields.addField(stayAwake);
-        modelFields.addField(checkInterval);
-        modelFields.addField(execAtTimeList);
-        modelFields.addField(wakenAtTimeList);
-        modelFields.addField(energyTime);
-        modelFields.addField(timedTaskModel);
-        modelFields.addField(timeoutRestart);
-        modelFields.addField(waitWhenException);
-        modelFields.addField(backupConfigDays);
-        modelFields.addField(backupLogDays);
-        modelFields.addField(newRpc);
-        modelFields.addField(debugMode);
-        modelFields.addField(rpcRequestList);
-        modelFields.addField(rpcRequestTaskList);
-        modelFields.addField(batteryPerm);
-        modelFields.addField(recordLog);
-        modelFields.addField(showToast);
-        //modelFields.addField(closeCaptchaDialogVPN);
-        modelFields.addField(enableOnGoing);
-        modelFields.addField(toastOffsetY);
+        modelFields.addField(stayAwake = new BooleanModelField("stayAwake", "保持唤醒", true));
+        modelFields.addField(checkInterval = new IntegerModelField.MultiplyIntegerModelField("checkInterval", "执行间隔(分钟)", 50, 1, 12 * 60, 60_000));
+        modelFields.addField(execAtTimeList = new ListModelField.ListJoinCommaToStringModelField("execAtTimeList", "定时执行(关闭:-1)", ListUtil.newArrayList("065530", "2359", "24")));
+        modelFields.addField(wakenAtTimeList = new ListModelField.ListJoinCommaToStringModelField("wakenAtTimeList", "定时唤醒(关闭:-1)", ListUtil.newArrayList("0650", "2350")));
+        modelFields.addField(energyTime = new ListModelField.ListJoinCommaToStringModelField("energyTime", "只收能量时间(范围)", ListUtil.newArrayList("0700-0731")));
+        modelFields.addField(timedTaskModel = new ChoiceModelField("timedTaskModel", "定时任务模式", TimedTaskModel.SYSTEM, TimedTaskModel.nickNames));
+        modelFields.addField(timeoutRestart = new BooleanModelField("timeoutRestart", "超时重启", true));
+        modelFields.addField(waitWhenException = new IntegerModelField.MultiplyIntegerModelField("waitWhenException", "异常等待时间(分钟)", 60, 0, 24 * 60, 60_000));
+        modelFields.addField(backupConfigDays = new IntegerModelField("backupConfigDays", "按天和修改备份配置保存数(滚动覆盖)", 5));
+        modelFields.addField(backupLogDays = new IntegerModelField("backupLogDays", "保留之前日志天数(除runtime)", 1));
+        modelFields.addField(newRpc = new BooleanModelField("newRpc", "使用新接口(最低支持v10.3.96.8100)", true));
+        modelFields.addField(debugMode = new BooleanModelField("debugMode", "开启抓包(含小程序数据)", false));
+        modelFields.addField(maxGameTaskSubmitPerDay = new IntegerModelField("maxGameTaskSubmitPerDay", "游戏任务每日最大提交次数(单个任务,0=仅收集不执行)", 1, 0, 10));
+        modelFields.addField(miniGameTaskDisallowList = new SelectModelField("miniGameTaskDisallowList", "游戏任务 | 不允许执行列表(默认全执行)", new LinkedHashSet<>(), MiniGameTaskListMap::getOptions));
+        
+        modelFields.addField(rpcRequestList = new SelectAndCountModelField("rpcRequestList", "RPC请求列表及每日执行数(慎用)", new LinkedHashMap<>(), AlipayrpcRequest::getList, "请填写每日执行次数"));
+        modelFields.addField(rpcRequestTaskList = new SelectModelField("rpcRequestTaskList", "RPC可选任务列表(长按列表中的项仅移除用，内容需打开rpcResquest.json文件配置)", new LinkedHashSet<>(), AlipayrpcRequest::getList, "长按删除RPC列表项用"));
+        modelFields.addField(batteryPerm = new BooleanModelField("batteryPerm", "为支付宝申请后台运行权限", true));
+        modelFields.addField(recordLog = new BooleanModelField("recordLog", "记录日志", true));
+        modelFields.addField(showToast = new BooleanModelField("showToast", "气泡提示", true));
+        modelFields.addField(toastOffsetY = new IntegerModelField("toastOffsetY", "气泡纵向偏移", 0));
+        modelFields.addField(enableOnGoing = new BooleanModelField("enableOnGoing", "开启状态栏禁删", false));
         return modelFields;
     }
     

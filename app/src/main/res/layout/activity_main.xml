@@ -117,7 +117,7 @@
                 android:orientation="horizontal">
 
             <Button
-                    android:id="@+id/btn_info_log"
+                    android:id="@+id/btn_friend_watch"
                     android:textAllCaps="false"
                     style="@android:style/Widget.DeviceDefault.Button.Borderless"
                     android:layout_width="match_parent"
@@ -132,13 +132,13 @@
                     android:orientation="vertical"
                     android:paddingTop="10dp"
                     android:paddingBottom="10dp"
-                    android:text="@string/info_log"
+                    android:text="@string/friend_watch"
                     android:textAlignment="gravity"
                     android:textColor="@color/main_button_text"
                     android:textSize="14sp" />
 
             <Button
-                    android:id="@+id/btn_github"
+                    android:id="@+id/btn_info_log"
                     android:textAllCaps="false"
                     style="@android:style/Widget.DeviceDefault.Button.Borderless"
                     android:layout_width="match_parent"
@@ -146,14 +146,14 @@
                     android:layout_margin="6dp"
                     android:layout_weight="1"
                     android:background="@drawable/button_main"
-                    android:drawableTop="@drawable/github"
+                    android:drawableTop="@drawable/info_log"
                     android:drawablePadding="5dp"
                     android:gravity="center"
                     android:onClick="onClick"
                     android:orientation="vertical"
                     android:paddingTop="10dp"
                     android:paddingBottom="10dp"
-                    android:text="@string/visit_github"
+                    android:text="@string/info_log"
                     android:textAlignment="gravity"
                     android:textColor="@color/main_button_text"
                     android:textSize="14sp" />

@@ -112,6 +112,11 @@ public class NewRpcBridge implements RpcBridge {
         return null;
     }
 
+    /* 已知良性响应不记错误日志：广告SDK(xlightPlugin)无success字段属其协议常态(流量风控) */
+    private static boolean isSilencedRpcError(String method) {
+        return "com.alipay.adexchange.ad.facade.xlightPlugin".equals(method);
+    }
+
     @Override
     public RpcEntity requestObject(RpcEntity rpcEntity, int tryCount, int retryInterval) {
         if (ApplicationHook.isOffline()) {
@@ -138,7 +143,10 @@ public class NewRpcBridge implements RpcBridge {
                                             if (!(Boolean) XposedHelpers.callMethod(obj, "containsKey", "success")
                                                     && !(Boolean) XposedHelpers.callMethod(obj, "containsKey", "isSuccess")) {
                                                 rpcEntity.setError();
-                                                Log.error("new rpc response | id: " + rpcEntity.hashCode() + " | method: " + rpcEntity.getRequestMethod() + " args: " + rpcEntity.getRequestData() + " | data: " + rpcEntity.getResponseString());
+                                                // 已知良性响应不记错误日志
+                                                if (!isSilencedRpcError(rpcEntity.getRequestMethod())) {
+                                                    Log.error("new rpc response | id: " + rpcEntity.hashCode() + " | method: " + rpcEntity.getRequestMethod() + " args: " + rpcEntity.getRequestData() + " | data: " + rpcEntity.getResponseString());
+                                                }
                                             }
                                         } catch (Exception e) {
                                             rpcEntity.setError();
@@ -237,7 +245,10 @@ public class NewRpcBridge implements RpcBridge {
                                                     if (!(Boolean) XposedHelpers.callMethod(obj, "containsKey", "success")
                                                             && !(Boolean) XposedHelpers.callMethod(obj, "containsKey", "isSuccess")) {
                                                         rpcEntity.setError();
-                                                        Log.error("new rpc response | id: " + rpcEntity.hashCode() + " | method: " + rpcEntity.getRequestMethod() + " args: " + rpcEntity.getRequestData() + " | data: " + rpcEntity.getResponseString());
+                                                        // 已知良性响应不记错误日志
+                                                        if (!isSilencedRpcError(rpcEntity.getRequestMethod())) {
+                                                            Log.error("new rpc response | id: " + rpcEntity.hashCode() + " | method: " + rpcEntity.getRequestMethod() + " args: " + rpcEntity.getRequestData() + " | data: " + rpcEntity.getResponseString());
+                                                        }
                                                     }
                                                     Thread thread = rpcEntity.getRequestThread();
                                                     if (thread != null) {

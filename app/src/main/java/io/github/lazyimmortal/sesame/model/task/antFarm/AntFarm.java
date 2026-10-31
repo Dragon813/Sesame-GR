@@ -8,6 +8,7 @@ import io.github.lazyimmortal.sesame.entity.GameCenterMallItem;
 import io.github.lazyimmortal.sesame.model.task.antForest.AntForestRpcCall;
 import io.github.lazyimmortal.sesame.model.task.antGame.GameTask;
 import io.github.lazyimmortal.sesame.util.idMap.AntFarmDoFarmTaskListMap;
+import io.github.lazyimmortal.sesame.model.base.TaskAlternative;
 import io.github.lazyimmortal.sesame.util.idMap.AntFarmDrawMachineTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.GameCenterMallItemMap;
 import lombok.Getter;
@@ -50,7 +51,6 @@ public class AntFarm extends ModelTask {
     private RewardFriend[] rewardList;
     private double benevolenceScore;
     private double harvestBenevolenceScore;
-    private int unReceiveTaskAward = 0;
     private double finalScore = 0d;
     private int foodInTrough = 0;
 
@@ -339,8 +339,7 @@ public class AntFarm extends ModelTask {
             }
 
             if (receiveFarmTaskAward.getValue()) {
-                listFarmTask(TaskStatus.TODO);
-                listFarmTask(TaskStatus.FINISHED);
+                listFarmTask();
             }
 
             if (AnimalInteractStatus.HOME.name().equals(ownerAnimal.animalInteractStatus)) {
@@ -364,7 +363,6 @@ public class AntFarm extends ModelTask {
                     }
                 }
 
-                checkUnReceiveTaskAward();
             }
 
             // 小鸡换装
@@ -662,8 +660,8 @@ public class AntFarm extends ModelTask {
                         lastRankInfo = "上期第" + Log.n(rankOrder) + "名贡献" + Log.n(contribution) + ";";
                     }
                     // 我的捐蛋排位: donationRankHomeInfo.selfDonationRank(星星或爱心值totalStarNum回退totalContributionNum, 累计捐蛋donationTotal回退donationNum)
-                    JSONObject rJo = new JSONObject(AntFarmRpcCall.enterDonationCompetitionRank());
-                    if (MessageUtil.checkMemo(TAG, rJo)) {
+                    JSONObject rJo = enterDonationCompetitionRank();
+                    if (rJo != null && MessageUtil.checkMemo(TAG, rJo)) {
                         JSONObject homeInfo = rJo.optJSONObject("donationRankHomeInfo");
                         JSONObject self = homeInfo == null ? null : homeInfo.optJSONObject("selfDonationRank");
                         if (self != null) {
@@ -673,6 +671,36 @@ public class AntFarm extends ModelTask {
                                     : (self.has("donationNum") ? self.optInt("donationNum") : null);
                             String levelName = self.optString("levelName", "");
                             rankLevelInfo = "我的排位等级[" + levelName + "]星星或爱心值" + Log.n(totalStarNum) + "累计捐蛋" + Log.n(donationTotal) + ";";
+                            // 排名奖档位(爱心值排名前X万名): globalRankAwardInfo.contributionRankInfoList, 旧响应无该字段时不输出(兼容)
+                            JSONObject globalRankAwardInfo = rJo.optJSONObject("globalRankAwardInfo");
+                            JSONArray contributionRankInfoList = globalRankAwardInfo == null ? null : globalRankAwardInfo.optJSONArray("contributionRankInfoList");
+                            if (contributionRankInfoList != null && contributionRankInfoList.length() > 0) {
+                                long reachedGear = -1;
+                                long reachedScore = -1;
+                                int gearCount = 0;
+                                StringBuilder gearDetail = new StringBuilder();
+                                for (int i = 0; i < contributionRankInfoList.length(); i++) {
+                                    JSONObject rankAward = contributionRankInfoList.optJSONObject(i);
+                                    if (rankAward == null || !rankAward.has("awardRankOrder") || !rankAward.has("awardContributionNum")) {
+                                        continue;
+                                    }
+                                    long gear = rankAward.optLong("awardRankOrder");
+                                    long score = rankAward.optLong("awardContributionNum");
+                                    if (gearDetail.length() > 0) {
+                                        gearDetail.append(",");
+                                    }
+                                    gearDetail.append(gear).append("万(星星或爱心值").append(score).append(")");
+                                    gearCount++;
+                                    if (totalStarNum != null && totalStarNum >= score && score > reachedScore) {
+                                        reachedScore = score;
+                                        reachedGear = gear;
+                                    }
+                                }
+                                if (gearCount > 0) {
+                                    rankLevelInfo += "星星或爱心值排名共" + gearCount + "档[" + gearDetail + "]已达档位"
+                                            + (reachedGear >= 0 ? ("前" + reachedGear + "万名") : "无") + ";";
+                                }
+                            }
                         }
                     }
                 }
@@ -1333,6 +1361,10 @@ public class AntFarm extends ModelTask {
             java.util.ArrayList<JSONObject> availableList = new java.util.ArrayList<>();
             for (int i = 0; i < activityInfos.length(); i++) {
                 JSONObject activityInfo = activityInfos.getJSONObject(i);
+                // 自营(SOLDBY)项目需指定标的物，当前捐赠接口不支持，直接跳过避免服务端报218
+                if ("SOLDBY".equals(activityInfo.optString("projectType"))) {
+                    continue;
+                }
                 int available = activityInfo.getInt("donationLimit") - activityInfo.getInt("donationTotal");
                 if (available > 0) {
                     availableList.add(activityInfo);
@@ -1396,6 +1428,12 @@ public class AntFarm extends ModelTask {
         }
         try {
             JSONObject jo = new JSONObject(AntFarmRpcCall.donation(activityId, donationAmount));
+            // 自营项目缺指定标的物(218)等不可捐场景，属正常跳过，不打错误日志
+            String donationMemo = jo.optString("memo");
+            if (!"SUCCESS".equals(donationMemo) && !"成功".equals(donationMemo)
+                    && donationMemo.contains("没有指定标的物")) {
+                return false;
+            }
             if (!MessageUtil.checkMemo(TAG, jo)) {
                 return false;
             }
@@ -1411,10 +1449,27 @@ public class AntFarm extends ModelTask {
         return false;
     }
 
+    /* 捐蛋排位赛入口: 账号未开启该功能时服务端返回memo=功能未开启, 记录一次后本次运行不再重复请求 */
+    private static String donationCompetitionDisabledUid = null;
+
+    private static JSONObject enterDonationCompetitionRank() throws Exception {
+        if (donationCompetitionDisabledUid != null
+                && donationCompetitionDisabledUid.equals(UserIdMap.getCurrentUid())) {
+            return null;
+        }
+        JSONObject jo = new JSONObject(AntFarmRpcCall.enterDonationCompetitionRank());
+        if ("功能未开启".equals(jo.optString("memo"))) {
+            donationCompetitionDisabledUid = UserIdMap.getCurrentUid();
+            Log.record("捐蛋排位🥚功能未开启，本次运行跳过相关查询");
+            return null;
+        }
+        return jo;
+    }
+
     private void competition() {
         try {
-            JSONObject jo = new JSONObject(AntFarmRpcCall.enterDonationCompetitionRank());
-            if (!MessageUtil.checkMemo(TAG, jo)) {
+            JSONObject jo = enterDonationCompetitionRank();
+            if (jo == null || !MessageUtil.checkMemo(TAG, jo)) {
                 return;
             }
             //第一期
@@ -1448,7 +1503,7 @@ public class AntFarm extends ModelTask {
             }
 
             receiveReward();
-            PreviousCompetitionInfo();
+            //PreviousCompetitionInfo();
 
             //领取任务奖励listCompetitionTask
             receiveCompetitionTask();
@@ -1633,8 +1688,8 @@ public class AntFarm extends ModelTask {
             }*/
 
             //重新检测捐蛋排位赛信息获取详情
-            jo = new JSONObject(AntFarmRpcCall.enterDonationCompetitionRank());
-            if (!MessageUtil.checkMemo(TAG, jo)) {
+            jo = enterDonationCompetitionRank();
+            if (jo == null || !MessageUtil.checkMemo(TAG, jo)) {
                 return;
             }
             if (!jo.has("donationRankHomeInfo")) {
@@ -1676,8 +1731,8 @@ public class AntFarm extends ModelTask {
     //偷榜捐蛋
     private void stealRank(int stealRankMinutes, String worKType) {
         try {
-            JSONObject jo = new JSONObject(AntFarmRpcCall.enterDonationCompetitionRank());
-            if (!MessageUtil.checkMemo(TAG, jo)) {
+            JSONObject jo = enterDonationCompetitionRank();
+            if (jo == null || !MessageUtil.checkMemo(TAG, jo)) {
                 return;
             }
             //第一期
@@ -1716,8 +1771,8 @@ public class AntFarm extends ModelTask {
             String CurrentUserId = UserIdMap.getCurrentUid();
             int firstDonation = 0;
             int secondDonation = 0;
-            jo = new JSONObject(AntFarmRpcCall.enterDonationCompetitionRank());
-            if (!MessageUtil.checkMemo(TAG, jo)) {
+            jo = enterDonationCompetitionRank();
+            if (jo == null || !MessageUtil.checkMemo(TAG, jo)) {
                 return;
             }
             if (!jo.has("donationRankHomeInfo")) {
@@ -1806,8 +1861,8 @@ public class AntFarm extends ModelTask {
     private void competitionDonation(String competitionType, int DonationEggNum) {
         try {
 
-            JSONObject jo = new JSONObject(AntFarmRpcCall.enterDonationCompetitionRank());
-            if (!MessageUtil.checkMemo(TAG, jo)) {
+            JSONObject jo = enterDonationCompetitionRank();
+            if (jo == null || !MessageUtil.checkMemo(TAG, jo)) {
                 return;
             }
             String name = null;
@@ -1963,13 +2018,13 @@ public class AntFarm extends ModelTask {
         }
     }
 
-    private void PreviousCompetitionInfo() {
+    /*private void PreviousCompetitionInfo() {
 
         try {
             //查询上期比赛情况
             //JSONObject joPrevious = new JSONObject(AntFarmRpcCall.queryCompetitionEntranceInfo());
-            JSONObject joPrevious = new JSONObject(AntFarmRpcCall.enterDonationCompetitionRank());
-            if (MessageUtil.checkMemo(TAG, joPrevious)) {
+            JSONObject joPrevious = enterDonationCompetitionRank();
+            if (joPrevious != null && MessageUtil.checkMemo(TAG, joPrevious)) {
                 JSONObject previousRoundSettleAwardInfo = joPrevious.optJSONObject("previousRoundSettleAwardInfo");
                 if (previousRoundSettleAwardInfo == null) {
                     //Log.record("捐蛋排位🥚无法获取上期排名");
@@ -1987,7 +2042,7 @@ public class AntFarm extends ModelTask {
             Log.i(TAG, "PreviousCompetitionInfo err:");
             Log.printStackTrace(TAG, t);
         }
-    }
+    }*/
 
     private int getProjectDonationNum(String projectId) {
         try {
@@ -2029,6 +2084,16 @@ public class AntFarm extends ModelTask {
         return false;
     }
 
+    private static boolean isFeedScoreError(JSONObject jo) {
+        if (jo == null || jo.optBoolean("success", false)) {
+            return false;
+        }
+        String memo = jo.optString("memo", "");
+        String desc = jo.optString("resultDesc", "");
+        String msg = jo.optString("resultMessage", "");
+        return memo.contains("饲料积分") || desc.contains("饲料积分") || msg.contains("饲料积分");
+    }
+
     private void recordFarmGame(GameType gameType) {
         try {
             do {
@@ -2044,6 +2109,12 @@ public class AntFarm extends ModelTask {
                         return;
                     }
                     jo = new JSONObject(AntFarmRpcCall.recordFarmGame(gameType.name()));
+                    // 飞行赛服务器会校验饲料数与分数的一致性，偶发「饲料积分异常」时改用 score/100 重新上报一次
+                    if (gameType == GameType.flyGame && isFeedScoreError(jo)) {
+                        Log.i(TAG, "飞行赛饲料积分异常，改用 score/100 重新上报");
+                        TimeUtil.sleep(1000);
+                        jo = new JSONObject(AntFarmRpcCall.recordFarmGame(gameType.name(), 100));
+                    }
                     if (!MessageUtil.checkMemo(TAG, jo)) {
                         return;
                     }
@@ -2071,7 +2142,10 @@ public class AntFarm extends ModelTask {
         }
     }
 
-    private void listFarmTask(TaskStatus Mode) {
+    /**
+     * 获取一次饲料任务列表并单轮处理完：先领奖、再处理游戏任务、跳过黑名单、完成剩余任务。
+     */
+    private void listFarmTask() {
         try {
             JSONObject jo = new JSONObject(AntFarmRpcCall.listFarmTask());
             if (!MessageUtil.checkMemo(TAG, jo)) {
@@ -2086,23 +2160,30 @@ public class AntFarm extends ModelTask {
                 jo = ja.getJSONObject(i);
                 TaskStatus taskStatus = TaskStatus.valueOf(jo.getString("taskStatus"));
                 String title = jo.getString("title");
-                //黑名单任务跳过
+                //第1步：可领奖任务优先领奖
+                if (taskStatus == TaskStatus.FINISHED) {
+                    receiveFarmTaskAward(jo);
+                    continue;
+                }
+                //第2步：待完成的游戏任务（不在游戏任务黑名单里的直接调备用接口完成）
+                if (TaskAlternative.handleGameTask("AntFarmDoFarmTaskList", title, taskStatus.name(),
+                        jo.optString("bizKey", jo.optString("taskId")), jo.optString("sceneCode", "ANTFARM"),
+                        "ANTFARM", "H5")) {
+                    continue;
+                }
+                //第3步：黑名单任务跳过
                 if (AntFarmDoFarmTaskList.getValue().contains(title)) {
-                    if (taskStatus == TaskStatus.FINISHED) {
-                        receiveFarmTaskAward(jo);
-                    }
                     continue;
                 }
-                if (taskStatus == TaskStatus.RECEIVED || taskStatus != Mode) {
+                if (taskStatus != TaskStatus.TODO) {
                     continue;
                 }
-                if (taskStatus == TaskStatus.TODO && !doFarmTask(jo)) {
-                    continue;
-                }
-                if (taskStatus == TaskStatus.FINISHED && !receiveFarmTaskAward(jo)) {
+                if (!doFarmTask(jo)) {
                     continue;
                 }
                 TimeUtil.sleep(1000);
+                //本轮完成成功后立即领奖
+                receiveFarmTaskAward(jo);
             }
         } catch (Throwable t) {
             Log.i(TAG, "listFarmTask err:");
@@ -2285,14 +2366,17 @@ public class AntFarm extends ModelTask {
             String awardType = task.optString("awardType", "");
             int awardCount = task.optInt("awardCount", 0);
             if (Objects.equals(awardType, "ALLPURPOSE")) {
-                if (awardCount + foodStock > foodStockLimit) {
-                    unReceiveTaskAward++;
-                    // Log.record("领取" + awardCount + "克饲料后将超过[" + foodStockLimit + "克]上限，终止领取");
+                // 库存达上限时服务端拒收并返回331(饲料槽已满)；TODO任务awardCount为0会绕过原预判，直接按库存上限跳过
+                if (foodStock >= foodStockLimit || awardCount + foodStock > foodStockLimit) {
                     return false;
                 }
             }
             JSONObject jo = new JSONObject(AntFarmRpcCall.receiveFarmTaskAward(taskId));
             MessageUtil.checkResultCodeAndMarkTaskBlackList("AntFarmDoFarmTaskList", title, jo);
+            // 本地库存与服务端不一致时仍可能返回"饲料槽已满"，属正常态，静默跳过
+            if ("饲料槽已满".equals(jo.optString("memo"))) {
+                return false;
+            }
             if (!MessageUtil.checkMemo(TAG, jo)) {
                 return false;
             }
@@ -2306,14 +2390,6 @@ public class AntFarm extends ModelTask {
             Log.printStackTrace(TAG, t);
         }
         return false;
-    }
-
-    private void checkUnReceiveTaskAward() {
-        if (unReceiveTaskAward > 0) {
-            Log.record("还有待领取的饲料");
-            unReceiveTaskAward = 0;
-            listFarmTask(TaskStatus.FINISHED);
-        }
     }
 
     private void feedAnimal(String farmId) {
@@ -2490,10 +2566,7 @@ public class AntFarm extends ModelTask {
             Log.record("[" + maskName + "]的小鸡在挨饿");
             if (foodStock < 180) {
                 Log.record("喂鸡饲料不足");
-                checkUnReceiveTaskAward();
-                if (foodStock < 180) {
-                    return;
-                }
+                return;
             }
             String groupId = null;
             if (family.getValue()) {
@@ -3349,13 +3422,19 @@ public class AntFarm extends ModelTask {
                 if (TaskStatus.RECEIVED.name().equals(taskStatus)) {
                     continue;
                 }
+                //第1步：可领奖任务优先领奖
                 if (TaskStatus.FINISHED.name().equals(taskStatus)) {
                     String taskId = jo.getString("taskId");
                     String awardType = jo.optString("awardType");
                     receiveFarmDrawTaskAward(taskId, title, awardType, taskSceneCode);
                     continue;
                 }
-                //黑名单任务跳过
+                //第2步：待完成的游戏任务（不在游戏任务黑名单里的直接调备用接口完成）
+                if (TaskAlternative.handleGameTask("AntFarmDrawMachineTaskList", title, taskStatus,
+                        jo.optString("bizKey", jo.optString("taskId")), taskSceneCode, "ANTFARM", "H5")) {
+                    continue;
+                }
+                //第3步：黑名单任务跳过
                 if (AntFarmDrawMachineTaskList.getValue().contains(title)) {
                     continue;
                 }
@@ -3363,7 +3442,6 @@ public class AntFarm extends ModelTask {
                 if (TaskStatus.TODO.name().equals(taskStatus)) {
                     int rightsTimesLimit = jo.optInt("rightsTimesLimit");
                     int rightsTimes = jo.optInt("rightsTimes");
-
 
                     if (jo.optString("taskId").contains("SHANGYEHUA")) {
                         for (int j = 0; j < (rightsTimesLimit - rightsTimes); j++) {
