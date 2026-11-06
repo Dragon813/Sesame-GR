@@ -76,7 +76,9 @@ public class JsonUtil {
 
     /**
      * 合并磁盘 JSON 与内存序列化结果：以内存版本为准（含新增字段），
-     * 磁盘中当前版本已删除/不认识的键原样保留，避免旧配置丢失。
+     * 磁盘中当前版本已删除/不认识的模型、字段原样保留，避免旧配置丢失。
+     * 注意：只保留「模型 → 字段」两层的旧键，字段内部（value 等）整份取内存值，
+     * 否则 Map 型配置（如好友浇水列表）里被取消的键会被磁盘旧值回填。
      * 返回格式化后的 JSON 文本；失败返回 null。
      */
     public static String mergeKeepingSourceKeys(String sourceJson, String rewrittenJson) {
@@ -86,7 +88,7 @@ public class JsonUtil {
             if (rewritten == null) {
                 return sourceJson;
             }
-            JsonNode merged = mergeNode(source, rewritten);
+            JsonNode merged = mergeNode(source, rewritten, 0);
             return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(merged);
         } catch (Throwable t) {
             Log.printStackTrace(t);
@@ -94,8 +96,15 @@ public class JsonUtil {
         }
     }
 
-    /** 对象逐键合并：内存没有的键取磁盘原值，其余以内存值为准；数组/标量以内存值为准 */
-    private static JsonNode mergeNode(JsonNode source, JsonNode rewritten) {
+    /**
+     * 对象逐键合并：内存没有的键取磁盘原值，其余以内存值为准。
+     * 只向下合并到「模型 → 字段」一层（depth 0=根、1=modelFieldsMap、2=模型、3=字段），
+     * 字段内部（value 等）直接整份使用内存值，避免列表里被删除的项从磁盘回填。
+     */
+    private static JsonNode mergeNode(JsonNode source, JsonNode rewritten, int depth) {
+        if (depth >= 3) {
+            return rewritten;
+        }
         if (source != null && source.isObject() && rewritten.isObject()) {
             ObjectNode merged = ((ObjectNode) rewritten).deepCopy();
             Iterator<Map.Entry<String, JsonNode>> it = source.fields();
@@ -105,7 +114,7 @@ public class JsonUtil {
                 if (rewrittenValue == null) {
                     merged.set(entry.getKey(), entry.getValue().deepCopy());
                 } else {
-                    merged.set(entry.getKey(), mergeNode(entry.getValue(), rewrittenValue));
+                    merged.set(entry.getKey(), mergeNode(entry.getValue(), rewrittenValue, depth + 1));
                 }
             }
             return merged;

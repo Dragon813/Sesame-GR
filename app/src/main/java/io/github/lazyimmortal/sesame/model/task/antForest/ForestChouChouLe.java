@@ -87,10 +87,6 @@ public class ForestChouChouLe {
                     String taskStatus = taskBaseInfo.getString("taskStatus");
                     String taskType = taskBaseInfo.getString("taskType");
 
-                    JSONObject taskRights = taskInfo.getJSONObject("taskRights");
-                    int rightsTimes = taskRights.getInt("rightsTimes");
-                    int rightsTimesLimit = taskRights.getInt("rightsTimesLimit");
-
                     //第1步：已完成任务领取奖励
                     if (taskStatus.equals("FINISHED")) {
                         TimeUtil.sleep(2000);
