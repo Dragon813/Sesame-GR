@@ -17,6 +17,7 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        maven { url 'https://api.xposed.info/' }
         maven { url 'https://mirrors.tencent.com/nexus/repository/maven-public/' }
         maven { url 'https://repo.huaweicloud.com/repository/maven/' }
         maven { url 'https://maven.aliyun.com/repository/public/' }
