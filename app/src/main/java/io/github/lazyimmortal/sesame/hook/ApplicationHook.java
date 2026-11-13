@@ -167,6 +167,17 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) {
         // 先提取进程名并赋值给全局变量
         processName = lpparam.processName; // 新增：将 Xposed 提供的进程名赋值给全局变量
+        // 注入探针：无条件记录（不依赖开关/配置/context），用于确认小程序子进程是否被 Xposed 注入
+        try {
+            XposedBridge.log("[Sesame] inject pkg=" + lpparam.packageName
+                    + " proc=" + lpparam.processName + " ver=" + modelVersion);
+        } catch (Throwable ignored) {
+        }
+        try {
+            Log.debug("Xposed注入: pkg=" + lpparam.packageName
+                    + " proc=" + lpparam.processName + " ver=" + modelVersion);
+        } catch (Throwable ignored) {
+        }
         // Hook验证码关闭功能
         /*
         try {
@@ -461,24 +472,39 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
             hooked = true;
             Log.i(TAG, "load success: " + lpparam.packageName);
         } else if (ClassUtil.PACKAGE_NAME.equals(lpparam.packageName)) {
-            // 支付宝非主进程（如小程序独立进程 :nebula/:tinyapp 等）：仅安装小程序网络抓包hook，不动其他逻辑
+            // 支付宝非主进程（如小程序独立进程 :nebula/:tinyapp 等）：仅安装小程序网络记录hook，不动其他逻辑
             final ClassLoader remoteClassLoader = lpparam.classLoader;
-            XposedHelpers.findAndHookMethod(Application.class, "attach", Context.class, new XC_MethodHook() {
-                @Override
-                protected void afterHookedMethod(MethodHookParam param) {
-                    try {
-                        context = (Context) param.args[0];
-                        classLoader = remoteClassLoader;
-                        // 子进程启动早期配置可能尚未加载，延迟轮询开关，确认打开后才安装
-                        //（未开抓包的用户不会安装，避免 1.8.9 的启动卡死闪退问题）
-                        scheduleMiniHookInstall();
-                    } catch (Throwable t) {
-                        if (miniDebugEnabled()) {
-                            Log.debug("小程序抓包进程[" + processName + "]启动失败: " + t.getMessage());
+            try {
+                XposedBridge.log("[Sesame] mini process inject proc=" + processName);
+            } catch (Throwable ignored) {
+            }
+            try {
+                XposedHelpers.findAndHookMethod(Application.class, "attach", Context.class, new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        String attachMsg = "小程序子进程attach[" + processName + "]";
+                        try {
+                            context = (Context) param.args[0];
+                            classLoader = remoteClassLoader;
+                            Log.debug(attachMsg);
+                            XposedBridge.log("[Sesame] " + attachMsg);
+                            // 立即尝试安装一次，开关未就绪时再进入轮询等待
+                            //（未开启 debugMode 的用户不会安装，避免 1.8.9 的启动卡死闪退问题）
+                            scheduleMiniHookInstall();
+                        } catch (Throwable t) {
+                            try {
+                                Log.debug(attachMsg + "失败: " + t.getMessage());
+                            } catch (Throwable ignored) {
+                            }
                         }
                     }
+                });
+            } catch (Throwable t) {
+                try {
+                    Log.debug("小程序抓包attach hook安装失败[" + processName + "]: " + t.getMessage());
+                } catch (Throwable ignored) {
                 }
-            });
+            }
         }
     }
 
@@ -1260,18 +1286,6 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
     private void hookMiniProgramNetwork() {
         tryHookMiniNetworkClass(MINI_RESP_CLASS);
         tryHookMiniNetworkClass(ASYNC_REQUEST_HANDLER_CLASS);
-        // 补齐 ariver bridge 层（my.request/my.call 入口与响应回调）与 nebula RPC 入口，
-        // 覆盖不走 AsyncRequestHandler/HttpRequestResponseTrigger 的小游戏
-        tryHookMiniNetworkClass(ARIVER_RPC_BRIDGE_CLASS);
-        tryHookMiniNetworkClass(ARIVER_BRIDGE_CALLBACK_CLASS);
-        tryHookMiniNetworkClass(NEBULA_RPC_CLASS);
-        tryHookMiniNetworkClass(ARIVER_HTTP_BRIDGE_CLASS);
-        tryHookMiniNetworkClass(ARIVER_WS_BRIDGE_CLASS);
-        tryHookMiniNetworkClass(OKHTTP_WEBSOCKET_CLASS);
-        tryHookMiniNetworkClass(OKHTTP_WS_LISTENER_CLASS);
-        tryHookMiniNetworkClass(XRIVER_WS_CLASS);
-        tryHookMiniNetworkClass(JAVA_WS_CLIENT_CLASS);
-        tryHookMiniNetworkClass(NV_WS_CLASS);
         installDeferredNetworkHook();
     }
 
@@ -1280,10 +1294,22 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
     /** 子进程 hook 延迟安装是否已调度（每个进程只调度一次） */
     private static volatile boolean miniHookInstallScheduled = false;
 
+    /** 子进程开关读盘缓存：避免每个小程序请求都读一次 config_v2.json */
+    private static volatile boolean miniDebugCached = false;
+    private static volatile long miniDebugExpireAt = 0L;
+
+    /** 开关读取失败的诊断日志是否已输出（每个进程只打一次） */
+    private static final java.util.concurrent.atomic.AtomicBoolean miniSwitchDiagLogged =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    /** 开关读取成功的日志是否已输出（每个进程只打一次，避免每个请求刷屏） */
+    private static final java.util.concurrent.atomic.AtomicBoolean miniSwitchFoundLogged =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
     /**
-     * 子进程启动时配置可能尚未加载完成，后台等待约 30 秒（每 5 秒复查一次），
+     * 子进程 attach 后立即尝试安装一次；开关尚未就绪时后台每 5 秒复查、最多等 60 秒。
      * debugMode 开关为打开时才安装 hook。
-     * 未开抓包的用户不会安装 hook，避免 1.8.9 无条件安装导致启动卡死闪退的问题。
+     * 未开启 debugMode 的用户不会安装 hook，避免 1.8.9 无条件安装导致启动卡死闪退的问题。
      */
     private void scheduleMiniHookInstall() {
         if (miniHookInstallScheduled) {
@@ -1293,23 +1319,38 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
         new Thread(new Runnable() {
             @Override
             public void run() {
-                for (int i = 0; i < 6; i++) {
-                    try {
-                        if (miniDebugEnabled()) {
-                            hookMiniProgramNetwork();
-                            Log.debug("小程序抓包进程启动[" + processName + "]");
-                            return;
-                        }
-                    } catch (Throwable ignored) {
-                    }
+                // 先立即尝试一次：开关已就绪时马上装，避免错过用户进入小游戏的头几秒
+                if (tryInstallMiniHook()) {
+                    return;
+                }
+                // 开关还没读到（配置未落盘/存储未就绪）时，最多再等 60 秒
+                for (int i = 0; i < 12; i++) {
                     try {
                         Thread.sleep(5000L);
                     } catch (InterruptedException e) {
                         return;
                     }
+                    if (tryInstallMiniHook()) {
+                        return;
+                    }
                 }
             }
         }, "sesame-mini-hook").start();
+    }
+
+    /** 尝试安装小程序网络记录 hook：开关未打开返回 false（继续轮询），安装完成返回 true */
+    private boolean tryInstallMiniHook() {
+        try {
+            if (!miniDebugEnabled()) {
+                return false;
+            }
+            hookMiniProgramNetwork();
+            Log.debug("小程序抓包进程启动[" + processName + "]");
+            return true;
+        } catch (Throwable t) {
+            Log.debug("小程序抓包进程[" + processName + "]启动失败: " + t.getMessage());
+            return false;
+        }
     }
 
     private void tryHookMiniNetworkClass(String className) {
@@ -1342,13 +1383,19 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
             }
             body = clip(deepPrettyJson(body));
         }
-        // timestamp+sign 使每次请求的完整 URL 唯一，天然可作为请求/响应配对键
-        pendingMiniRequests.put(url, new String[]{
+        // timestamp+sign 使每次请求的完整 URL 唯一，天然可作为请求/响应配对键；
+        // 但同一 URL 连续请求时仍会撞键，用队列按先后顺序配对，避免参数被后来的请求覆盖
+        java.util.Deque<String[]> queue = pendingMiniRequests.computeIfAbsent(url,
+                k -> new java.util.concurrent.ConcurrentLinkedDeque<>());
+        queue.addLast(new String[]{
                 String.valueOf(System.currentTimeMillis()),
                 "MINI "
                         + (method == null || method.length() == 0 ? "?" : method) + " " + url,
                 body
         });
+        while (queue.size() > MAX_PENDING_PER_URL) {
+            queue.pollFirst();
+        }
     }
 
     /** 记录小程序响应：与暂存请求按 URL 配对，按 时间/方法/参数/数据 单条输出，只保留游戏业务接口 */
@@ -1373,7 +1420,11 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
         }
         ensureAsyncRequestHook(thisObject != null ? thisObject.getClass().getClassLoader() : classLoader);
         String body = args[1] != null ? clip(deepPrettyJson(args[1].toString())) : "";
-        String[] record = pendingMiniRequests.remove(url);
+        java.util.Deque<String[]> queue = pendingMiniRequests.get(url);
+        String[] record = queue != null ? queue.pollFirst() : null;
+        if (queue != null && queue.isEmpty()) {
+            pendingMiniRequests.remove(url, queue);
+        }
         String time;
         String methodLine;
         String params;
@@ -1481,6 +1532,16 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
                 }
             }
         }
+        // 登录/上报参数常见 form-urlencoded（key=value&...）形式，JSON 之外再兜一层
+        if (body == null) {
+            for (String s : strings) {
+                if (s.length() > 8 && s.length() < 8192 && s.indexOf('=') > 0
+                        && !s.startsWith("http") && s.indexOf('\n') < 0 && s.indexOf('<') < 0) {
+                    body = s;
+                    break;
+                }
+            }
+        }
         java.util.Set<String> candidates = new java.util.LinkedHashSet<>();
         for (String s : strings) {
             if (s.startsWith("http") && isGameApi(s)) {
@@ -1515,8 +1576,19 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
             return;
         }
         Class<?> c = obj.getClass();
-        if (c.isPrimitive() || c.isArray() || obj instanceof Number || obj instanceof Boolean
+        if (c.isPrimitive() || obj instanceof Number || obj instanceof Boolean
                 || obj instanceof Character || obj instanceof Enum) {
+            return;
+        }
+        // 请求体常以 byte[]（protobuf/加密包）形式存在：可读 UTF-8 时按文本收集
+        if (c == byte[].class) {
+            String text = printableUtf8((byte[]) obj);
+            if (text != null) {
+                out.add(text);
+            }
+            return;
+        }
+        if (c.isArray()) {
             return;
         }
         if (obj instanceof java.util.Map) {
@@ -1537,7 +1609,18 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
             }
             return;
         }
-        if (!c.getName().startsWith("com.alipay") || !visited.add(obj)) {
+        String className = c.getName();
+        if (!className.startsWith("com.alipay")) {
+            // 非支付宝请求模型也下钻：登录/上报的 body 常挂在厂商 SDK 的 Request 对象上。
+            // 只对疑似请求相关类下钻，避免遍历 UI/系统大对象拖慢小程序
+            String lower = className.toLowerCase(java.util.Locale.ROOT);
+            if (!(lower.contains("request") || lower.contains("param") || lower.contains("body")
+                    || lower.contains("http") || lower.contains("network") || lower.contains("postdata")
+                    || lower.contains("msg"))) {
+                return;
+            }
+        }
+        if (!visited.add(obj)) {
             return;
         }
         for (java.lang.reflect.Field f : modelFieldsCache.computeIfAbsent(c, this::resolveInstanceFields)) {
@@ -1546,6 +1629,30 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
             } catch (Throwable ignored) {
             }
         }
+    }
+
+    /** byte[] 按 UTF-8 解码；可打印字符占比足够才返回，避免把二进制协议包当文本 */
+    private String printableUtf8(byte[] bytes) {
+        if (bytes == null || bytes.length == 0 || bytes.length > 65536) {
+            return null;
+        }
+        try {
+            String text = new String(bytes, "UTF-8");
+            int len = text.length();
+            if (len == 0) {
+                return null;
+            }
+            int printable = 0;
+            for (int i = 0; i < len; i++) {
+                char ch = text.charAt(i);
+                if (ch >= 0x20 || ch == '\n' || ch == '\r' || ch == '\t') {
+                    printable++;
+                }
+            }
+            return printable * 10L >= len * 9L ? text : null;
+        } catch (Throwable ignored) {
+        }
+        return null;
     }
 
     private java.util.List<java.lang.reflect.Field> resolveInstanceFields(Class<?> clazz) {
@@ -1559,7 +1666,7 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
                     continue;
                 }
                 Class<?> t = fld.getType();
-                if (t == String.class || t.getName().startsWith("com.alipay")
+                if (t == String.class || t == byte[].class || t.getName().startsWith("com.alipay")
                         || java.util.Map.class.isAssignableFrom(t) || java.util.Collection.class.isAssignableFrom(t)) {
                     try {
                         fld.setAccessible(true);
@@ -1586,7 +1693,7 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
     };
 
     /**
-     * 是否记录该小程序请求：抓包开关打开期间默认记录全部小程序 API 请求，
+     * 是否记录该小程序请求：开关打开期间默认记录全部小程序 API 请求，
      * 仅排除埋点/日志/监控域名和静态资源，避免白名单域名导致其他游戏抓不到。
      */
     private boolean isGameApi(String url) {
@@ -1687,33 +1794,6 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
             "com.alipay.android.phone.event.ariver.network.HttpRequestResponseTrigger";
     private static final String ASYNC_REQUEST_HANDLER_CLASS =
             "com.alipay.android.phone.wallet.aompnetwork.request.AsyncRequestHandler";
-    /** ariver JS Bridge RPC 入口：my.request / my.call 的底层桥接方法，主进程已 hook，小程序进程补齐 */
-    private static final String ARIVER_RPC_BRIDGE_CLASS =
-            "com.alibaba.ariver.commonability.network.rpc.RpcBridgeExtension";
-    /** ariver Bridge 响应回调：所有通过 bridge 的响应最终经 sendJSONResponse 回传 JS */
-    private static final String ARIVER_BRIDGE_CALLBACK_CLASS =
-            "com.alibaba.ariver.engine.common.bridge.internal.DefaultBridgeCallback";
-    /** nebula 容器 RPC 入口：部分 H5 小游戏走 nebula 网络栈而非 ariver */
-    private static final String NEBULA_RPC_CLASS =
-            "com.alipay.mobile.nebulaappproxy.api.rpc.H5RpcUtil";
-    /** ariver HTTP 请求桥接：my.request 的原生入口，覆盖不走 RPC 的 HTTP 类小游戏请求 */
-    private static final String ARIVER_HTTP_BRIDGE_CLASS =
-            "com.alibaba.ariver.commonability.network.http.HttpRequestBridgeExtension";
-    /** ariver WebSocket 桥接：my.connectSocket / my.sendSocketMessage / my.onSocketMessage 入口，
-     *  三国冰河时代等小游戏的招募/战斗等操作走 WebSocket，必须在此层捕获收发数据 */
-    private static final String ARIVER_WS_BRIDGE_CLASS =
-            "com.alibaba.ariver.commonability.network.websocket.WebSocketBridgeExtension";
-    /** OkHttp WebSocket 兜底：部分版本 ariver 底层直接用 okhttp3.RealWebSocket，
-     *  桥接类不存在时仍可捕获 send 数据 */
-    private static final String OKHTTP_WEBSOCKET_CLASS = "okhttp3.RealWebSocket";
-    /** OkHttp WebSocketListener 兜底：捕获服务器推送的消息（onMessage 回调） */
-    private static final String OKHTTP_WS_LISTENER_CLASS = "okhttp3.WebSocketListener";
-    /** XRiver 引擎 WebSocket 客户端候选类（游戏 WS 接收走 XRiver 内部实现） */
-    private static final String XRIVER_WS_CLASS = "com.alibaba.ariver.xriver.websocket.XRWebSocket";
-    /** Java-WebSocket 库候选（部分版本 ariver 用此库实现 WS） */
-    private static final String JAVA_WS_CLIENT_CLASS = "org.java_websocket.client.WebSocketClient";
-    /** NV-WebSocket 库候选 */
-    private static final String NV_WS_CLASS = "com.neovisionaries.ws.client.WebSocket";
 
     /** 单条日志最大长度：过小的上限会把游戏大响应截断（如邮件列表/背包），这里放宽到 20 万字符 */
     private static final int MAX_LOG_LEN = 200000;
@@ -1722,22 +1802,142 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
     private static final Set<String> deferredHookedClasses =
             java.util.Collections.synchronizedSet(new java.util.HashSet<String>());
 
-    /** 已暂存未配对请求：精确 URL -> {时间, 方法行, 请求体}（LRU 上限，防止无响应请求堆积） */
-    private static final java.util.Map<String, String[]> pendingMiniRequests =
-            java.util.Collections.synchronizedMap(new java.util.LinkedHashMap<String, String[]>(128, 0.75f, true) {
-                @Override
-                protected boolean removeEldestEntry(java.util.Map.Entry<String, String[]> eldest) {
-                    return size() > 128;
-                }
-            });
+    /** 已暂存未配对请求：精确 URL -> 请求队列（同一 URL 并发/连续请求按先后配对，不互相覆盖） */
+    private static final java.util.Map<String, java.util.Deque<String[]>> pendingMiniRequests =
+            new java.util.concurrent.ConcurrentHashMap<>();
 
-    /** 小程序抓包开关：统一由基础配置 debugMode("开启抓包(含小程序数据)") 控制 */
+    /** 单个 URL 最多暂存的请求数，防止长连接/轮询导致队列无限增长 */
+    private static final int MAX_PENDING_PER_URL = 8;
+
+    /** 小程序网络记录开关：统一由基础配置 debugMode 控制 */
     private boolean miniDebugEnabled() {
-        try {
-            return BaseModel.getDebugMode().getValue();
-        } catch (Throwable ignored) {
-            return false;
+        // 小程序子进程（:nebula/:tinyapp）拿不到模块配置：不碰模型，直接读磁盘开关，
+        // 避免 BaseModel 静态字段被默认值初始化后误判为 false
+        if (processName != null && !ClassUtil.PACKAGE_NAME.equals(processName)) {
+            // 每个网络请求都会走到这里，必须缓存，否则每次请求都要读一遍 config_v2.json
+            long now = System.currentTimeMillis();
+            if (now < miniDebugExpireAt) {
+                return miniDebugCached;
+            }
+            boolean enabled = readDebugSwitchFromConfig();
+            miniDebugCached = enabled;
+            miniDebugExpireAt = now + 10000L;
+            return enabled;
         }
+        try {
+            io.github.lazyimmortal.sesame.data.modelFieldExt.BooleanModelField debugMode =
+                    BaseModel.getDebugMode();
+            if (debugMode != null) {
+                return debugMode.getValue();
+            }
+        } catch (Throwable ignored) {
+        }
+        return readDebugSwitchFromConfig();
+    }
+
+    /** 直接从磁盘 config_v2.json 读取 debugMode 开关（子进程兜底，不依赖模型初始化） */
+    private boolean readDebugSwitchFromConfig() {
+        java.util.List<java.io.File> files = collectConfigV2Files();
+        java.util.regex.Pattern nested = java.util.regex.Pattern.compile(
+                "\"debugMode\"\\s*:\\s*\\{[^{}]*?\"value\"\\s*:\\s*(true|false)");
+        java.util.regex.Pattern flat = java.util.regex.Pattern.compile(
+                "\"debugMode\"\\s*:\\s*(true|false)");
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (java.io.File f : files) {
+            if (f == null || !seen.add(f.getAbsolutePath())) {
+                continue;
+            }
+            try {
+                if (!f.exists()) {
+                    continue;
+                }
+                String text = FileUtil.readFromFile(f);
+                if (StringUtil.isEmpty(text)) {
+                    continue;
+                }
+                java.util.regex.Matcher m = nested.matcher(text);
+                boolean found = m.find();
+                if (!found) {
+                    m = flat.matcher(text);
+                    found = m.find();
+                }
+                if (!found) {
+                    continue;
+                }
+                boolean enabled = "true".equals(m.group(1));
+                if (miniSwitchFoundLogged.compareAndSet(false, true)) {
+                    Log.debug("小程序抓包开关: " + enabled + " 来源=" + f.getAbsolutePath());
+                }
+                return enabled;
+            } catch (Throwable ignored) {
+            }
+        }
+        // 一条都没命中时输出诊断：把尝试过的路径和文件状态打出来（每个进程只打一次）
+        if (miniSwitchDiagLogged.compareAndSet(false, true)) {
+            StringBuilder sb = new StringBuilder("小程序抓包开关未读到[进程=").append(processName).append("]");
+            for (java.io.File f : files) {
+                if (f == null) {
+                    continue;
+                }
+                try {
+                    sb.append(" | ").append(f.getAbsolutePath())
+                            .append(" exists=").append(f.exists())
+                            .append(" read=").append(f.canRead())
+                            .append(" len=").append(f.length());
+                } catch (Throwable ignored) {
+                }
+            }
+            Log.debug(sb.toString());
+        }
+        return false;
+    }
+
+    /** 收集 config_v2.json：账号配置（按修改时间倒序）在前，默认配置放最后兜底 */
+    private java.util.List<java.io.File> collectConfigV2Files() {
+        java.util.List<java.io.File> userFiles = new java.util.ArrayList<>();
+        try {
+            java.io.File[] userDirs = FileUtil.CONFIG_DIRECTORY_FILE.listFiles();
+            if (userDirs != null) {
+                for (java.io.File dir : userDirs) {
+                    if (dir != null && dir.isDirectory()) {
+                        userFiles.add(new java.io.File(dir, "config_v2.json"));
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        // 兜底：FileUtil 静态目录在子进程异常时，直接按标准路径再拼一遍
+        try {
+            java.io.File mainDir = new java.io.File(android.os.Environment.getExternalStorageDirectory(),
+                    "Android/media/" + ClassUtil.PACKAGE_NAME + "/" + FileUtil.CONFIG_DIRECTORY_NAME);
+            java.io.File[] userDirs = new java.io.File(mainDir, "config").listFiles();
+            if (userDirs != null) {
+                for (java.io.File dir : userDirs) {
+                    if (dir != null && dir.isDirectory()) {
+                        userFiles.add(new java.io.File(dir, "config_v2.json"));
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        // 最近保存的账号配置优先
+        try {
+            userFiles.sort((a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+        } catch (Throwable ignored) {
+        }
+        java.util.List<java.io.File> files = new java.util.ArrayList<>(userFiles);
+        // 默认配置放最后：可能是旧版本/其它账号遗留，不能覆盖账号里的真实开关
+        try {
+            files.add(FileUtil.getDefaultConfigV2File());
+        } catch (Throwable ignored) {
+        }
+        try {
+            java.io.File mainDir = new java.io.File(android.os.Environment.getExternalStorageDirectory(),
+                    "Android/media/" + ClassUtil.PACKAGE_NAME + "/" + FileUtil.CONFIG_DIRECTORY_NAME);
+            files.add(new java.io.File(mainDir, "config_v2.json"));
+        } catch (Throwable ignored) {
+        }
+        return files;
     }
 
     /**
@@ -1771,18 +1971,7 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
     /** 对小程序网络请求/响应类安装定点 hook（只记录，不修改参数和返回值） */
     private void hookMiniNetworkClass(Class<?> clazz) {
         String name = clazz.getName();
-        if (!MINI_RESP_CLASS.equals(name)
-                && !ASYNC_REQUEST_HANDLER_CLASS.equals(name)
-                && !ARIVER_RPC_BRIDGE_CLASS.equals(name)
-                && !ARIVER_BRIDGE_CALLBACK_CLASS.equals(name)
-                && !NEBULA_RPC_CLASS.equals(name)
-                && !ARIVER_HTTP_BRIDGE_CLASS.equals(name)
-                && !ARIVER_WS_BRIDGE_CLASS.equals(name)
-                && !OKHTTP_WEBSOCKET_CLASS.equals(name)
-                && !OKHTTP_WS_LISTENER_CLASS.equals(name)
-                && !XRIVER_WS_CLASS.equals(name)
-                && !JAVA_WS_CLIENT_CLASS.equals(name)
-                && !NV_WS_CLASS.equals(name)) {
+        if (!MINI_RESP_CLASS.equals(name) && !ASYNC_REQUEST_HANDLER_CLASS.equals(name)) {
             return;
         }
         if (!deferredHookedClasses.add(name)) {
@@ -1802,694 +1991,14 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
                 if (miniDebugEnabled()) {
                     Log.debug("小程序抓包hook已安装: " + name + " onHandleResponse方法=" + hooked + " 进程=" + processName);
                 }
-            } else if (ASYNC_REQUEST_HANDLER_CLASS.equals(name)) {
+            } else {
                 installAsyncRequestHookOnClass(clazz);
-            } else if (ARIVER_RPC_BRIDGE_CLASS.equals(name)) {
-                installAriverRpcBridgeHook(clazz);
-            } else if (ARIVER_BRIDGE_CALLBACK_CLASS.equals(name)) {
-                installAriverBridgeCallbackHook(clazz);
-            } else if (NEBULA_RPC_CLASS.equals(name)) {
-                installNebulaRpcHook(clazz);
-            } else if (ARIVER_HTTP_BRIDGE_CLASS.equals(name)) {
-                installAriverHttpBridgeHook(clazz);
-            } else if (ARIVER_WS_BRIDGE_CLASS.equals(name)) {
-                installAriverWebSocketHook(clazz);
-            } else if (OKHTTP_WEBSOCKET_CLASS.equals(name)) {
-                installOkHttpWebSocketHook(clazz);
-            } else if (OKHTTP_WS_LISTENER_CLASS.equals(name)) {
-                installOkHttpWsListenerHook(clazz);
-            } else if (XRIVER_WS_CLASS.equals(name)
-                    || JAVA_WS_CLIENT_CLASS.equals(name)
-                    || NV_WS_CLASS.equals(name)) {
-                installWsClientDiagnosticHook(clazz, name);
             }
         } catch (Throwable t) {
             if (miniDebugEnabled()) {
                 Log.debug("小程序抓包hook安装失败: " + name + " " + t.getMessage());
             }
         }
-    }
-
-    /**
-     * ariver bridge RPC 入口 hook：与主进程一致，记录 operationType(请求方法) 与请求参数，
-     * 并以 BridgeCallback 对象为 key 暂存，等待 sendJSONResponse 配对响应。
-     * 兼容不同版本 rpc 方法签名：按位置取 args[0]=operationType, args[4]=requestData(JSONObject),
-     * args[last]=BridgeCallback。
-     */
-    private void installAriverRpcBridgeHook(Class<?> clazz) {
-        try {
-            XposedBridge.hookAllMethods(clazz, "rpc", new XC_MethodHook() {
-                @Override
-                protected void beforeHookedMethod(MethodHookParam p) {
-                    try {
-                        Object[] args = p.args;
-                        if (args == null || args.length < 5) {
-                            return;
-                        }
-                        Object callback = args[args.length - 1];
-                        if (callback == null) {
-                            return;
-                        }
-                        String operation = args[0] != null ? args[0].toString() : "";
-                        String requestData = args[4] != null ? args[4].toString() : "";
-                        // 第 4 位留空给响应（由 sendJSONResponse 填充），与主进程配对逻辑一致
-                        rpcHookMap.put(callback, new Object[]{
-                                System.currentTimeMillis(),
-                                "MINI " + operation,
-                                clip(deepPrettyJson(requestData)),
-                                null
-                        });
-                    } catch (Throwable ignored) {
-                    }
-                }
-
-                @Override
-                protected void afterHookedMethod(MethodHookParam p) {
-                    try {
-                        Object[] args = p.args;
-                        if (args == null || args.length < 5) {
-                            return;
-                        }
-                        Object callback = args[args.length - 1];
-                        if (callback == null) {
-                            return;
-                        }
-                        Object[] record = rpcHookMap.remove(callback);
-                        if (record != null) {
-                            // sendJSONResponse 若已回调则 record[3] 有值，否则响应为空
-                            String response = record[3] != null ? record[3].toString() : "";
-                            Log.debug("记录\n时间: " + record[0] + "\n方法: " + record[1]
-                                    + "\n参数: " + record[2] + "\n数据: " + response + "\n");
-                        }
-                    } catch (Throwable ignored) {
-                    }
-                }
-            });
-            if (miniDebugEnabled()) {
-                Log.debug("小程序抓包hook已安装: " + ARIVER_RPC_BRIDGE_CLASS + ".rpc 进程=" + processName);
-            }
-        } catch (Throwable t) {
-            if (miniDebugEnabled()) {
-                Log.debug("小程序抓包hook安装失败: " + ARIVER_RPC_BRIDGE_CLASS + " " + t.getMessage());
-            }
-        }
-    }
-
-    /**
-     * ariver bridge 响应回调 hook：sendJSONResponse(JSONObject) 将响应回传 JS，
-     * 以 thisObject 为 key 从 rpcHookMap 取出暂存请求并填入响应字段，
-     * 实际日志输出由 rpc.afterHookedMethod 完成（保证请求/响应同条输出）。
-     */
-    private void installAriverBridgeCallbackHook(Class<?> clazz) {
-        try {
-            XposedBridge.hookAllMethods(clazz, "sendJSONResponse", new XC_MethodHook() {
-                @Override
-                protected void beforeHookedMethod(MethodHookParam p) {
-                    try {
-                        Object key = p.thisObject;
-                        if (key == null) {
-                            return;
-                        }
-                        Object[] record = rpcHookMap.get(key);
-                        if (record == null) {
-                            // 无配对请求：检查是否为 WebSocket 事件（onSocketMessage 等），
-                            // 小游戏服务器推送数据通过此回调回传 JS
-                            if (p.args != null && p.args.length > 0 && p.args[0] != null) {
-                                String resp = p.args[0].toString();
-                                // WebSocket 事件回调包含 socketTaskID 字段（onSocketMessage/onSocketOpen/onSocketClose 等）
-                                if (resp.contains("socketTaskID") || resp.contains("\"type\":\"onSocket")) {
-                                    Log.debug("记录\n时间: " + System.currentTimeMillis()
-                                            + "\n方法: MINI WS recv"
-                                            + "\n参数: \n数据: " + clip(deepPrettyJson(resp)) + "\n");
-                                }
-                            }
-                            return;
-                        }
-                        if (p.args != null && p.args.length > 0 && p.args[0] != null) {
-                            record[3] = clip(deepPrettyJson(p.args[0].toString()));
-                        }
-                    } catch (Throwable ignored) {
-                    }
-                }
-            });
-            // sendBridgeResponse: 检查是否承载 WS 消息（BridgeResponse 可能包装事件数据）
-            try {
-                XposedBridge.hookAllMethods(clazz, "sendBridgeResponse", new XC_MethodHook() {
-                    @Override
-                    protected void beforeHookedMethod(MethodHookParam p) {
-                        try {
-                            if (p.args == null || p.args.length == 0 || p.args[0] == null) {
-                                return;
-                            }
-                            Object resp = p.args[0];
-                            String s = resp.toString();
-                            // 只记录可能包含 WS 数据的响应（短对象引用说明可能是事件）
-                            if (s.contains("socket") || s.contains("Socket") || s.contains("message") || s.contains("Message")) {
-                                Log.debug("BridgeCallback.sendBridgeResponse: " + s);
-                            }
-                        } catch (Throwable ignored) {
-                        }
-                    }
-                });
-            } catch (Throwable ignored) {
-            }
-            if (miniDebugEnabled()) {
-                Log.debug("小程序抓包hook已安装: " + ARIVER_BRIDGE_CALLBACK_CLASS + ".sendJSONResponse 进程=" + processName);
-            }
-        } catch (Throwable t) {
-            if (miniDebugEnabled()) {
-                Log.debug("小程序抓包hook安装失败: " + ARIVER_BRIDGE_CALLBACK_CLASS + " " + t.getMessage());
-            }
-        }
-    }
-
-    /**
-     * nebula RPC 入口 hook：H5RpcUtil.rpcCall(operationType, args, ...) 为同步调用，
-     * 在 after 阶段直接取返回值（H5Response）的 getResponse 输出，无需配对。
-     */
-    private void installNebulaRpcHook(Class<?> clazz) {
-        try {
-            XposedBridge.hookAllMethods(clazz, "rpcCall", new XC_MethodHook() {
-                @Override
-                protected void afterHookedMethod(MethodHookParam p) {
-                    try {
-                        Object[] args = p.args;
-                        if (args == null || args.length < 2) {
-                            return;
-                        }
-                        String operation = args[0] != null ? args[0].toString() : "";
-                        String requestData = args[1] != null ? args[1].toString() : "";
-                        String response = "";
-                        Object result = p.getResult();
-                        if (result != null) {
-                            try {
-                                Object resp = XposedHelpers.callMethod(result, "getResponse");
-                                if (resp != null) {
-                                    response = resp.toString();
-                                }
-                            } catch (Throwable ignored) {
-                                response = result.toString();
-                            }
-                        }
-                        Log.debug("记录\n时间: " + System.currentTimeMillis()
-                                + "\n方法: MINI " + operation
-                                + "\n参数: " + clip(deepPrettyJson(requestData))
-                                + "\n数据: " + clip(deepPrettyJson(response)) + "\n");
-                    } catch (Throwable ignored) {
-                    }
-                }
-            });
-            if (miniDebugEnabled()) {
-                Log.debug("小程序抓包hook已安装: " + NEBULA_RPC_CLASS + ".rpcCall 进程=" + processName);
-            }
-        } catch (Throwable t) {
-            if (miniDebugEnabled()) {
-                Log.debug("小程序抓包hook安装失败: " + NEBULA_RPC_CLASS + " " + t.getMessage());
-            }
-        }
-    }
-
-    /**
-     * ariver HTTP 请求桥接 hook：my.request 的原生入口。
-     * 方法名与签名在不同版本间可能变化，故 hookAllMethods 并从参数中提取 URL/请求体，
-     * 以最后一个参数（BridgeCallback）为 key 暂存，响应由 DefaultBridgeCallback.sendJSONResponse 配对。
-     */
-    private void installAriverHttpBridgeHook(Class<?> clazz) {
-        try {
-            XposedBridge.hookAllMethods(clazz, "httpRequest", new XC_MethodHook() {
-                @Override
-                protected void beforeHookedMethod(MethodHookParam p) {
-                    stashHttpBridgeRequest(p);
-                }
-
-                @Override
-                protected void afterHookedMethod(MethodHookParam p) {
-                    flushHttpBridgeRequest(p);
-                }
-            });
-            // 兜底：部分版本方法名可能为 request / sendRequest，一并 hook 避免遗漏
-            for (String m : new String[]{"request", "sendRequest"}) {
-                try {
-                    XposedBridge.hookAllMethods(clazz, m, new XC_MethodHook() {
-                        @Override
-                        protected void beforeHookedMethod(MethodHookParam p) {
-                            stashHttpBridgeRequest(p);
-                        }
-
-                        @Override
-                        protected void afterHookedMethod(MethodHookParam p) {
-                            flushHttpBridgeRequest(p);
-                        }
-                    });
-                } catch (Throwable ignored) {
-                }
-            }
-            if (miniDebugEnabled()) {
-                Log.debug("小程序抓包hook已安装: " + ARIVER_HTTP_BRIDGE_CLASS + " 进程=" + processName);
-            }
-        } catch (Throwable t) {
-            if (miniDebugEnabled()) {
-                Log.debug("小程序抓包hook安装失败: " + ARIVER_HTTP_BRIDGE_CLASS + " " + t.getMessage());
-            }
-        }
-    }
-
-    /** 从 HTTP bridge 方法参数中提取 URL 与请求体并暂存，等待响应配对 */
-    private void stashHttpBridgeRequest(XC_MethodHook.MethodHookParam p) {
-        try {
-            Object[] args = p.args;
-            if (args == null || args.length < 2) {
-                return;
-            }
-            Object callback = args[args.length - 1];
-            if (callback == null) {
-                return;
-            }
-            String url = "";
-            String body = "";
-            // 遍历参数找 http(s) URL 与 JSON 请求体
-            for (Object arg : args) {
-                if (arg == null) {
-                    continue;
-                }
-                String s = arg.toString();
-                if (s.startsWith("http://") || s.startsWith("https://")) {
-                    url = s;
-                } else if (s.startsWith("{") && s.length() > body.length()) {
-                    body = s;
-                }
-            }
-            if (url.length() == 0 && body.length() == 0) {
-                return;
-            }
-            String methodLine = url.length() > 0 ? ("MINI " + url) : "MINI httpRequest";
-            rpcHookMap.put(callback, new Object[]{
-                    System.currentTimeMillis(),
-                    methodLine,
-                    clip(deepPrettyJson(body)),
-                    null
-            });
-        } catch (Throwable ignored) {
-        }
-    }
-
-    /** HTTP bridge 请求结束后输出日志（响应由 sendJSONResponse 填入 record[3]） */
-    private void flushHttpBridgeRequest(XC_MethodHook.MethodHookParam p) {
-        try {
-            Object[] args = p.args;
-            if (args == null || args.length < 2) {
-                return;
-            }
-            Object callback = args[args.length - 1];
-            if (callback == null) {
-                return;
-            }
-            Object[] record = rpcHookMap.remove(callback);
-            if (record != null) {
-                String response = record[3] != null ? record[3].toString() : "";
-                Log.debug("记录\n时间: " + record[0] + "\n方法: " + record[1]
-                        + "\n参数: " + record[2] + "\n数据: " + response + "\n");
-            }
-        } catch (Throwable ignored) {
-        }
-    }
-
-    /**
-     * ariver WebSocket 桥接 hook：捕获 connectSocket（连接地址）、sendSocketMessage（发送数据，含招募等操作）、
-     * onSocketMessage（接收数据）。方法签名在不同版本间可能变化，故用 hookAllMethods 并按方法名分发处理。
-     */
-    private void installAriverWebSocketHook(Class<?> clazz) {
-        try {
-            // connectSocket: 记录 WebSocket 连接地址
-            try {
-                XposedBridge.hookAllMethods(clazz, "connectSocket", new XC_MethodHook() {
-                    @Override
-                    protected void beforeHookedMethod(MethodHookParam p) {
-                        try {
-                            String url = extractWsUrl(p.args);
-                            Log.debug("记录\n时间: " + System.currentTimeMillis()
-                                    + "\n方法: MINI WS connect " + url
-                                    + "\n参数: " + clip(deepPrettyJson(argsToJson(p.args)))
-                                    + "\n数据: \n");
-                        } catch (Throwable ignored) {
-                        }
-                    }
-                });
-            } catch (Throwable ignored) {
-            }
-            // sendSocketMessage: 捕获游戏发送的数据（招募/战斗等核心操作）
-            try {
-                XposedBridge.hookAllMethods(clazz, "sendSocketMessage", new XC_MethodHook() {
-                    @Override
-                    protected void beforeHookedMethod(MethodHookParam p) {
-                        try {
-                            String data = extractWsData(p.args);
-                            String socketId = extractSocketTaskId(p.args);
-                            Log.debug("记录\n时间: " + System.currentTimeMillis()
-                                    + "\n方法: MINI WS send socket=" + socketId
-                                    + "\n参数: " + clip(deepPrettyJson(argsToJson(p.args)))
-                                    + "\n数据: " + clip(data) + "\n");
-                        } catch (Throwable ignored) {
-                        }
-                    }
-                });
-            } catch (Throwable ignored) {
-            }
-            // 接收消息：不同版本方法名可能不同，覆盖常见候选
-            for (String m : new String[]{"onSocketMessage", "onMessage", "onReceiveMessage",
-                    "handleMessage", "dispatchMessage", "notifyMessage", "onSocketTaskMessage"}) {
-                try {
-                    XposedBridge.hookAllMethods(clazz, m, new XC_MethodHook() {
-                        @Override
-                        protected void beforeHookedMethod(MethodHookParam p) {
-                            try {
-                                String data = extractWsData(p.args);
-                                Log.debug("记录\n时间: " + System.currentTimeMillis()
-                                        + "\n方法: MINI WS recv socket=" + extractSocketTaskId(p.args)
-                                        + "\n参数: " + clip(deepPrettyJson(argsToJson(p.args)))
-                                        + "\n数据: " + clip(data) + "\n");
-                            } catch (Throwable ignored) {
-                            }
-                        }
-                    });
-                } catch (Throwable ignored) {
-                }
-            }
-            if (miniDebugEnabled()) {
-                Log.debug("小程序抓包hook已安装: " + ARIVER_WS_BRIDGE_CLASS + " 进程=" + processName);
-            }
-        } catch (Throwable t) {
-            if (miniDebugEnabled()) {
-                Log.debug("小程序抓包hook安装失败: " + ARIVER_WS_BRIDGE_CLASS + " " + t.getMessage());
-            }
-        }
-    }
-
-    /**
-     * OkHttp RealWebSocket 兜底 hook：当 ariver WebSocketBridgeExtension 不存在时，
-     * 直接 hook 底层 send(String)/send(ByteString) 捕获所有 WebSocket 发送数据。
-     */
-    private void installOkHttpWebSocketHook(Class<?> clazz) {
-        try {
-            XposedBridge.hookAllMethods(clazz, "send", new XC_MethodHook() {
-                @Override
-                protected void beforeHookedMethod(MethodHookParam p) {
-                    try {
-                        Object[] args = p.args;
-                        if (args == null || args.length == 0 || args[0] == null) {
-                            return;
-                        }
-                        Object arg = args[0];
-                        String data;
-                        if (arg instanceof String) {
-                            data = (String) arg;
-                        } else {
-                            // ByteString 或 byte[]：转 base64 便于查看二进制协议数据
-                            byte[] bytes = null;
-                            try {
-                                bytes = (byte[]) XposedHelpers.callMethod(arg, "toByteArray");
-                            } catch (Throwable ignored) {
-                            }
-                            if (bytes == null && arg instanceof byte[]) {
-                                bytes = (byte[]) arg;
-                            }
-                            data = bytes != null ? "base64:" + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP) : arg.toString();
-                        }
-                        Log.debug("记录\n时间: " + System.currentTimeMillis()
-                                + "\n方法: MINI WS okhttp-send " + clip(data)
-                                + "\n参数: \n数据: \n");
-                    } catch (Throwable ignored) {
-                    }
-                }
-            });
-            if (miniDebugEnabled()) {
-                Log.debug("小程序抓包hook已安装: " + OKHTTP_WEBSOCKET_CLASS + ".send 进程=" + processName);
-            }
-        } catch (Throwable t) {
-            if (miniDebugEnabled()) {
-                Log.debug("小程序抓包hook安装失败: " + OKHTTP_WEBSOCKET_CLASS + " " + t.getMessage());
-            }
-        }
-    }
-
-    /**
-     * OkHttp WebSocketListener 兜底 hook：捕获服务器推送的消息。
-     * onMessage(WebSocket, String) / onMessage(WebSocket, ByteString) 由 RealWebSocket
-     * 在收到消息帧时回调，是最底层的接收入口，无论 ariver 如何封装都能命中。
-     */
-    private void installOkHttpWsListenerHook(Class<?> clazz) {
-        try {
-            XposedBridge.hookAllMethods(clazz, "onMessage", new XC_MethodHook() {
-                @Override
-                protected void beforeHookedMethod(MethodHookParam p) {
-                    try {
-                        Object[] args = p.args;
-                        if (args == null || args.length < 2 || args[1] == null) {
-                            return;
-                        }
-                        Object msg = args[1];
-                        String data;
-                        if (msg instanceof String) {
-                            data = "text:" + msg;
-                        } else {
-                            byte[] bytes = null;
-                            try {
-                                bytes = (byte[]) XposedHelpers.callMethod(msg, "toByteArray");
-                            } catch (Throwable ignored) {
-                            }
-                            if (bytes == null && msg instanceof byte[]) {
-                                bytes = (byte[]) msg;
-                            }
-                            data = bytes != null
-                                    ? "base64:" + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP) + " len=" + bytes.length
-                                    : msg.toString();
-                        }
-                        Log.debug("记录\n时间: " + System.currentTimeMillis()
-                                + "\n方法: MINI WS recv"
-                                + "\n参数: \n数据: " + clip(data) + "\n");
-                    } catch (Throwable ignored) {
-                    }
-                }
-            });
-            if (miniDebugEnabled()) {
-                Log.debug("小程序抓包hook已安装: " + OKHTTP_WS_LISTENER_CLASS + ".onMessage 进程=" + processName);
-            }
-        } catch (Throwable t) {
-            if (miniDebugEnabled()) {
-                Log.debug("小程序抓包hook安装失败: " + OKHTTP_WS_LISTENER_CLASS + " " + t.getMessage());
-            }
-        }
-    }
-
-    /**
-     * WebSocket 客户端诊断 hook：针对 XRiver/Java-WebSocket/NV-WebSocket 等候选类，
-     * hook 所有声明方法并记录方法名+参数；同时专门捕获 onMessage/onTextMessage/onBinaryMessage
-     * 等接收回调，输出服务器推送数据。
-     */
-    private void installWsClientDiagnosticHook(Class<?> clazz, String name) {
-        try {
-            // 1. 诊断：记录所有方法调用
-            for (java.lang.reflect.Method m : clazz.getDeclaredMethods()) {
-                final String mname = m.getName();
-                try {
-                    XposedBridge.hookMethod(m, new XC_MethodHook() {
-                        @Override
-                        protected void beforeHookedMethod(MethodHookParam p) {
-                            try {
-                                int argc = p.args != null ? p.args.length : 0;
-                                String firstArg = "";
-                                if (p.args != null && p.args.length > 0 && p.args[0] != null) {
-                                    firstArg = p.args[0].toString();
-                                    if (firstArg.length() > 60) firstArg = firstArg.substring(0, 60);
-                                }
-                                Log.debug("WSClient方法: " + name + "#" + mname + " argc=" + argc + " arg0=" + firstArg);
-                            } catch (Throwable ignored) {
-                            }
-                        }
-                    });
-                } catch (Throwable ignored) {
-                }
-            }
-            // 2. 专门 hook 常见接收方法
-            for (String recvMethod : new String[]{"onMessage", "onTextMessage", "onBinaryMessage",
-                    "onWsMessage", "handleMessage", "dispatchMessage"}) {
-                try {
-                    XposedBridge.hookAllMethods(clazz, recvMethod, new XC_MethodHook() {
-                        @Override
-                        protected void beforeHookedMethod(MethodHookParam p) {
-                            try {
-                                String data = extractWsData(p.args);
-                                if (data.length() > 0) {
-                                    Log.debug("记录\n时间: " + System.currentTimeMillis()
-                                            + "\n方法: MINI WS recv"
-                                            + "\n参数: " + clip(deepPrettyJson(argsToJson(p.args)))
-                                            + "\n数据: " + clip(data) + "\n");
-                                }
-                            } catch (Throwable ignored) {
-                            }
-                        }
-                    });
-                } catch (Throwable ignored) {
-                }
-            }
-            if (miniDebugEnabled()) {
-                Log.debug("小程序抓包hook已安装(WS客户端诊断): " + name + " 进程=" + processName);
-            }
-        } catch (Throwable t) {
-            if (miniDebugEnabled()) {
-                Log.debug("小程序抓包hook安装失败(WS客户端诊断): " + name + " " + t.getMessage());
-            }
-        }
-    }
-
-    /** 从 WebSocket bridge 方法参数中提取 URL（connectSocket 用） */
-    private String extractWsUrl(Object[] args) {
-        if (args == null) {
-            return "";
-        }
-        for (Object arg : args) {
-            if (arg == null) {
-                continue;
-            }
-            String s = arg.toString();
-            if (s.startsWith("ws://") || s.startsWith("wss://")) {
-                return s;
-            }
-            // 参数可能是 JSONObject，尝试取 url 字段
-            if (s.startsWith("{")) {
-                try {
-                    org.json.JSONObject jo = new org.json.JSONObject(s);
-                    if (jo.has("url")) {
-                        return jo.getString("url");
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-        return "";
-    }
-
-    /** 从 WebSocket bridge 方法参数中提取消息数据（sendSocketMessage/onSocketMessage 用）。
-     *  三国冰河时代等小游戏 sendSocketMessage 的 args[2] 是 byte[]（二进制协议），
-     *  需转 base64；同时兼容 JSONObject.data / String 形式。 */
-    private String extractWsData(Object[] args) {
-        if (args == null) {
-            return "";
-        }
-        // 1. 优先找 byte[]（游戏二进制协议数据）
-        for (Object arg : args) {
-            if (arg instanceof byte[]) {
-                byte[] bytes = (byte[]) arg;
-                // 尝试当 UTF-8 文本解码（部分协议用 JSON 文本）
-                try {
-                    String text = new String(bytes, "UTF-8");
-                    if (text.length() > 0 && isPrintableText(text)) {
-                        return "text:" + text;
-                    }
-                } catch (Throwable ignored) {
-                }
-                return "base64:" + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
-                        + " len=" + bytes.length;
-            }
-        }
-        // 2. 找 JSONObject.data 字段
-        for (Object arg : args) {
-            if (arg == null) {
-                continue;
-            }
-            String s = arg.toString();
-            if (s.startsWith("{")) {
-                try {
-                    org.json.JSONObject jo = new org.json.JSONObject(s);
-                    if (jo.has("data")) {
-                        Object d = jo.get("data");
-                        if (d instanceof String) {
-                            return (String) d;
-                        }
-                        return d.toString();
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-        // 3. 兜底：返回第一个非空字符串参数（排除纯数字的 socketTaskID）
-        for (Object arg : args) {
-            if (arg != null && arg instanceof String) {
-                String s = (String) arg;
-                if (s.length() > 0 && !s.matches("\\d+")) {
-                    return s;
-                }
-            }
-        }
-        return "";
-    }
-
-    /** 从参数中提取 socketTaskID（通常是纯数字字符串） */
-    private String extractSocketTaskId(Object[] args) {
-        if (args == null) {
-            return "";
-        }
-        // 优先从 JSONObject 取 socketTaskID
-        for (Object arg : args) {
-            if (arg == null) {
-                continue;
-            }
-            String s = arg.toString();
-            if (s.startsWith("{")) {
-                try {
-                    org.json.JSONObject jo = new org.json.JSONObject(s);
-                    if (jo.has("socketTaskID")) {
-                        return jo.getString("socketTaskID");
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-        // 兜底：返回第一个纯数字字符串
-        for (Object arg : args) {
-            if (arg != null && arg instanceof String && ((String) arg).matches("\\d+")) {
-                return (String) arg;
-            }
-        }
-        return "";
-    }
-
-    /** 判断字符串是否主要由可打印字符组成（用于区分文本协议和二进制协议） */
-    private boolean isPrintableText(String s) {
-        if (s == null || s.length() == 0) {
-            return false;
-        }
-        int printable = 0;
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c >= 32 && c < 127 || c == '\n' || c == '\r' || c == '\t') {
-                printable++;
-            }
-        }
-        return printable * 1.0 / s.length() > 0.7;
-    }
-
-    /** 将方法参数数组转为 JSON 字符串用于日志 */
-    private String argsToJson(Object[] args) {
-        if (args == null || args.length == 0) {
-            return "[]";
-        }
-        StringBuilder sb = new StringBuilder("[");
-        for (int i = 0; i < args.length; i++) {
-            if (i > 0) {
-                sb.append(",");
-            }
-            Object a = args[i];
-            if (a == null) {
-                sb.append("null");
-            } else {
-                String s = a.toString();
-                // 转义 JSON 字符串中的特殊字符
-                sb.append("\"").append(s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")).append("\"");
-            }
-        }
-        sb.append("]");
-        return sb.toString();
     }
 
     /**

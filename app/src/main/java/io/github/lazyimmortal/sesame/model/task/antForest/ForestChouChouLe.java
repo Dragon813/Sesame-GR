@@ -86,6 +86,9 @@ public class ForestChouChouLe {
                     String taskSceneCode = taskBaseInfo.getString("sceneCode");
                     String taskStatus = taskBaseInfo.getString("taskStatus");
                     String taskType = taskBaseInfo.getString("taskType");
+                    JSONObject taskRights = taskInfo.optJSONObject("taskRights");
+                    int rightsTimes = taskRights == null ? 0 : taskRights.optInt("rightsTimes", 0);
+                    int rightsTimesLimit = taskRights == null ? 1 : taskRights.optInt("rightsTimesLimit", 1);
 
                     //第1步：已完成任务领取奖励
                     if (taskStatus.equals("FINISHED")) {
@@ -95,16 +98,27 @@ public class ForestChouChouLe {
                             int incAwardCount = sginRes.getInt("incAwardCount");
                             Log.forest("森林寻宝🎖️[" + taskName + "]获得抽奖*" + incAwardCount);
                         }
-                        continue;
+                        //还有剩余档位时继续往下推进，做到一次进入推满
+                        if (rightsTimesLimit <= rightsTimes) {
+                            continue;
+                        }
                     }
 
-                    //第2步：待完成的游戏任务（不在游戏任务黑名单里的直接调备用接口完成）
-                    if (TaskAlternative.handleGameTask("AntForestHuntTaskList", taskName, taskStatus, taskType,
-                            taskSceneCode, taskSceneCode, "ADBASICLIB")) {
-                        continue;
-                    }
-                    //第3步：黑名单任务跳过
+                    //第2步：黑名单任务跳过（游戏/跳转第三方任务由 TaskAlternative 执行一次后跳过）
                     if (AntForestHuntTaskList.contains(taskName)) {
+                        TaskAlternative.handleGameTask(new TaskAlternative.GameTask("AntForestHuntTaskList",
+                                taskName, bizInfo.optString("desc"),
+                                //森林寻宝任务链接字段是 taskJumpUrl，兼容旧结构回落 targetUrl
+                                TaskAlternative.firstNonEmpty(bizInfo.optString("taskJumpUrl"),
+                                        bizInfo.optString("targetUrl")), taskStatus)
+                                .bizKey(taskType)
+                                .rights(rightsTimes, rightsTimesLimit)
+                                .taskRemain(Math.max(0, taskBaseInfo.optInt("taskRequire", 0) - taskBaseInfo.optInt("taskProgress", 0)))
+                                .taskPlayType(taskBaseInfo.optString("taskPlayType", taskBaseInfo.optString("taskProdPlayType")))
+                                .taskMode(taskBaseInfo.optString("taskMode"))
+                                .taskSceneCode(taskSceneCode)
+                                .scene(taskSceneCode, "ADBASICLIB")
+                                .version(AntForestRpcCall.VERSION));
                         continue;
                     }
 
@@ -174,19 +188,25 @@ public class ForestChouChouLe {
                     // 统一处理 FOREST_NORMAL_DRAW 和 FOREST_ACTIVITY_DRAW开头任务
                     // doFarmTask 备用接口业务键：任务列表无 bizKey 字段，用 taskType 兜底
                     if ((taskType.startsWith("FOREST_NORMAL_DRAW") || taskType.startsWith("FOREST_ACTIVITY_DRAW")) && taskStatus.equals("TODO")) {
-                        TimeUtil.sleep(1000);
-                        // 调用对应完成接口
-                        JSONObject result;
-                        if (taskType.contains("XLIGHT")) {
-                            result = new JSONObject(AntForestRpcCall.finishTask4Chouchoule(taskType, taskSceneCode));
-                        } else {
-                            result = new JSONObject(AntForestRpcCall.finishTaskopengreen(taskType, taskSceneCode));
-                        }
-                        //检查并标记黑名单任务
-                        MessageUtil.checkResultCodeAndMarkTaskBlackList("AntForestHuntTaskList", taskName, result);
-                        if (MessageUtil.checkSuccess(TAG, result)) {
-                            Log.forest("森林寻宝🧾完成[" + taskName + "]");
-                            //本轮完成成功后立即领奖
+                        //按权益剩余次数完成（无 taskRights 时默认1次；分享助力类任务只做1次）
+                        int remainingTimes = taskType.contains("_DRAW_SHARE") ? 1 : TaskAlternative.rightsTimesToDo(rightsTimes, rightsTimesLimit);
+                        for (int j = 0; j < remainingTimes; j++) {
+                            TimeUtil.sleep(1000);
+                            // 调用对应完成接口
+                            JSONObject result;
+                            if (taskType.contains("XLIGHT")) {
+                                result = new JSONObject(AntForestRpcCall.finishTask4Chouchoule(taskType, taskSceneCode));
+                            } else {
+                                result = new JSONObject(AntForestRpcCall.finishTaskopengreen(taskType, taskSceneCode));
+                            }
+                            //检查并标记黑名单任务
+                            MessageUtil.checkResultCodeAndMarkTaskBlackList("AntForestHuntTaskList", taskName, result);
+                            if (!MessageUtil.checkSuccess(TAG, result)) {
+                                break;
+                            }
+                            Log.forest("森林寻宝🧾完成[" + taskName + "]"
+                                    + TaskAlternative.rightsProgressText(rightsTimes, rightsTimesLimit, j));
+                            //每次完成成功后立即领奖
                             receiveHuntTaskAward(taskSceneCode, taskType, taskName);
                         }
                         continue;
@@ -198,8 +218,8 @@ public class ForestChouChouLe {
                         //检查并标记黑名单任务
                         MessageUtil.checkResultCodeAndMarkTaskBlackList("AntForestHuntTaskList", taskName, result);
                         if (MessageUtil.checkSuccess(TAG, result)) {
-                            Log.forest("森林寻宝🧾完成[" + taskName + "]");
-                            //本轮完成成功后立即领奖
+                            Log.forest("森林寻宝🧾完成[" + taskName + "]"
+                                    + TaskAlternative.rightsProgressText(rightsTimes, rightsTimesLimit, 0));
                             receiveHuntTaskAward(taskSceneCode, taskType, taskName);
                         }
                     }
@@ -1216,3 +1236,37 @@ K👌🏻OK:较浅肤色👌🏼OK:中等-浅肤色👌🏽OK:中等肤色👌�
 旗:委内瑞拉🇻🇬旗:英属维尔京群岛🇻🇮旗:美属维尔京群岛🇻🇳旗:越南🇻🇺旗:瓦努阿图🇼🇫旗:瓦利斯和富图纳🇼🇸旗:萨摩亚🇽🇰旗:科索沃🇾🇪旗:也门🇾🇹旗:马约特🇿
 🇦旗:南非🇿🇲旗:赞比亚🇿🇼旗:津巴布韦🏴󠁧󠁢󠁥󠁮󠁧󠁿特殊地区旗帜3🏴󠁧󠁢󠁥󠁮󠁧󠁿旗:英格兰🏴󠁧󠁢󠁳󠁣󠁴󠁿旗:苏格兰🏴󠁧󠁢󠁷󠁬󠁳󠁿旗:
 威尔士AI绘画平台🆕🕹️像素玩家🧱乐高积木风格🎬海报导演🪅皮克斯风格全部主题与风格*/
+
+/* —— 日志图标速查表（写日志选图标时查这里）——
+ *
+ * 1) 按语义选（直接复制即可）
+ *   开始/执行   ▶️ ▶ 🎬 🚀 ⚡ 🔥 🎮 🕹️ 🛠️ 🔧
+ *   完成/成功   ✅ ✓ 🎉 🏆 🥇 🎖️ 👍 💯 🆗 🎁
+ *   失败/错误   ❌ ✗ ⛔ 🚫 💥 ⚠️ ❗ ‼️ 🆘 🧨
+ *   跳过/忽略   ⏭️ ⏭ ➡️ 🚷 🙅 💤 🧊 🚧
+ *   等待/进行中 ⏳ ⌛ ⏱️ ⏲️ 🔄 ♻️ 🌀 📶 ⌚
+ *   查询/探测   🔎 🔍 📡 🧭 🔬 🧪 📋 📝 📑 🗒️
+ *   链接/跳转   🔗 ⛓️ 🌐 🔀 ↗️ 🛰️ 📤 📥 🔌
+ *   数据/报文   📦 📁 📂 🗂️ 🧾 📊 📈 📉 💾 🗃️
+ *   时间/日期   📅 📆 🕐 🕑 ⏰ ⏱️ 🗓️
+ *   用户/权限   👤 👥 🔑 🔐 🛡️ 🪪 🧿
+ *   金额/奖励   💰 🪙 💳 🎁 🧧 🏅 🎖️ 🪎
+ *   提示/注意   💡 📌 📍 🔔 🔕 ❓ ❔ ℹ️ 🗯️
+ *   警告/风险   ⚠️ 🚨 ☣️ ☢️ 🔞 🛑 🆘
+ *   方向/箭头   ⬆️ ⬇️ ⬅️ ➡️ ⏫ ⏬ ⏩ ⏪ 🔙 🔜 ⏭️ ⏮️
+ *   图形/标记   🔴 🟡 🟢 🔵 ⚫ ⚪ 🔺 🔻 ⭐ ✨ 💫 🔷 🔶
+ *   编号/键帽   1️⃣ 2️⃣ 3️⃣ 4️⃣ 5️⃣ 6️⃣ 7️⃣ 8️⃣ 9️⃣ 🔟 #️⃣ *️⃣
+ *
+ * 2) 本项目现有日志前缀（保持风格统一，全仓搜索可查）
+ *   🎮 游戏任务        ⏭️ 跳过/不执行
+ *   🎁 领奖            🔎 userToken 查询
+ *   🔗 链接模拟(替换🎮候选)   🕹️ 摇杆(替换🎮候选)   🎯 命中/模拟(替换🎮候选)
+ *
+ * 3) 选用建议
+ *   - 同一模块固定一种图标；成功🎉与失败❌成对出现；跳过统一 ⏭️；
+ *   - 带 ️(VS16 变体选择符)的图标（⏭️ ⚠️ ℹ️ ✅ ❗）在部分终端可能显示为方块；
+ *   - 图标只放行首前缀，不放行中，避免宽度差异导致日志对齐错乱；
+ *   - 日志里不要用多字符组合 emoji（如 🧑‍💻 👨‍👩‍👧），真机日志易被截断成多个方框。
+ */
+
+

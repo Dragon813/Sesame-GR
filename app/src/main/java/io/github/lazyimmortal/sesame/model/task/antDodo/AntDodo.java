@@ -19,6 +19,7 @@ import io.github.lazyimmortal.sesame.model.task.antFarm.AntFarm.TaskStatus;
 import io.github.lazyimmortal.sesame.model.task.antForest.AntForestV2;
 import io.github.lazyimmortal.sesame.model.task.antOcean.AntOceanRpcCall;
 import io.github.lazyimmortal.sesame.util.Log;
+import io.github.lazyimmortal.sesame.util.TaskIconUtil;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
 import io.github.lazyimmortal.sesame.util.Statistics;
 import io.github.lazyimmortal.sesame.util.Status;
@@ -326,7 +327,7 @@ public class AntDodo extends ModelTask {
             //whiteList.add("逛一芝麻树");
             // 可继续添加更多白名单任务
             for (String task : blackList) {
-                AntDodoTaskListMap.add(task, task);
+                AntDodoTaskListMap.add(task, "");
             }
 
             if (dodoTaskList) {
@@ -343,7 +344,7 @@ public class AntDodo extends ModelTask {
                                 JSONObject taskBaseInfo = taskInfo.getJSONObject("taskBaseInfo");
                                 JSONObject bizInfo = new JSONObject(taskBaseInfo.getString("bizInfo"));
                                 String taskTitle = bizInfo.getString("taskTitle");
-                                AntDodoTaskListMap.add(taskTitle, taskTitle);
+                                AntDodoTaskListMap.add(taskTitle, TaskIconUtil.extractIcon(bizInfo));
                             }
                         }
                     }
@@ -576,16 +577,38 @@ public class AntDodo extends ModelTask {
                     if (TaskStatus.RECEIVED.name().equals(taskStatus)) {
                         continue;
                     }
+                    JSONObject taskRights = taskInfo.optJSONObject("taskRights");
+                    int rightsTimes = taskRights == null ? 0 : taskRights.optInt("rightsTimes", 0);
+                    int rightsTimesLimit = taskRights == null ? 1 : taskRights.optInt("rightsTimesLimit", 1);
                     String sceneCode = taskBaseInfo.getString("sceneCode");
                     String taskType = taskBaseInfo.getString("taskType");
                     JSONObject bizInfo = new JSONObject(taskBaseInfo.getString("bizInfo"));
                     String taskTitle = bizInfo.getString("taskTitle");
                     if (TaskStatus.FINISHED.name().equals(taskStatus)) {
                         receiveTaskAward(sceneCode, taskType, taskTitle);
+                        //还有剩余档位时继续往下推进，做到一次进入推满
+                        if (rightsTimesLimit <= rightsTimes) {
+                            continue;
+                        }
+                    } else if (!TaskStatus.TODO.name().equals(taskStatus)) {
                         continue;
                     }
-                    if (TaskStatus.TODO.name().equals(taskStatus)) {
-                        if (finishTask(sceneCode, taskType, taskTitle)) {
+                    {
+                        //链接字段不同接口名字不同：targetUrl / taskJumpUrl / link 逐级回落（兼容空串）
+                        String targetUrl = TaskAlternative.firstNonEmpty(bizInfo.optString("targetUrl"),
+                                bizInfo.optString("taskJumpUrl"), bizInfo.optString("link"));
+                        //有剩余档位时循环推满
+                        int timesToDo = TaskAlternative.rightsTimesToDo(rightsTimes, rightsTimesLimit);
+                        //游戏类任务剩余档数=taskRequire-taskProgress（如「完成10个居民订单」=5档，每档2单）
+                        int taskRemain = Math.max(0, taskBaseInfo.optInt("taskRequire", 0)
+                                - taskBaseInfo.optInt("taskProgress", 0));
+                        for (int cnt = 0; cnt < timesToDo; cnt++) {
+                            if (!finishTask(sceneCode, taskType, taskTitle, targetUrl,
+                                    taskBaseInfo.optString("taskMode"),
+                                    taskBaseInfo.optString("taskPlayType", taskBaseInfo.optString("taskProdPlayType")),
+                                    rightsTimes, rightsTimesLimit, cnt, taskRemain)) {
+                                break;
+                            }
                             receiveTaskAward(sceneCode, taskType, taskTitle);
                         }
                     }
@@ -597,14 +620,22 @@ public class AntDodo extends ModelTask {
         }
     }
 
-    private Boolean finishTask(String sceneCode, String taskType, String taskTitle) {
+    private Boolean finishTask(String sceneCode, String taskType, String taskTitle, String targetUrl,
+            String taskMode, String taskPlayType, int rightsTimes, int rightsTimesLimit, int progressIndex,
+            int taskRemain) {
         try {
-            //第1步：待完成的游戏任务（不在游戏任务黑名单里的直接调备用接口完成）
-            if (TaskAlternative.handleGameTask("AntDodoTaskList", taskTitle, "TODO", taskType, sceneCode, sceneCode, "af-biodiversity")) {
-                return true;
-            }
-            //第2步：黑名单任务跳过
+            //第1步：黑名单任务跳过（游戏/跳转第三方任务由 TaskAlternative 执行一次后跳过）
             if (AntDodoTaskList.getValue().contains(taskTitle)) {
+                TaskAlternative.handleGameTask(new TaskAlternative.GameTask("AntDodoTaskList",
+                        taskTitle, "", targetUrl, "TODO")
+                        .bizKey(taskType)
+                        .rights(rightsTimes, rightsTimesLimit)
+                        .taskRemain(taskRemain)
+                        .taskPlayType(taskPlayType)
+                        .taskMode(taskMode)
+                        .taskSceneCode(sceneCode)
+                        .scene(sceneCode, "af-biodiversity")
+                        .version(AntDodoRpcCall.VERSION));
                 return false;
             }
             JSONObject jo = new JSONObject(AntDodoRpcCall.finishTask(sceneCode, taskType));
@@ -615,7 +646,8 @@ public class AntDodo extends ModelTask {
                 return false;
             }
             if (MessageUtil.checkSuccess(TAG, jo)) {
-                Log.forest("神奇物种🦕完成[" + taskTitle + "]");
+                Log.forest("神奇物种🦕完成[" + taskTitle + "]"
+                        + TaskAlternative.rightsProgressText(rightsTimes, rightsTimesLimit, progressIndex));
                 return true;
             }
         } catch (Throwable t) {

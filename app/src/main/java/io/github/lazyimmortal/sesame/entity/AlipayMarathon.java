@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import io.github.lazyimmortal.sesame.util.IconRegistry;
 import io.github.lazyimmortal.sesame.util.idMap.MarathonIdMap;
 
 public class AlipayMarathon extends IdAndName {
@@ -22,6 +23,9 @@ public class AlipayMarathon extends IdAndName {
             for (Map.Entry<String, String> entry : idSet) {
                 list.add(new AlipayMarathon(entry.getKey(), entry.getValue()));
             }
+        }
+        for (AlipayMarathon item : list) {
+            item.icon = IconRegistry.get(IconRegistry.SCOPE_MARATHON, item.id);
         }
         return list;
     }

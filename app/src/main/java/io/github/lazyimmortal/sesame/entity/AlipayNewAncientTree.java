@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import io.github.lazyimmortal.sesame.util.IconRegistry;
 import io.github.lazyimmortal.sesame.util.idMap.NewAncientTreeIdMap;
 
 public class AlipayNewAncientTree extends IdAndName {
@@ -22,6 +23,9 @@ public class AlipayNewAncientTree extends IdAndName {
             for (Map.Entry<String, String> entry : idSet) {
                 list.add(new AlipayNewAncientTree(entry.getKey(), entry.getValue()));
             }
+        }
+        for (AlipayNewAncientTree item : list) {
+            item.icon = IconRegistry.get(IconRegistry.SCOPE_ANCIENT_TREE, item.id);
         }
         return list;
     }

@@ -59,9 +59,9 @@ public class Status {
     // 通用每日计数（key=标记，跨天随unload自动重置）
     private final Map<String, Integer> dayCountLogList = new HashMap<>();
 
-    // 游戏任务每日提交次数（key=任务名称+描述+任务列表，跨天随unload自动重置）
+    // 游戏任务每日执行次数（key=task|任务名[描述]||任务列表类，一次执行只计 1 次、任务之间互不影响；跨天随unload自动重置）
     private final Map<String, Integer> gameTaskSubmitLogList = new HashMap<>();
-    
+
     // 保存时间
     private Long saveTime = 0L;
     
@@ -96,7 +96,7 @@ public class Status {
         save();
     }
 
-    /** 该游戏任务（任务名称+描述+任务列表）今日已提交次数。 */
+    /** 该任务今日已执行次数（key={@code task|任务名[描述]||任务列表类}）。 */
     public static int getGameTaskSubmitCountToday(String key) {
         Integer count = INSTANCE.gameTaskSubmitLogList.get(key);
         return count == null ? 0 : count;
@@ -106,7 +106,7 @@ public class Status {
         INSTANCE.gameTaskSubmitLogList.put(key, getGameTaskSubmitCountToday(key) + 1);
         save();
     }
-    
+
     //在写入status中时，重要数据提前记录Uid,一定程度上避免因支付宝账号切换导致标记到下一个账号的少数情况
     public static void flagToday(String tag, String taskUid) {
         if (!hasFlagToday(tag)) {

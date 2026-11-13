@@ -29,6 +29,17 @@ public class MessageUtil {
         return desc.contains("不支持rpc调用") || desc.contains("不支持RPC调用");
     }
 
+    /**
+     * 是否命中安全验证（风控）：服务端返回 error=1009「为了保障您的操作安全，请进行验证后继续。」。
+     * 该类失败不代表任务逻辑完成，不输出完成日志，也不计入每日执行次数。
+     */
+    public static boolean isSecurityVerify(JSONObject jo) {
+        if (jo == null) {
+            return false;
+        }
+        return jo.optInt("error") == 1009 || "1009".equals(jo.optString("errorTip", "").trim());
+    }
+
     public static JSONObject newJSONObject(String str) {
         try {
             return new JSONObject(str);
@@ -199,6 +210,8 @@ public class MessageUtil {
                 return "饲料";
             case "AntFarmDrawMachineTaskList":
                 return "装扮抽抽乐";
+            case "AntFarmChickenChefTaskList":
+                return "小鸡大厨";
             case "AntDodoTaskList":
                 return "神奇物种";
             case "AntOceanAntiepTaskList":
@@ -221,6 +234,32 @@ public class MessageUtil {
                 return "芝麻信用芝麻粒";
             default:
                 return listTitle;
+        }
+    }
+
+    /**
+     * 按任务列表来源输出日志：森林类写森林日志，庄园/农场类写庄园日志，其余写其他日志。
+     */
+    public static void logByTaskList(String listTitle, String message) {
+        switch (listTitle == null ? "" : listTitle) {
+            case "AntForestVitalityTaskList":
+            case "AntForestHuntTaskList":
+            case "MonopolyTaskList":
+            case "AntDodoTaskList":
+            case "AntOceanAntiepTaskList":
+            case "AntOceanFishBlackList":
+                Log.forest(message);
+                break;
+            case "AntFarmDoFarmTaskList":
+            case "AntFarmDrawMachineTaskList":
+            case "AntFarmChickenChefTaskList":
+            case "AntOrchardTaskList":
+            case "AntOrchardDrawTaskList":
+            case "GoldenBeansTaskList":
+                Log.farm(message);
+                break;
+            default:
+                Log.other(message);
         }
     }
 
@@ -287,6 +326,19 @@ public class MessageUtil {
                     }
                     if (canAddBlackList) {
                         MarkTaskBlackList("AntFarm", listTitle, "庄园装扮抽抽乐任务", taskTitle);
+                    }
+                    break;
+
+                //庄园小鸡大厨任务AntFarm
+                case "AntFarmChickenChefTaskList":
+                    if (jo.has("memo")) {
+                        String memo = jo.optString("memo");
+                        if (memo.contains("服务器正在开小差，请稍后再试～")) {
+                            canAddBlackList = true;
+                        }
+                    }
+                    if (canAddBlackList) {
+                        MarkTaskBlackList("AntFarm", listTitle, "庄园小鸡大厨任务", taskTitle);
                     }
                     break;
 

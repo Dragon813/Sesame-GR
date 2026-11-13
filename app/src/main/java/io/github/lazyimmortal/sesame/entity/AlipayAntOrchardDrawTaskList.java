@@ -11,16 +11,17 @@ import io.github.lazyimmortal.sesame.util.idMap.AntOrchardTaskListMap;
 public class AlipayAntOrchardDrawTaskList extends IdAndName {
     private static List<AlipayAntOrchardDrawTaskList> list;
 
-    public AlipayAntOrchardDrawTaskList(String i, String n) {
+    public AlipayAntOrchardDrawTaskList(String i, String n, String iconUrl) {
         id = i;
         name = n;
+    icon = iconUrl;
     }
 
     public static List<AlipayAntOrchardDrawTaskList> getList() {
         if (list == null) {
             list = new ArrayList<>();
             for (Map.Entry<String, String> entry : AntOrchardDrawTaskListMap.getMap().entrySet()) {
-                list.add(new AlipayAntOrchardDrawTaskList(entry.getKey(), entry.getValue()));
+                list.add(new AlipayAntOrchardDrawTaskList(entry.getKey(), entry.getKey(), entry.getValue()));
             }
         }
         return list;

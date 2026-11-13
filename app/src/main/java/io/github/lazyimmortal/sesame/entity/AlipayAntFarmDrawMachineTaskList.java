@@ -10,16 +10,17 @@ import io.github.lazyimmortal.sesame.util.idMap.AntFarmDrawMachineTaskListMap;
 public class AlipayAntFarmDrawMachineTaskList extends IdAndName {
     private static List<AlipayAntFarmDrawMachineTaskList> list;
 
-    public AlipayAntFarmDrawMachineTaskList(String i, String n) {
+    public AlipayAntFarmDrawMachineTaskList(String i, String n, String iconUrl) {
         id = i;
         name = n;
+    icon = iconUrl;
     }
 
     public static List<AlipayAntFarmDrawMachineTaskList> getList() {
         if (list == null) {
             list = new ArrayList<>();
             for (Map.Entry<String, String> entry : AntFarmDrawMachineTaskListMap.getMap().entrySet()) {
-                list.add(new AlipayAntFarmDrawMachineTaskList(entry.getKey(), entry.getValue()));
+                list.add(new AlipayAntFarmDrawMachineTaskList(entry.getKey(), entry.getKey(), entry.getValue()));
             }
         }
         return list;

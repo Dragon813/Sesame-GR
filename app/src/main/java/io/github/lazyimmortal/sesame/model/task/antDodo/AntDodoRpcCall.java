@@ -6,7 +6,7 @@ import io.github.lazyimmortal.sesame.util.RandomUtil;
 public class AntDodoRpcCall {
 
     /* 神奇物种 */
-    private static final String VERSION = "20241203";
+    public static final String VERSION = "20241203";
     public static String queryAnimalStatus() {
         return ApplicationHook.requestString("alipay.antdodo.rpc.h5.queryAnimalStatus",
                 "[{\"source\":\"chInfo_ch_appcenter__chsub_9patch\"}]");

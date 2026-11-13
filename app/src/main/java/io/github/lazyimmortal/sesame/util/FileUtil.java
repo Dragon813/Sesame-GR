@@ -541,6 +541,14 @@ public class FileUtil {
         return file;
     }
 
+    public static File getAntFarmChickenChefTaskListMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "AntFarmChickenChefTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+
     public static File getAntDodoTaskListMapFile() {
         File file = new File(MAIN_DIRECTORY_FILE, "AntDodoTask.json");
         if (file.exists() && file.isDirectory()) {
@@ -607,6 +615,24 @@ public class FileUtil {
 
     public static File getMiniGameTaskListMapFile() {
         File file = new File(MAIN_DIRECTORY_FILE, "MiniGameTask.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+
+    /** 游戏任务适配表（MiniGameTaskTable），与 MiniGameTask.json 平级；缺失/损坏时由默认表重建。 */
+    public static File getMiniGameTaskTableFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "MiniGameTaskTable.json");
+        if (file.exists() && file.isDirectory()) {
+            file.delete();
+        }
+        return file;
+    }
+
+    /** 游戏任务收集表的图标缓存（key=任务名[描述]，value=图标地址），与 MiniGameTask.json 平级 */
+    public static File getMiniGameTaskIconMapFile() {
+        File file = new File(MAIN_DIRECTORY_FILE, "MiniGameTaskIcon.json");
         if (file.exists() && file.isDirectory()) {
             file.delete();
         }
@@ -842,7 +868,7 @@ public class FileUtil {
         if (files == null) {
             return;
         }
-        //保留之前日志天数(除runtime): 0=按原逻辑删除全部非当天日志; N>0=保留前N天的非runtime日志(forest/farm/info等), runtime日志仍只保留当天
+        //保留之前日志天数: 0=按原逻辑删除全部非当天日志; N>0=保留前N天的日志(含runtime及其分页文件)
         int keepDays = 0;
         try {
             Integer configDays = BaseModel.backupLogDays.getValue();
@@ -867,14 +893,15 @@ public class FileUtil {
         for (File file : files) {
             String name = file.getName();
             boolean keep = false;
-            if (name.endsWith(today + ".log")) {
-                //当天日志小于100MB保留, 超过100MB删除后由日志框架重建
-                keep = file.length() < 104_857_600;
-            } else if (keepDays > 0 && !name.startsWith("runtime.")) {
-                //文件名格式: {type}.yyyy-MM-dd.log, 仅保留日期距今1~keepDays天的非runtime日志, 其余(含无法解析日期的文件)按原逻辑删除
-                Long fileDateMillis = parseLogDateMillis(name, sdf);
-                if (fileDateMillis != null) {
-                    long diffDays = Math.round((todayMillis - fileDateMillis) / 86_400_000.0);
+            //文件名格式: {type}.yyyy-MM-dd.log 或分页文件 {type}.yyyy-MM-dd.{序号}.log
+            Long fileDateMillis = parseLogDateMillis(name, sdf);
+            if (fileDateMillis != null) {
+                long diffDays = Math.round((todayMillis - fileDateMillis) / 86_400_000.0);
+                if (diffDays == 0) {
+                    //当天日志小于100MB保留, 超过100MB删除后由日志框架重建
+                    keep = file.length() < 104_857_600;
+                } else if (keepDays > 0) {
+                    //仅保留日期距今1~keepDays天的日志, 其余(含无法解析日期的文件)按原逻辑删除
                     keep = diffDays >= 1 && diffDays <= keepDays;
                 }
             }
@@ -890,15 +917,36 @@ public class FileUtil {
     }
 
     /**
-     * 从日志文件名解析日期(文件名格式 {type}.yyyy-MM-dd.log), 无法解析返回null
+     * 从日志文件名解析日期(文件名格式 {type}.yyyy-MM-dd.log 或 {type}.yyyy-MM-dd.{序号}.log), 无法解析返回null
      */
     private static Long parseLogDateMillis(String name, SimpleDateFormat sdf) {
-        if (!name.endsWith(".log") || name.length() < 15 || name.charAt(name.length() - 15) != '.') {
+        if (!name.endsWith(".log")) {
             return null;
         }
-        String dateStr = name.substring(name.length() - 14, name.length() - 4);
+        String base = name.substring(0, name.length() - 4);
+        int dot = base.lastIndexOf('.');
+        if (dot <= 0) {
+            return null;
+        }
+        //去掉分页序号后缀, 如 runtime.2026-11-07.1 -> runtime.2026-11-07
+        String page = base.substring(dot + 1);
+        if (!page.isEmpty() && page.matches("\\d+")) {
+            base = base.substring(0, dot);
+            dot = base.lastIndexOf('.');
+            if (dot <= 0) {
+                return null;
+            }
+        }
+        String dateStr = base.substring(dot + 1);
+        if (dateStr.length() != 10) {
+            return null;
+        }
         try {
-            return sdf.parse(dateStr).getTime();
+            Date date = sdf.parse(dateStr);
+            if (date == null || !sdf.format(date).equals(dateStr)) {
+                return null;
+            }
+            return date.getTime();
         } catch (Throwable t) {
             return null;
         }

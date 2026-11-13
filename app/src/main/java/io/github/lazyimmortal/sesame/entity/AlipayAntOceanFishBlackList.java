@@ -11,16 +11,17 @@ import io.github.lazyimmortal.sesame.util.idMap.AntOceanFishBlackListMap;
 public class AlipayAntOceanFishBlackList extends IdAndName {
     private static List<AlipayAntOceanFishBlackList> list;
 
-    public AlipayAntOceanFishBlackList(String i, String n) {
+    public AlipayAntOceanFishBlackList(String i, String n, String iconUrl) {
         id = i;
         name = n;
+    icon = iconUrl;
     }
 
     public static List<AlipayAntOceanFishBlackList> getList() {
         if (list == null) {
             list = new ArrayList<>();
             for (Map.Entry<String, String> entry : AntOceanFishBlackListMap.getMap().entrySet()) {
-                list.add(new AlipayAntOceanFishBlackList(entry.getKey(), entry.getValue()));
+                list.add(new AlipayAntOceanFishBlackList(entry.getKey(), entry.getKey(), entry.getValue()));
             }
         }
         return list;

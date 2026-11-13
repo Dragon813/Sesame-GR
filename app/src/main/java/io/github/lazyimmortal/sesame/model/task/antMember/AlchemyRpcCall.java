@@ -5,7 +5,7 @@ import io.github.lazyimmortal.sesame.hook.ApplicationHook;
 /**
  * 支付宝-芝麻炼金 RPC 封装
  * <p>
- * 接口命名空间 com.antgroup.zmxy.zmmemberop.biz.rpc.*，通过抓包 RPC.txt(2026-10-19) 分析得到。
+ * 接口命名空间 com.antgroup.zmxy.zmmemberop.biz.rpc.*（2026-10-19）。
  * 炼金消耗芝麻粒(alchemyCostZml=5粒/次)产出金币(goldNum)，每日上限alchemyDailyCap(25次)，
  * 炼金同时攒炼金金豆(上限100，满后由queryGoldenBean收取换金豆夺宝收益)。
  */
@@ -65,7 +65,7 @@ public class AlchemyRpcCall {
 
     /**
      * 查询炼金宝箱
-     * 响应data: hasBox是否有待开启宝箱(开启动作RPC未抓包到，暂仅查询占位)
+     * 响应data: hasBox是否有待开启宝箱(开启动作RPC暂未接入，仅查询占位)
      */
     public static String queryTreasureBox() {
         return ApplicationHook.requestString("com.antgroup.zmxy.zmmemberop.biz.rpc.AlchemyTreasureBoxRpcManager.query", "[{}]");

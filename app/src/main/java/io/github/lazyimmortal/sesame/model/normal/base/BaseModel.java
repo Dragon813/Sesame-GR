@@ -56,7 +56,10 @@ public class BaseModel extends Model {
     @Getter
     private static BooleanModelField debugMode;
 
-    /** 单个游戏任务的每日提交上限（所有任务共用该值，0=不提交，仅自动收集）；计数按项记录在 Status，跨天自动重置。 */
+    /**
+     * 带跳转链接的游戏任务，单个任务每天最多执行多少次（按「任务名[描述] + 列表」独立计数）。
+     * 计数的是任务执行次数：一次执行内部提交几次接口都只算 1 次；不同任务互不影响；0=不执行，仅自动收集。
+     */
     @Getter
     private static IntegerModelField maxGameTaskSubmitPerDay;
 
@@ -96,11 +99,17 @@ public class BaseModel extends Model {
     
     /** 该「任务名称 + 任务列表」是否被当前账号设为不允许执行。 */
     public static boolean isMiniGameTaskDisallowed(String taskTitle, String listTitle) {
+        return isMiniGameTaskDisallowed(taskTitle, "", listTitle);
+    }
+
+    /** 带描述的判定：新键为「任务名[描述] + 任务列表类」，同时兼容历史只存任务名的旧键。 */
+    public static boolean isMiniGameTaskDisallowed(String taskTitle, String desc, String listTitle) {
         Set<String> value = miniGameTaskDisallowList.getValue();
         if (value == null) {
             return false;
         }
-        return value.contains(MiniGameTaskListMap.key(taskTitle, listTitle));
+        return value.contains(MiniGameTaskListMap.key(MiniGameTaskListMap.name(taskTitle, desc), listTitle))
+                || value.contains(MiniGameTaskListMap.key(taskTitle, listTitle));
     }
 
     public void boot(ClassLoader classLoader) {
@@ -124,12 +133,11 @@ public class BaseModel extends Model {
         modelFields.addField(timeoutRestart = new BooleanModelField("timeoutRestart", "超时重启", true));
         modelFields.addField(waitWhenException = new IntegerModelField.MultiplyIntegerModelField("waitWhenException", "异常等待时间(分钟)", 60, 0, 24 * 60, 60_000));
         modelFields.addField(backupConfigDays = new IntegerModelField("backupConfigDays", "按天和修改备份配置保存数(滚动覆盖)", 5));
-        modelFields.addField(backupLogDays = new IntegerModelField("backupLogDays", "保留之前日志天数(除runtime)", 1));
+        modelFields.addField(backupLogDays = new IntegerModelField("backupLogDays", "保留之前日志天数", 1));
         modelFields.addField(newRpc = new BooleanModelField("newRpc", "使用新接口(最低支持v10.3.96.8100)", true));
         modelFields.addField(debugMode = new BooleanModelField("debugMode", "开启抓包(含小程序数据)", false));
-        modelFields.addField(maxGameTaskSubmitPerDay = new IntegerModelField("maxGameTaskSubmitPerDay", "游戏任务每日最大提交次数(单个任务,0=仅收集不执行)", 1, 0, 10));
-        modelFields.addField(miniGameTaskDisallowList = new SelectModelField("miniGameTaskDisallowList", "游戏任务 | 不允许执行列表(默认全执行)", new LinkedHashSet<>(), MiniGameTaskListMap::getOptions));
-        
+        modelFields.addField(maxGameTaskSubmitPerDay = new IntegerModelField("maxGameTaskSubmitPerDay", "链接任务单个每日最大执行次数(0=仅收集不执行)", 1, 0, 10));
+        modelFields.addField(miniGameTaskDisallowList = new SelectModelField("miniGameTaskDisallowList", "跳转任务 | 不允许执行列表(游戏、第三方)", new LinkedHashSet<>(), MiniGameTaskListMap::getOptions));
         modelFields.addField(rpcRequestList = new SelectAndCountModelField("rpcRequestList", "RPC请求列表及每日执行数(慎用)", new LinkedHashMap<>(), AlipayrpcRequest::getList, "请填写每日执行次数"));
         modelFields.addField(rpcRequestTaskList = new SelectModelField("rpcRequestTaskList", "RPC可选任务列表(长按列表中的项仅移除用，内容需打开rpcResquest.json文件配置)", new LinkedHashSet<>(), AlipayrpcRequest::getList, "长按删除RPC列表项用"));
         modelFields.addField(batteryPerm = new BooleanModelField("batteryPerm", "为支付宝申请后台运行权限", true));
@@ -172,6 +180,7 @@ public class BaseModel extends Model {
             AntForestHuntTaskListMap.clear();
             AntFarmDoFarmTaskListMap.clear();
             AntFarmDrawMachineTaskListMap.clear();
+            AntFarmChickenChefTaskListMap.clear();
             AntDodoTaskListMap.clear();
             AntOceanAntiepTaskListMap.clear();
             AntOceanFishBlackListMap.clear();

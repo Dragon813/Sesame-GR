@@ -21,7 +21,7 @@ import io.github.lazyimmortal.sesame.util.idMap.MiniGameTaskListMap;
 /**
  * 支付宝-金豆夺宝（芭芭农场下的新玩法）业务逻辑。
  * <p>
- * 已实现（接口均由抓包确认）：
+ * 已实现（接口均已确认）：
  * <ul>
  *     <li>领支金豆/金豆苗收取（调 index 时服务端自动收取，读 sproutCollectedDelta 记录）</li>
  *     <li>每日签到领金豆（sign）</li>
@@ -285,7 +285,7 @@ public class GoldenBean {
     /**
      * 金豆概况 + 领支金豆（金豆苗收取）。
      * <p>
-     * 抓包确认：调用 goldenbean.index 时服务端会自动收取金豆苗，收取量在 sproutCollectedDelta 里返回，
+     * 调用 goldenbean.index 时服务端会自动收取金豆苗，收取量在 sproutCollectedDelta 里返回，
      * 因此"领支金豆"无需额外请求——本方法只负责把已发生的收取记入日志，并打印一条中文金豆概况，便于监控。
      * 全程只读 index 数据，不发任何新请求，不影响原有功能。
      */
@@ -326,7 +326,7 @@ public class GoldenBean {
             int needForJar = Math.max(0, capacity - balance);
             //dbg("金豆概况: 金豆余额=" + balance + " 金豆罐=" + jarCount + " 距兑罐还需=" + needForJar + " 金豆苗待收=" + pendingBeans + " 待领任务奖励=" + taskAward);
             if (jarFull) {
-                //dbg("金豆概况: 金豆已满" + capacity + "，可兑换金豆罐(自动兑罐暂未实现，缺兑罐RPC抓包)");
+                //dbg("金豆概况: 金豆已满" + capacity + "，可兑换金豆罐(自动兑罐暂未实现，缺兑罐RPC)");
             }
         } catch (Throwable t) {
             //dbg("金豆概况解析异常: " + t.getMessage());
@@ -651,31 +651,45 @@ public class GoldenBean {
                 String sceneCode = task.optString("sceneCode");
                 String taskType = task.optString("taskId");
                 String taskStatus = task.optString("taskStatus");
+                int rightsTimes = task.optInt("rightsTimes", 0);
+                int rightsTimesLimit = task.optInt("rightsTimesLimit", 0);
                 JSONObject taskDisplayConfig = task.optJSONObject("taskDisplayConfig");
                 String title = taskDisplayConfig == null ? taskType : taskDisplayConfig.optString("title");
+
+                String desc = taskDisplayConfig == null ? "" : taskDisplayConfig.optString("desc");
+                String targetUrl = taskDisplayConfig == null ? "" : taskDisplayConfig.optString("targetUrl");
 
                 //第1步：可领奖任务优先领奖
                 if (taskStatus.equals("FINISHED") || taskStatus.equals("COMPLETED") || taskStatus.equals("TO_RECEIVE")) {
                     goldenBeansReceiveTaskAward(sceneCode, taskType, title, awardType);
-                    continue;
+                    //还有剩余档位时继续往下推进，做到一次进入推满
+                    if (rightsTimesLimit <= rightsTimes) {
+                        continue;
+                    }
                 }
                 //第2步：待完成的游戏任务（不在游戏任务黑名单里的直接调备用接口完成）
                 //游戏任务(GAME_ZH): 已知游戏走gamesapi2真实上报, 未知游戏保持原逻辑(借鉴参考实现)
                 if (taskDisplayConfig != null && "GAME_ZH".equals(taskDisplayConfig.optString("type")) && "TODO".equals(taskStatus)) {
                     //黑名单任务跳过
-                    if (BaseModel.isMiniGameTaskDisallowed(title, "GoldenBeansTaskList")) {
+                    if (BaseModel.isMiniGameTaskDisallowed(title, desc, "GoldenBeansTaskList")) {
                         continue;
                     }
                     if (handleGameTaskByReport(taskType, taskDisplayConfig, title)) {
                         continue;
                     }
                 }
-                if (TaskAlternative.handleGameTask("GoldenBeansTaskList", title, taskStatus,
-                        taskType, sceneCode, sceneCode, GoldenBeanRpcCall.SOURCE, GoldenBeanRpcCall.VERSION)) {
-                    continue;
-                }
-                //第3步：黑名单任务跳过
+                //第3步：黑名单任务跳过（游戏/跳转第三方任务由 TaskAlternative 执行一次后跳过）
                 if (GoldenBeansTaskList.contains(title)) {
+                    TaskAlternative.handleGameTask(new TaskAlternative.GameTask("GoldenBeansTaskList",
+                            title, desc, targetUrl, taskStatus)
+                            .bizKey(taskType)
+                            .rights(rightsTimes, rightsTimesLimit)
+                            .taskRemain(Math.max(0, task.optInt("taskRequire", 0) - task.optInt("taskProgress", 0)))
+                            .taskPlayType(task.optString("taskPlayType", task.optString("taskProdPlayType")))
+                            .taskMode(task.optString("taskMode"))
+                            .taskSceneCode(sceneCode)
+                            .scene(sceneCode, GoldenBeanRpcCall.SOURCE)
+                            .version(GoldenBeanRpcCall.VERSION));
                     continue;
                 }
                 if (taskStatus.equals("RECEIVED")) {
@@ -687,9 +701,18 @@ public class GoldenBean {
                     handleChangYongFangWen(title);
                     continue;
                 }
-                if (taskStatus.equals("TODO") && goldenBeansFinishTask(sceneCode, taskType, title,
-                        taskDisplayConfig == null ? "" : taskDisplayConfig.optString("desc", ""))) {
-                    goldenBeansReceiveTaskAward(sceneCode, taskType, title, awardType);
+                if (taskStatus.equals("TODO") || rightsTimesLimit > rightsTimes) {
+                    //有剩余档位时循环推满
+                    int timesToDo = TaskAlternative.rightsTimesToDo(rightsTimes, rightsTimesLimit);
+                    for (int cnt = 0; cnt < timesToDo; cnt++) {
+                        if (!goldenBeansFinishTask(sceneCode, taskType, title,
+                                taskDisplayConfig == null ? "" : taskDisplayConfig.optString("desc", ""),
+                                TaskAlternative.rightsProgressText(rightsTimes, rightsTimesLimit, cnt))) {
+                            break;
+                        }
+                        goldenBeansReceiveTaskAward(sceneCode, taskType, title, awardType);
+                        sleep(500);
+                    }
                     continue;
                 }
                 sleep(500);
@@ -699,7 +722,8 @@ public class GoldenBean {
         }
     }
 
-    private boolean goldenBeansFinishTask(String sceneCode, String taskType, String title, String taskDesc) {
+    private boolean goldenBeansFinishTask(String sceneCode, String taskType, String title, String taskDesc,
+            String progress) {
         try {
             JSONObject jo = new JSONObject(GoldenBeanRpcCall.finishTask(sceneCode, taskType));
             MessageUtil.checkResultCodeAndMarkTaskBlackList("GoldenBeansTaskList", title, jo);
@@ -708,7 +732,7 @@ public class GoldenBean {
                 return false;
             }
             if (MessageUtil.checkSuccess(TAG, jo)) {
-                Log.farm("农场金豆🧾完成任务[" + title + "]");
+                Log.farm("农场金豆🧾完成任务[" + title + "]" + progress);
                 return true;
             }
         } catch (Throwable t) {

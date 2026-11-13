@@ -10,16 +10,17 @@ import io.github.lazyimmortal.sesame.util.idMap.AntForestVitalityTaskListMap;
 public class AlipayAntForestVitalityTaskList extends IdAndName {
     private static List<AlipayAntForestVitalityTaskList> list;
 
-    public AlipayAntForestVitalityTaskList(String i, String n) {
+    public AlipayAntForestVitalityTaskList(String i, String n, String iconUrl) {
         id = i;
         name = n;
+    icon = iconUrl;
     }
 
     public static List<AlipayAntForestVitalityTaskList> getList() {
         if (list == null) {
             list = new ArrayList<>();
             for (Map.Entry<String, String> entry : AntForestVitalityTaskListMap.getMap().entrySet()) {
-                list.add(new AlipayAntForestVitalityTaskList(entry.getKey(), entry.getValue()));
+                list.add(new AlipayAntForestVitalityTaskList(entry.getKey(), entry.getKey(), entry.getValue()));
             }
         }
         return list;

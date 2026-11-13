@@ -24,7 +24,7 @@ import java.util.stream.IntStream;
 
 public class AntForestRpcCall {
 
-    private static String VERSION = "";
+    public static String VERSION = "";
 
     public static void init() {
         AlipayVersion alipayVersion = ApplicationHook.getAlipayVersion();
@@ -374,7 +374,7 @@ public class AntForestRpcCall {
         return "[{\"source\":\"" + MONOPOLY_SOURCE + "\",\"uniqueId\":\"" + RandomUtil.getRandomString(16) + "\"" + extra + "}]";
     }
 
-    /* 动物伙伴相关接口抓包来源为 monopoly_home_animal */
+    /* 动物伙伴相关接口的 source 为 monopoly_home_animal */
     private static String monopolyAnimalPayload(String extra) {
         return "[{\"source\":\"monopoly_home_animal\",\"uniqueId\":\"" + RandomUtil.getRandomString(16) + "\"" + extra + "}]";
     }
@@ -400,7 +400,7 @@ public class AntForestRpcCall {
         return ApplicationHook.requestString("alipay.antisle.monopoly.h5.eventConfirm", monopolyPayload(extra));
     }
 
-    /* 新版保护地任务列表：regionCode 放在 extend 里（与抓包一致），不同保护地区共用场景码、按 extend.regionCode 区分 */
+    /* 新版保护地任务列表：regionCode 放在 extend 里，不同保护地区共用场景码、按 extend.regionCode 区分 */
     public static String listMonopolyTasks(String regionCode, String sceneCode) {
         return ApplicationHook.requestString("com.alipay.antieptask.listTaskopengreen", "[{\"extend\":{\"regionCode\":\"" + regionCode + "\"},\"sceneCode\":\"" + sceneCode + "\",\"source\":\"ANTFOREST\"," + "\"requestType\":\"RPC\",\"zoneId\":\"Asia/Shanghai\",\"uniqueId\":\"" + RandomUtil.getRandomString(16) + "\"}]");
     }
@@ -410,7 +410,7 @@ public class AntForestRpcCall {
         return ApplicationHook.requestString("com.alipay.antieptask.finishTaskopengreen", "[{\"taskType\":\"" + taskType + "\",\"sceneCode\":\"" + sceneCode + "\",\"source\":\"ANTFOREST\"," + "\"requestType\":\"H5\",\"outBizNo\":\"" + taskType + "_" + System.currentTimeMillis() + "_" + RandomUtil.getRandomString(8) + "\"}]");
     }
 
-    /* 新版保护地任务前置：模拟打开保护地兑换页（projectId/source 取自任务 taskJumpUrl，抓包 version=20240704） */
+    /* 新版保护地任务前置：模拟打开保护地兑换页（projectId/source 取自任务 taskJumpUrl，version=20240704） */
     public static String queryMonopolyTreeForExchange(String projectId, String source) {
         return ApplicationHook.requestString("alipay.antforest.forest.h5.queryTreeForExchange", "[{\"projectId\":\"" + projectId + "\",\"source\":\"" + source + "\",\"version\":\"20240704\"}]");
     }

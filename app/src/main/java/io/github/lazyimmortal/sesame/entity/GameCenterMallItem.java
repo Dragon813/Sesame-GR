@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import io.github.lazyimmortal.sesame.util.IconRegistry;
 import io.github.lazyimmortal.sesame.util.idMap.GameCenterMallItemMap;
 
 public class GameCenterMallItem extends IdAndName {
@@ -18,7 +19,9 @@ public class GameCenterMallItem extends IdAndName {
         List<GameCenterMallItem> list = new ArrayList<>();
         Set<Map.Entry<String, String>> idSet = GameCenterMallItemMap.getMap().entrySet();
         for (Map.Entry<String, String> entry: idSet) {
-            list.add(new GameCenterMallItem(entry.getKey(), entry.getValue()));
+            GameCenterMallItem item = new GameCenterMallItem(entry.getKey(), entry.getValue());
+            item.icon = IconRegistry.get(IconRegistry.SCOPE_MALL_ITEM, entry.getKey());
+            list.add(item);
         }
         return list;
     }

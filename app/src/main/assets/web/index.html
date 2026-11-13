@@ -46,6 +46,13 @@
   </head>
 
   <body>
+    <!-- 首屏占位: vue/vant脚本解析与桥接取数期间先给出反馈, Vue挂载后移除 -->
+    <div
+      id="boot-tip"
+      style="position: fixed; top: 35%; left: 0; right: 0; text-align: center; color: #969799; font-size: 14px;"
+    >
+      加载中...
+    </div>
     <script src="./js/vue3.js"></script>
     <script src="./js/vant.js"></script>
     <div id="app" v-cloak>
@@ -460,32 +467,43 @@
             <van-field v-model="person_list.keys" placeholder="搜索..." />
           </div>
         </div>
-        <div class="dialog-list">
-          <van-list>
-            <van-cell
-              v-for="(item,index) in person_list.list.filter(item=>item.name.includes(person_list.keys))"
-              :key="item.id"
-            >
-              <van-checkbox v-model="item.isChecked" shape="square">
-                <div class="flex-space-between">
-                  <div
-                    :class="{'checked-label':item.count>0||item.isChecked,'list-label':true}"
-                  >
-                    {{index+1}}. {{item.name}}
-                  </div>
-                  <div class="w50" v-if="person_list.type!=='SELECT'">
-                    <van-field v-model="item.count" />
-                  </div>
-                </div>
-              </van-checkbox>
-            </van-cell>
-          </van-list>
+        <div class="dialog-list" ref="listBox" @scroll.passive="onListScroll">
+          <div
+            v-for="(item,index) in displayRows"
+            :key="item.id"
+            class="dl-row"
+            @click="toggleItem(item)"
+          >
+            <span class="dl-check" :class="{'dl-check-on':item.isChecked}"></span>
+            <img
+              v-if="item.icon"
+              :src="item.icon"
+              loading="lazy"
+              decoding="async"
+              class="dl-icon"
+            />
+            <span
+              v-else-if="item.iconText"
+              class="dl-icon dl-icon-text"
+            >{{item.iconText}}</span>
+            <span
+              class="dl-name"
+              :class="{'dl-name-on':item.count>0||item.isChecked}"
+            >{{index+1}}. {{item.name}}</span>
+            <input
+              v-if="person_list.type!=='SELECT'"
+              class="dl-count"
+              type="number"
+              v-model="item.count"
+              @click.stop
+            />
+          </div>
         </div>
       </van-dialog>
     </div>
 
     <script>
-      const { createApp, ref, computed, onMounted, watchEffect } = Vue;
+      const { createApp, ref, computed, onMounted, watch, watchEffect, nextTick } = Vue;
       const { showToast } = vant;
       createApp({
         setup() {
@@ -494,12 +512,27 @@
           const currentTab = ref(
             localStorage.getItem("theme") === "theme1" ? null : 0
           );
-          //设置默认值
-          const setData = ref(
-            tabs.value.map((item) => {
-              return JSON.parse(window.HOOK.getModel(item.modelCode));
-            })
-          );
+          // 各页签字段按需加载: 首屏只取当前页签, 其余展开时再通过桥接读取
+          const setData = ref(tabs.value.map(() => []));
+
+          function ensureModel(index) {
+            const i = Number(index);
+            if (!Number.isInteger(i) || i < 0 || i >= tabs.value.length) {
+              return;
+            }
+            if (setData.value[i] && setData.value[i].length) {
+              return;
+            }
+            setData.value[i] = JSON.parse(
+              window.HOOK.getModel(tabs.value[i].modelCode)
+            );
+          }
+
+          watch(currentTab, (val) => {
+            if (val !== null && val !== undefined) {
+              ensureModel(val);
+            }
+          });
 
           const theme = ref(localStorage.getItem("theme") || "theme2");
 
@@ -509,6 +542,7 @@
             title: "",
             code: "",
             list: [],
+            filtered: [],
             keys: "",
             type: "",
             modelName: "",
@@ -519,16 +553,44 @@
             localStorage.setItem("theme", theme.value);
           });
 
+          // 列表原始数据缓存: 同一列表反复打开免去重复的桥接传输与 JSON 解析
+          const listCache = {};
+
           function loadList(modelName, code, name, type) {
             window.history.pushState({ list: 1 }, "", "");
             person_list.value.visible = true;
             person_list.value.list = [];
-            let obj = JSON.parse(window.HOOK.getField(modelName, code));
+            person_list.value.filtered = [];
+            person_list.value.keys = "";
+            person_list.value.title = name;
+            person_list.value.code = code;
+            person_list.value.modelName = modelName;
+            person_list.value.type = type;
+            resetList();
+            // 先让弹窗渲染出来, 再取列表数据(桥接取数是同步的, 会阻塞JS线程)
+            setTimeout(() => fillList(modelName, code, type), 0);
+          }
+
+          function fillList(modelName, code, type) {
+            const cacheKey = modelName + "\u0000" + code;
+            let expandValue = listCache[cacheKey];
+            if (!expandValue) {
+              // 后台清单数据未就绪时轮询等待, 不阻塞界面
+              if (!window.HOOK.isListsReady()) {
+                setTimeout(() => fillList(modelName, code, type), 100);
+                return;
+              }
+              expandValue = JSON.parse(window.HOOK.getField(modelName, code)).expandValue;
+              listCache[cacheKey] = expandValue;
+            }
+            if (!person_list.value.visible || person_list.value.code !== code) {
+              return;
+            }
             let configValue = JSON.parse(
               setData.value[currentTab.value].find((i) => i.code === code)
                 .configValue
             );
-            let array = obj.expandValue
+            let array = expandValue
               .map((item) => {
                 return {
                   ...item,
@@ -546,43 +608,71 @@
               .sort((a, b) => a.name.localeCompare(b.name))
               .sort((a, b) => b.isChecked - a.isChecked || b.count - a.count);
 
-            let result = [];
-            for (let i = 0; i < array.length; i += 30) {
-              result.push(array.slice(i, i + 30));
+            //一次性预加载全部图标到浏览器缓存, 避免滚动到后面时逐张等待网络
+            array.forEach((it) => {
+              if (it.icon) {
+                const img = new Image();
+                img.src = it.icon;
+              }
+            });
+
+            person_list.value.list = array;
+            person_list.value.filtered = array;
+            resetList();
+          }
+
+          // 搜索词变化时只过滤一次, 结果供列表渲染
+          watch(
+            () => person_list.value.keys,
+            (keys) => {
+              person_list.value.filtered = keys
+                ? person_list.value.list.filter((item) => item.name.includes(keys))
+                : person_list.value.list.slice();
+              resetList();
             }
+          );
 
-            let _index = 0;
+          // 列表只先渲染前 N 条, 滚动到底部再追加, 避免一次性渲染上千行
+          const listBox = ref(null);
+          const listLimit = ref(80);
+          const displayRows = computed(() => person_list.value.filtered.slice(0, listLimit.value));
+          let listScrollRaf = null;
 
-            const refreshFrameCount = () => {
-              requestAnimationFrame(() => {
-                person_list.value.list.push(...result[_index]);
-                _index++;
-                if (_index < result.length && person_list.value.visible) {
-                  refreshFrameCount();
+          function onListScroll(e) {
+            const el = e.target;
+            if (listScrollRaf) {
+              return;
+            }
+            listScrollRaf = requestAnimationFrame(() => {
+              listScrollRaf = null;
+              if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) {
+                if (listLimit.value < person_list.value.filtered.length) {
+                  listLimit.value += 80;
                 }
-              });
-            };
+              }
+            });
+          }
 
-            refreshFrameCount();
-            // person_list.value.list = array.slice(0,60)
+          function resetList() {
+            listLimit.value = 80;
+            nextTick(() => {
+              if (listBox.value) {
+                listBox.value.scrollTop = 0;
+              }
+            });
+          }
 
-            person_list.value.title = name;
-            person_list.value.code = code;
-            person_list.value.modelName = modelName;
-            person_list.value.type = type;
+          function toggleItem(item) {
+            item.isChecked = !item.isChecked;
           }
 
           function changeAll(bol) {
-            let checkList = person_list.value.list.filter((item) =>
-              item.name.includes(person_list.value.keys)
-            );
-            person_list.value.list = person_list.value.list.map((item) => {
-              return {
-                ...item,
-                isChecked: checkList.find((_item) => _item.id === item.id)
-                  ? bol
-                  : item.isChecked,
-              };
+            const keys = person_list.value.keys;
+            // 直接改原对象, 保持 list 与 filtered 引用一致
+            person_list.value.list.forEach((item) => {
+              if (item.name.includes(keys)) {
+                item.isChecked = bol;
+              }
             });
           }
 
@@ -639,6 +729,10 @@
           function handleData() {
             if (!setData.value) return;
             tabs.value.forEach((item, index) => {
+              // 未展开过的页签没有改动, 不写回
+              if (!setData.value[index] || !setData.value[index].length) {
+                return;
+              }
               let params = {};
               setData.value[index].forEach((item) => {
                 params[item.code] = { configValue: item.configValue };
@@ -680,7 +774,14 @@
           window.isCanSave = true;
 
           onMounted(() => {
-            console.log("22222",setData.value);
+            // 页面挂载后再取当前页签字段, 避免首次渲染被桥接初始化阻塞
+            if (currentTab.value !== null && currentTab.value !== undefined) {
+              ensureModel(currentTab.value);
+            }
+            const bootTip = document.getElementById("boot-tip");
+            if (bootTip) {
+              bootTip.remove();
+            }
           });
 
           return {
@@ -688,7 +789,11 @@
             currentTab,
             setData,
             person_list,
+            listBox,
+            displayRows,
+            onListScroll,
             loadList,
+            toggleItem,
             changeAll,
             handleSubmitBtn,
             handleCancelBtn,

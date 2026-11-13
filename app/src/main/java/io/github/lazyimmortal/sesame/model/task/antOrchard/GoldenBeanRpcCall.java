@@ -9,16 +9,16 @@ import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
  * 支付宝-金豆夺宝（芭芭农场下的新玩法）RPC 封装
  * <p>
  * 接口命名空间 com.alipay.goldenbean.*，source 固定为 babafarm。
- * 通过抓包 debug.2026-08-18 分析得到，接口版本随支付宝更新可能变化。
+ * 接口版本随支付宝更新可能变化。
  */
 public class GoldenBeanRpcCall {
 
-    // 抓包中固定的版本号与来源（VERSION/SOURCE 供 doFarmTask 伪申报与 M 项目传参保持一致）
+    // 固定的版本号与来源（VERSION/SOURCE 供 doFarmTask 伪申报与 M 项目传参保持一致）
     public static final String VERSION = "20260803.01";
     public static final String SOURCE = "babafarm";
     private static final String BIZ_TYPE = "MASTER";
 
-    // 芝麻炼金入口参数（抓包 RPC.txt 2026-10-19：从炼金页进入金豆夺宝）
+    // 芝麻炼金入口参数（从炼金页进入金豆夺宝）
     public static final String BIZ_TYPE_ZHIMA = "ZHIMA";
     public static final String SOURCE_ZHIMA = "lianjin";
     public static final String VERSION_ZHIMA = "20260901.01";

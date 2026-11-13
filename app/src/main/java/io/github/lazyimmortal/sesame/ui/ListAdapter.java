@@ -2,7 +2,6 @@ package io.github.lazyimmortal.sesame.ui;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.Handler;
 import android.os.Looper;
@@ -14,15 +13,16 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import io.github.lazyimmortal.sesame.R;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.common.SelectModelFieldFunc;
+import io.github.lazyimmortal.sesame.entity.AlipayUser;
 import io.github.lazyimmortal.sesame.entity.FriendWatch;
 import io.github.lazyimmortal.sesame.entity.IdAndName;
+import io.github.lazyimmortal.sesame.util.FileUtil;
+import io.github.lazyimmortal.sesame.util.ImageZipCache;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.StringUtil;
-import io.github.lazyimmortal.sesame.util.FileUtil;
+import io.github.lazyimmortal.sesame.util.TaskIconUtil;
 
 import java.io.File;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -76,6 +76,33 @@ public class ListAdapter extends BaseAdapter {
         list = l;
         filterWord = null;
         filteredList = null;
+        prefetchIcons(l);
+    }
+
+    /* 列表打开时后台预下载全部图标到 zip 缓存, 避免快速滚动时逐行等网络出现1秒空档 */
+    private static void prefetchIcons(List<? extends IdAndName> items) {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+        List<String> taskIcons = new ArrayList<>();
+        List<String> avatars = new ArrayList<>();
+        for (IdAndName item : items) {
+            String url = item.getIcon();
+            if (!TaskIconUtil.isIconUrl(url)) {
+                continue;
+            }
+            if (item instanceof AlipayUser || item instanceof FriendWatch) {
+                avatars.add(url);
+            } else {
+                taskIcons.add(url);
+            }
+        }
+        if (!taskIcons.isEmpty()) {
+            TaskIconUtil.predownload(taskIcons);
+        }
+        if (!avatars.isEmpty()) {
+            predownloadAvatars(avatars);
+        }
     }
 
     public void setSelectedList(SelectModelFieldFunc selectModelFieldFunc) {
@@ -263,11 +290,13 @@ public class ListAdapter extends BaseAdapter {
             vh.tv = p2.findViewById(R.id.tv_idn);
             vh.cb = p2.findViewById(R.id.cb_list);
             vh.iv = p2.findViewById(R.id.iv_avatar);
+            vh.ivTaskIcon = p2.findViewById(R.id.iv_task_icon);
             vh.llHead = p2.findViewById(R.id.ll_head);
             vh.tvTitle = p2.findViewById(R.id.tv_title);
             vh.tvSub = p2.findViewById(R.id.tv_sub);
             vh.tvDelete = p2.findViewById(R.id.tv_delete);
             vh.tvAvatarText = p2.findViewById(R.id.tv_avatar_text);
+            vh.tvAvatarChar = p2.findViewById(R.id.tv_avatar_char);
             if (listType == ListDialog.ListType.SHOW) {
                 vh.cb.setVisibility(View.GONE);
             }
@@ -284,7 +313,7 @@ public class ListAdapter extends BaseAdapter {
         if (ai instanceof FriendWatch) {
             FriendWatch fw = (FriendWatch) ai;
             vh.llHead.setVisibility(View.VISIBLE);
-            vh.tvTitle.setText(fw.name);
+            vh.tvTitle.setText(StringUtil.isEmpty(fw.titleText) ? fw.name : fw.titleText);
             vh.tvSub.setText("userID:" + fw.id);
             int headColor = fw.delete ? Color.RED : Color.BLACK;
             vh.tvTitle.setTextColor(headColor);
@@ -292,22 +321,46 @@ public class ListAdapter extends BaseAdapter {
             vh.tv.setTextColor(fw.delete || findIndex == p1 ? Color.RED : Color.BLACK);
             vh.tvDelete.setVisibility(fw.delete ? View.VISIBLE : View.GONE);
             vh.tv.setText(fw.bodyText);
-            //头像: 有链接显示图片, 无链接显示firstAlphaChar单字符占位(同样48dp头像框), 都没有则隐藏
+            //头像: 有链接显示图片, 无链接按统一规则取标题首字占位(同样48dp头像框), 都没有则隐藏
             if (!StringUtil.isEmpty(fw.headImageUrl)) {
                 vh.tvAvatarText.setVisibility(View.GONE);
                 vh.iv.setVisibility(View.VISIBLE);
                 loadAvatar(vh.iv, fw.headImageUrl);
-            } else if (!StringUtil.isEmpty(fw.firstAlphaChar)) {
-                vh.iv.setVisibility(View.GONE);
-                vh.tvAvatarText.setVisibility(View.VISIBLE);
-                vh.tvAvatarText.setText(fw.firstAlphaChar);
             } else {
+                String placeholder = IdAndName.iconTextOf(StringUtil.isEmpty(fw.titleText) ? fw.name : fw.titleText);
                 vh.iv.setVisibility(View.GONE);
-                vh.tvAvatarText.setVisibility(View.GONE);
+                if (!placeholder.isEmpty()) {
+                    vh.tvAvatarText.setVisibility(View.VISIBLE);
+                    vh.tvAvatarText.setText(placeholder);
+                } else {
+                    vh.tvAvatarText.setVisibility(View.GONE);
+                }
             }
         } else {
             vh.llHead.setVisibility(View.GONE);
             vh.tv.setText(ai.name);
+            //任务清单条目: 有图标地址则加载缓存图标(磁盘命中直接显示, 缺失异步下载), 无则隐藏
+            String taskIcon = ai.getIcon();
+            if (TaskIconUtil.isIconUrl(taskIcon)) {
+                vh.ivTaskIcon.setVisibility(View.VISIBLE);
+                vh.tvAvatarChar.setVisibility(View.GONE);
+                if (ai instanceof AlipayUser) {
+                    //好友条目: 图标即头像, 走 avatar 缓存
+                    loadAvatar(vh.ivTaskIcon, taskIcon);
+                } else {
+                    loadTaskIcon(vh.ivTaskIcon, taskIcon);
+                }
+            } else {
+                //无图标(含好友无头像)时统一用实体计算的单字占位: 好友取通讯录首字母, 其余取标题首字拼音首字母大写
+                String placeholder = ai.getIconText();
+                vh.ivTaskIcon.setVisibility(View.GONE);
+                if (!placeholder.isEmpty()) {
+                    vh.tvAvatarChar.setVisibility(View.VISIBLE);
+                    vh.tvAvatarChar.setText(placeholder);
+                } else {
+                    vh.tvAvatarChar.setVisibility(View.GONE);
+                }
+            }
         }
         return p2;
     }
@@ -341,80 +394,51 @@ public class ListAdapter extends BaseAdapter {
         });
     }
 
-    /* 预下载全部头像到磁盘缓存(已缓存的跳过), 供好友表刷新后调用 */
+    /* 预下载全部头像到 zip 缓存(已缓存的跳过), 供好友表刷新后调用 */
     public static void predownloadAvatars(Collection<String> urls) {
-        if (urls == null || urls.isEmpty()) {
+        avatarZip().predownload(urls);
+    }
+
+    /* 头像统一收进 sesame/avatar.zip 单文件 */
+    private static ImageZipCache avatarZip;
+
+    private static synchronized ImageZipCache avatarZip() {
+        if (avatarZip == null) {
+            avatarZip = new ImageZipCache(new File(FileUtil.MAIN_DIRECTORY_FILE, "avatar.zip"));
+        }
+        return avatarZip;
+    }
+
+    /* zip 命中直接解码, 否则下载并写入 zip */
+    private static Bitmap downloadAndCache(String url) {
+        return avatarZip().loadOrDownload(url);
+    }
+
+    /* 任务图标内存缓存: 磁盘数据来自 sesame/taskicon.zip, 命中后才异步读包/下载 */
+    private static final Map<String, Bitmap> taskIconCache = new ConcurrentHashMap<>();
+
+    private static void loadTaskIcon(ImageView iv, String url) {
+        iv.setTag(url);
+        Bitmap cached = taskIconCache.get(url);
+        if (cached != null) {
+            iv.setImageBitmap(cached);
             return;
         }
+        iv.setImageDrawable(null);
         avatarExecutor.execute(() -> {
-            for (String url : urls) {
-                try {
-                    if (!StringUtil.isEmpty(url)) {
-                        downloadAndCache(url);
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-        });
-    }
-
-    /* 磁盘缓存命中直接解码, 否则网络下载并写磁盘缓存 */
-    private static Bitmap downloadAndCache(String url) throws Exception {
-        File cacheFile = getAvatarCacheFile(url);
-        if (cacheFile.isFile()) {
-            return BitmapFactory.decodeFile(cacheFile.getAbsolutePath());
-        }
-        HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-        conn.setConnectTimeout(5000);
-        conn.setReadTimeout(5000);
-        java.io.InputStream in = conn.getInputStream();
-        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
-        byte[] buf = new byte[8192];
-        int len;
-        while ((len = in.read(buf)) != -1) {
-            bos.write(buf, 0, len);
-        }
-        in.close();
-        conn.disconnect();
-        byte[] data = bos.toByteArray();
-        Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.length);
-        if (bmp != null) {
-            //写入磁盘缓存, URL变化即换新文件, 无需清理旧图
-            java.io.FileOutputStream fos = new java.io.FileOutputStream(cacheFile);
-            fos.write(data);
-            fos.close();
-        }
-        return bmp;
-    }
-
-    private static File getAvatarCacheFile(String url) {
-        File dir = new File(FileUtil.MAIN_DIRECTORY_FILE, "avatar");
-        if (!dir.exists()) {
-            dir.mkdirs();
-        }
-        //在该目录放置.nomedia文件, 阻止系统媒体扫描器索引, 头像图片不会出现在相册
-        File nomedia = new File(dir, ".nomedia");
-        if (!nomedia.exists()) {
             try {
-                nomedia.createNewFile();
+                Bitmap bmp = TaskIconUtil.downloadAndGet(url);
+                if (bmp != null) {
+                    taskIconCache.put(url, bmp);
+                    mainHandler.post(() -> {
+                        if (url.equals(iv.getTag())) {
+                            iv.setImageBitmap(bmp);
+                        }
+                    });
+                }
             } catch (Throwable ignored) {
             }
-        }
-        return new File(dir, md5(url) + ".png");
-    }
-
-    private static String md5(String s) {
-        try {
-            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("MD5");
-            byte[] bytes = digest.digest(s.getBytes("UTF-8"));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : bytes) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (Throwable t) {
-            return String.valueOf(s.hashCode());
-        }
+        });
     }
 
     public static List<ViewHolder> viewHolderList;
@@ -423,11 +447,13 @@ public class ListAdapter extends BaseAdapter {
         TextView tv;
         CheckBox cb;
         ImageView iv;
+        ImageView ivTaskIcon;
         android.widget.LinearLayout llHead;
         TextView tvTitle;
         TextView tvSub;
         TextView tvDelete;
         TextView tvAvatarText;
+        TextView tvAvatarChar;
     }
 
 }

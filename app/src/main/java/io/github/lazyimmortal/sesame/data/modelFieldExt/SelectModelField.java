@@ -3,10 +3,11 @@ package io.github.lazyimmortal.sesame.data.modelFieldExt;
 
 import android.content.Context;
 import android.view.Gravity;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
 
@@ -61,18 +62,34 @@ public class SelectModelField extends ModelField<Set<String>> implements SelectM
 
     @Override
     public View getView(Context context) {
-        Button btn = new Button(context);
-        btn.setText(getName());
-        btn.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        btn.setTextColor(ContextCompat.getColor(context, R.color.button));
-        btn.setBackground(ContextCompat.getDrawable(context, R.drawable.button));
-        btn.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-        btn.setMinHeight(150);
-        btn.setMaxHeight(180);
-        btn.setPaddingRelative(40, 0, 40, 0);
-        btn.setAllCaps(false);
-        btn.setOnClickListener(v -> ListDialog.show(v.getContext(), ((Button) v).getText(), this));
-        return btn;
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        row.setBackground(ContextCompat.getDrawable(context, R.drawable.button));
+        row.setMinimumHeight(150);
+        row.setPaddingRelative(40, 0, 40, 0);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        
+        TextView title = new TextView(context);
+        title.setText(getName());
+        title.setTextColor(ContextCompat.getColor(context, R.color.button));
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        title.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        
+        TextView count = new TextView(context);
+        count.setTextColor(ContextCompat.getColor(context, R.color.button));
+        count.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        count.setText("已设置数：" + getValue().size());
+        int gap = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 12, context.getResources().getDisplayMetrics());
+        count.setPaddingRelative(gap, 0, 0, 0);
+        
+        row.addView(title);
+        row.addView(count);
+        row.setOnClickListener(v -> {
+            ListDialog.setOnDismissCallback(() -> count.setText("已设置数：" + getValue().size()));
+            ListDialog.show(v.getContext(), getName(), this);
+        });
+        return row;
     }
 
     @Override

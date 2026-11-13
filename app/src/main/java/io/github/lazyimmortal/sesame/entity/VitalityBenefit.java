@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import io.github.lazyimmortal.sesame.util.IconRegistry;
 import io.github.lazyimmortal.sesame.util.idMap.VitalityBenefitIdMap;
 
 public class VitalityBenefit extends IdAndName {
@@ -18,7 +19,9 @@ public class VitalityBenefit extends IdAndName {
         List<VitalityBenefit> list = new ArrayList<>();
         Set<Map.Entry<String, String>> idSet = VitalityBenefitIdMap.getMap().entrySet();
         for (Map.Entry<String, String> entry: idSet) {
-            list.add(new VitalityBenefit(entry.getKey(), entry.getValue()));
+            VitalityBenefit item = new VitalityBenefit(entry.getKey(), entry.getValue());
+            item.icon = IconRegistry.get(IconRegistry.SCOPE_VITALITY_BENEFIT, entry.getKey());
+            list.add(item);
         }
         return list;
     }

@@ -16,7 +16,7 @@ import java.util.Set;
  */
 public class AntOceanRpcCall {
     //private static final String VERSION = "20230901";
-    private static final String VERSION = "20241203";
+    public static final String VERSION = "20241203";
     
     public static String getUniqueId() {
         return String.valueOf(System.currentTimeMillis()) + RandomUtil.nextLong();
@@ -272,6 +272,22 @@ public class AntOceanRpcCall {
     public static String antfishTouchfish() {
         return ApplicationHook.requestString("alipay.antaifish.h5.touchfish", 
             "[{\"source\":\"ANT_OCEAN\",\"uniqueId\":\"" + getAntfishUniqueId() + "\"}]");
+    }
+
+    /**
+     * 查询可点赞的鱼
+     */
+    public static String antfishQueryAppraiseList() {
+        return ApplicationHook.requestString("alipay.antaifish.h5.queryNeedAppraiseFishList",
+            "[{\"source\":\"ANT_OCEAN\",\"uniqueId\":\"" + getAntfishUniqueId() + "\"}]");
+    }
+
+    /**
+     * 点赞鱼并获得能量
+     */
+    public static String antfishAppraise(String imageId, String seasonId, String targetUserId) {
+        return ApplicationHook.requestString("alipay.antaifish.h5.fishAppraise",
+            "[{\"appraiseType\":\"LIKE\",\"imageId\":\"" + imageId + "\",\"seasonId\":\"" + seasonId + "\",\"source\":\"ANT_OCEAN\",\"targetUserId\":\"" + targetUserId + "\",\"uniqueId\":\"" + getAntfishUniqueId() + "\"}]");
     }
 
     /**

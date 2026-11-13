@@ -152,7 +152,9 @@ public class MerchantService {
                 JSONObject jo = new JSONObject(MerchantServiceRpcCall.taskActionProduce(actionCode));
                 if (MessageUtil.checkSuccess(TAG, jo)) {
                     String title = task.getString("title");
-                    Log.other("商家服务🏪完成[" + title + "]");
+                    int target = task.getInt("target");
+                    Log.other("商家服务🏪完成[" + title + "]"
+                            + (target > 1 ? "（" + Math.min(target, task.getInt("current") + i + 1) + "/" + target + "）" : ""));
                 } TimeUtil.sleep(5000);
             }
         } catch (Throwable t) {

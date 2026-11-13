@@ -10,7 +10,7 @@ import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
 public class AntOrchardRpcCall {
 
-    private static final String VERSION = "20250812.01";
+    public static final String VERSION = "20250812.01";
 
     public static String orchardIndex() {
         return ApplicationHook.requestString("com.alipay.antfarm.orchardIndex", "[{\"inHomepage\":\"true\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ORCHARD\",\"source\":\"ch_appcenter__chsub_9patch\",\"version\":\"" + VERSION + "\"}]");
@@ -40,8 +40,12 @@ public class AntOrchardRpcCall {
         return ApplicationHook.requestString("com.alipay.antorchard.extraInfoSet", "[{\"bizCode\":\"fertilizerPacket\",\"bizParam\":{\"action\":\"queryCollectFertilizerPacket\"},\"requestType\":\"NORMAL\",\"sceneCode\":\"ORCHARD\",\"source\":\"ch_appcenter__chsub_9patch\",\"version\":\"" + VERSION + "\"}]");
     }
 
-    public static String querySubplotsActivity(String treeLevel) {
-        return ApplicationHook.requestString("com.alipay.antorchard.querySubplotsActivity", "[{\"activityType\":[\"WISH\",\"BATTLE\",\"HELP_FARMER\",\"DEFOLIATION\",\"CAMP_TAKEOVER\"],\"inHomepage\":false,\"requestType\":\"NORMAL\",\"sceneCode\":\"ORCHARD\"," + "\"source" + "\":\"ch_appcenter__chsub_9patch\",\"treeLevel\":\"" + treeLevel + "\",\"version\":\"" + VERSION + "\"}]");
+    /**
+     * 查询子场景活动（WISH / CAMP_TAKEOVER / BATTLE_V2 共用同一接口）
+     * 客户端实际请求即带 appMode/inHomePage，返回内容由 activityType 列表决定
+     */
+    public static String querySubplotsActivity() {
+        return ApplicationHook.requestString("com.alipay.antorchard.querySubplotsActivity", "[{\"activityType\":[\"WISH\",\"BATTLE\",\"BATTLE_V2\",\"HELP_FARMER\",\"DEFOLIATION\",\"CAMP_TAKEOVER\"],\"appMode\":\"normal\",\"inHomePage\":false,\"requestType\":\"NORMAL\",\"sceneCode\":\"ORCHARD\",\"source\":\"ch_appcollect__chsub_my-recentlyUsed\",\"version\":\"" + VERSION + "\"}]");
     }
 
     public static String triggerSubplotsActivity(String activityId, String activityType, String optionKey) {

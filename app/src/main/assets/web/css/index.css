@@ -443,6 +443,9 @@ video {
   position: relative;
   border-top: 1px solid #f6f6f6;
   font-size: 14px !important; /* 统一对话框列表基础字体 */
+  max-height: 62vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .dialog-list .dialog-list-item {
@@ -466,6 +469,96 @@ video {
   -ms-overflow-style: none; /* Internet Explorer 10+ */
   font-size: 14px !important; /* 减小滚动列表内容字体 */
 }
+
+/* 轻量列表行: 用原生元素替代 Vant 组件, 大幅降低大列表渲染开销 */
+.dialog-list .dl-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  min-height: 50px;
+  box-sizing: border-box;
+  font-size: 14px;
+  line-height: 20px;
+  color: #323233;
+}
+
+.dialog-list .dl-check {
+  width: 22px;
+  height: 22px;
+  margin: 0 10px 0 0;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border: 1px solid #c8c9cc;
+  border-radius: 2px;
+  background: #fff;
+  position: relative;
+}
+
+.dialog-list .dl-check-on {
+  background: #1989fa;
+  border-color: #1989fa;
+}
+
+.dialog-list .dl-check-on::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 6px;
+  height: 11px;
+  border: 2px solid #fff;
+  border-top: 0;
+  border-left: 0;
+  transform: rotate(45deg);
+}
+
+.dialog-list .dl-icon {
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+/* 无图标时的单字占位, 与原生列表保持一致 */
+.dialog-list .dl-icon-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #dce5ea;
+  color: #546e7a;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 28px;
+}
+
+.dialog-list .dl-name {
+  flex: 1;
+  word-break: break-all;
+}
+
+.dialog-list .dl-name-on {
+  color: #216eee;
+}
+
+.dialog-list .dl-count {
+  width: 50px;
+  height: 30px;
+  margin-left: 8px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  padding: 0 5px;
+  border: 1px solid #e5dbdb;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 14px;
+  text-align: center;
+  color: #323233;
+  outline: none;
+  -webkit-appearance: none;
+}
+
 .output-content-container {
   max-height: 70vh;
 }

@@ -25,8 +25,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 import io.github.lazyimmortal.sesame.BuildConfig;
 import io.github.lazyimmortal.sesame.R;
@@ -40,19 +42,19 @@ import io.github.lazyimmortal.sesame.data.ModelGroup;
 import io.github.lazyimmortal.sesame.data.modelFieldExt.common.SelectModelFieldFunc;
 import io.github.lazyimmortal.sesame.data.task.ModelTask;
 import io.github.lazyimmortal.sesame.entity.AlipayUser;
-import io.github.lazyimmortal.sesame.model.extensions.ExtensionsHandle;
 import io.github.lazyimmortal.sesame.ui.dto.ModelDto;
 import io.github.lazyimmortal.sesame.ui.dto.ModelFieldInfoDto;
 import io.github.lazyimmortal.sesame.ui.dto.ModelFieldShowDto;
 import io.github.lazyimmortal.sesame.ui.dto.ModelGroupDto;
-import io.github.lazyimmortal.sesame.util.AESUtil;
 import io.github.lazyimmortal.sesame.util.FileUtil;
+import io.github.lazyimmortal.sesame.util.IconRegistry;
 import io.github.lazyimmortal.sesame.util.JsonUtil;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.ToastUtil;
 import io.github.lazyimmortal.sesame.util.idMap.AnimalIdMap;
 import io.github.lazyimmortal.sesame.util.idMap.AntDodoTaskListMap;
+import io.github.lazyimmortal.sesame.util.idMap.AntFarmChickenChefTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.AntFarmDoFarmTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.AntFarmDrawMachineTaskListMap;
 import io.github.lazyimmortal.sesame.util.idMap.AntForestHuntTaskListMap;
@@ -99,6 +101,14 @@ public class NewSettingsActivity extends BaseActivity {
     
     private final List<ModelGroupDto> groupList = new ArrayList<>();
     
+    /* 列表字段序列化结果缓存: 同一列表反复打开时免去整表重新序列化(选择值变更时清空) */
+    private final Map<String, String> fieldJsonCache = new HashMap<>();
+    
+    /* 后台初始化完成信号: 模型/配置/各清单 三段就绪 */
+    private final CountDownLatch initLatch = new CountDownLatch(1);
+    private final CountDownLatch configLatch = new CountDownLatch(1);
+    private final CountDownLatch listLatch = new CountDownLatch(1);
+    
     @Override
     public String getBaseSubtitle() {
         return getString(R.string.settings);
@@ -117,41 +127,8 @@ public class NewSettingsActivity extends BaseActivity {
             userName = intent.getStringExtra("userName");
             debug = intent.getBooleanExtra("debug", debug);
         }
-        Model.initAllModel();
-        UserIdMap.setCurrentUserId(userId);
-        UserIdMap.load(userId);
-        CooperationIdMap.load(userId);
-        VitalityBenefitIdMap.load(userId);
-        GameCenterMallItemMap.load(userId);
-        FarmOrnamentsIdMap.load(userId);
-        MemberBenefitIdMap.load(userId);
-        PromiseSimpleTemplateIdMap.load(userId);
-        TreeIdMap.load();
-        ReserveIdMap.load();
-        AnimalIdMap.load();
-        MarathonIdMap.load();
-        NewAncientTreeIdMap.load();
-        BeachIdMap.load();
-        PlantSceneIdMap.load();
-        rpcRequestMap.load();
-        ForestHuntIdMap.load();
-        MemberCreditSesameTaskListMap.load();
-        AntForestVitalityTaskListMap.load();
-        AntForestHuntTaskListMap.load();
-        AntFarmDoFarmTaskListMap.load();
-        AntFarmDrawMachineTaskListMap.load();
-        AntDodoTaskListMap.load();
-        AntOceanAntiepTaskListMap.load();
-        AntOceanFishBlackListMap.load();
-        AntOrchardTaskListMap.load();
-        AntOrchardDrawTaskListMap.load();
-        GoldenBeansTaskListMap.load();
-        MonopolyTaskListMap.load();
-        AntStallTaskListMap.load();
-        AntSportsTaskListMap.load();
-        AntMemberTaskListMap.load();
-        PathThemeMapListMap.load();
-        ConfigV2.load(userId);
+        //配置与各清单的加载放到后台线程, 避免阻塞界面首屏; JS 通过桥接访问时等待加载完成
+        new Thread(this::doInit, "settings-init").start();
         setContentView(R.layout.activity_new_settings);
         if (userName != null) {
             setBaseSubtitle(getString(R.string.settings) + ": " + userName);
@@ -198,26 +175,112 @@ public class NewSettingsActivity extends BaseActivity {
             WebView.setWebContentsDebuggingEnabled(true);
         }
         webView.addJavascriptInterface(new WebViewCallback(), "HOOK");
-        if (ExtensionsHandle.handleAlphaRequest("enableDeveloperMode", null, null) == null) {
-            String htmlData = AESUtil.loadDecryptHtmlData(context);
-            //Log.other("AESUtil.loadDecryptHtmlData(context):" + htmlData);
-            webView.loadDataWithBaseURL("file:///android_asset/web/", htmlData, "text/html", "UTF-8", null);
-        }
-        else {
-            webView.loadUrl("file:///android_asset/web/index.html");
-            //        webView.loadUrl("http://192.168.31.32:5500/app/src/main/assets/web/index.html");
-        }
         webView.loadUrl("file:///android_asset/web/index.html");
         webView.requestFocus();
-        
-        Map<String, ModelConfig> modelConfigMap = ModelTask.getModelConfigMap();
-        for (Map.Entry<String, ModelConfig> configEntry : modelConfigMap.entrySet()) {
-            ModelConfig modelConfig = configEntry.getValue();
-            tabList.add(new ModelDto(configEntry.getKey(), modelConfig.getName(), modelConfig.getIcon(), null));
+    }
+    
+    /**
+     * 后台初始化: 构建全部模型并加载各清单/配置, 完成后放行桥接调用
+     */
+    private void doInit() {
+        //第一阶段: 模型与页签, 决定首屏能否渲染
+        try {
+            Model.initAllModel();
+            UserIdMap.setCurrentUserId(userId);
+            Map<String, ModelConfig> modelConfigMap = ModelTask.getModelConfigMap();
+            for (Map.Entry<String, ModelConfig> configEntry : modelConfigMap.entrySet()) {
+                ModelConfig modelConfig = configEntry.getValue();
+                tabList.add(new ModelDto(configEntry.getKey(), modelConfig.getName(), modelConfig.getIcon(), null));
+            }
+            for (ModelGroup modelGroup : ModelGroup.values()) {
+                groupList.add(new ModelGroupDto(modelGroup.getCode(), modelGroup.getName(), modelGroup.getIcon()));
+            }
+        } catch (Throwable t) {
+            Log.printStackTrace(t);
+        } finally {
+            initLatch.countDown();
         }
-        
-        for (ModelGroup modelGroup : ModelGroup.values()) {
-            groupList.add(new ModelGroupDto(modelGroup.getCode(), modelGroup.getName(), modelGroup.getIcon()));
+        //第二阶段: 好友表与配置值, 页签字段渲染时等待
+        try {
+            UserIdMap.load(userId);
+            ConfigV2.load(userId);
+        } catch (Throwable t) {
+            Log.printStackTrace(t);
+        } finally {
+            configLatch.countDown();
+        }
+        //第三阶段: 各选择列表数据, 打开列表时等待
+        try {
+            CooperationIdMap.load(userId);
+            VitalityBenefitIdMap.load(userId);
+            GameCenterMallItemMap.load(userId);
+            FarmOrnamentsIdMap.load(userId);
+            MemberBenefitIdMap.load(userId);
+            PromiseSimpleTemplateIdMap.load(userId);
+            TreeIdMap.load();
+            ReserveIdMap.load();
+            AnimalIdMap.load();
+            MarathonIdMap.load();
+            NewAncientTreeIdMap.load();
+            BeachIdMap.load();
+            PlantSceneIdMap.load();
+            IconRegistry.load();
+            rpcRequestMap.load();
+            ForestHuntIdMap.load();
+            MemberCreditSesameTaskListMap.load();
+            AntForestVitalityTaskListMap.load();
+            AntForestHuntTaskListMap.load();
+            AntFarmDoFarmTaskListMap.load();
+            AntFarmDrawMachineTaskListMap.load();
+            AntFarmChickenChefTaskListMap.load();
+            AntDodoTaskListMap.load();
+            AntOceanAntiepTaskListMap.load();
+            AntOceanFishBlackListMap.load();
+            AntOrchardTaskListMap.load();
+            AntOrchardDrawTaskListMap.load();
+            GoldenBeansTaskListMap.load();
+            MonopolyTaskListMap.load();
+            AntStallTaskListMap.load();
+            AntSportsTaskListMap.load();
+            AntMemberTaskListMap.load();
+            PathThemeMapListMap.load();
+        } catch (Throwable t) {
+            Log.printStackTrace(t);
+        } finally {
+            listLatch.countDown();
+        }
+    }
+    
+    /**
+     * 等待后台初始化完成(在桥接/保存线程调用), 保证模型与清单可用
+     */
+    private void awaitInit() {
+        try {
+            initLatch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+    
+    /**
+     * 等待配置值加载完成(渲染页签字段时使用)
+     */
+    private void awaitConfig() {
+        try {
+            configLatch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+    
+    /**
+     * 等待各选择列表数据加载完成(仅打开列表/保存时使用)
+     */
+    private void awaitLists() {
+        try {
+            listLatch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
     
@@ -255,6 +318,7 @@ public class NewSettingsActivity extends BaseActivity {
         
         @JavascriptInterface
         public String getTabs() {
+            awaitInit();
             return JsonUtil.toJsonString(tabList);
         }
 
@@ -275,11 +339,14 @@ public class NewSettingsActivity extends BaseActivity {
         
         @JavascriptInterface
         public String getGroup() {
+            awaitInit();
             return JsonUtil.toJsonString(groupList);
         }
         
         @JavascriptInterface
         public String getModelByGroup(String groupCode) {
+            awaitInit();
+            awaitConfig();
             Collection<ModelConfig> modelConfigCollection = ModelTask.getGroupModelConfig(ModelGroup.getByCode(groupCode)).values();
             List<ModelDto> modelDtoList = new ArrayList<>();
             for (ModelConfig modelConfig : modelConfigCollection) {
@@ -294,9 +361,12 @@ public class NewSettingsActivity extends BaseActivity {
         
         @JavascriptInterface
         public String setModelByGroup(String groupCode, String modelsValue) {
+            awaitInit();
+            awaitConfig();
             List<ModelDto> modelDtoList = JsonUtil.parseObject(modelsValue, new TypeReference<List<ModelDto>>() {
             });
             Map<String, ModelConfig> modelConfigSet = ModelTask.getGroupModelConfig(ModelGroup.getByCode(groupCode));
+            fieldJsonCache.clear();
             for (ModelDto modelDto : modelDtoList) {
                 ModelConfig modelConfig = modelConfigSet.get(modelDto.getModelCode());
                 if (modelConfig != null) {
@@ -318,6 +388,8 @@ public class NewSettingsActivity extends BaseActivity {
         
         @JavascriptInterface
         public String getModel(String modelCode) {
+            awaitInit();
+            awaitConfig();
             ModelConfig modelConfig = ModelTask.getModelConfigMap().get(modelCode);
             if (modelConfig != null) {
                 ModelFields modelFields = modelConfig.getFields();
@@ -332,12 +404,15 @@ public class NewSettingsActivity extends BaseActivity {
         
         @JavascriptInterface
         public String setModel(String modelCode, String fieldsValue) {
+            awaitInit();
+            awaitConfig();
             ModelConfig modelConfig = ModelTask.getModelConfigMap().get(modelCode);
             if (modelConfig != null) {
                 try {
                     ModelFields modelFields = modelConfig.getFields();
                     Map<String, ModelFieldShowDto> map = JsonUtil.parseObject(fieldsValue, new TypeReference<Map<String, ModelFieldShowDto>>() {
                     });
+                    fieldJsonCache.clear();
                     for (Map.Entry<String, ModelFieldShowDto> entry : map.entrySet()) {
                         ModelFieldShowDto newModelField = entry.getValue();
                         if (newModelField != null) {
@@ -358,24 +433,41 @@ public class NewSettingsActivity extends BaseActivity {
         
         @JavascriptInterface
         public String getField(String modelCode, String fieldCode) {
+            awaitInit();
+            awaitConfig();
+            awaitLists();
+            String cacheKey = modelCode + "\u0000" + fieldCode;
+            String cached = fieldJsonCache.get(cacheKey);
+            if (cached != null) {
+                return cached;
+            }
             ModelConfig modelConfig = ModelTask.getModelConfigMap().get(modelCode);
             if (modelConfig != null) {
                 ModelField<?> modelField = modelConfig.getModelField(fieldCode);
                 if (modelField != null) {
-                    return JsonUtil.toJsonString(ModelFieldInfoDto.toInfoDto(modelField));
+                    String json = JsonUtil.toJsonString(ModelFieldInfoDto.toInfoDto(modelField));
+                    fieldJsonCache.put(cacheKey, json);
+                    return json;
                 }
             }
             return null;
         }
         
         @JavascriptInterface
+        public boolean isListsReady() {
+            return initLatch.getCount() == 0 && configLatch.getCount() == 0 && listLatch.getCount() == 0;
+        }
+        
+        @JavascriptInterface
         public String setField(String modelCode, String fieldCode, String fieldValue) {
+            awaitInit();
             ModelConfig modelConfig = ModelTask.getModelConfigMap().get(modelCode);
             if (modelConfig != null) {
                 try {
                     ModelField<?> modelField = modelConfig.getModelField(fieldCode);
                     if (modelField != null) {
                         modelField.setConfigValue(fieldValue);
+                        fieldJsonCache.clear();
                         return "SUCCESS";
                     }
                 }
@@ -405,6 +497,7 @@ public class NewSettingsActivity extends BaseActivity {
     
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        awaitInit();
         switch (item.getItemId()) {
             case 1:
                 Intent exportIntent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
@@ -530,6 +623,9 @@ public class NewSettingsActivity extends BaseActivity {
     }
     
     private void save() {
+        awaitInit();
+        awaitConfig();
+        awaitLists();
         if (ConfigV2.isModify(userId) && ConfigV2.save(userId, false)) {
             ToastUtil.show(this, "保存成功！");
             if (!StringUtil.isEmpty(userId)) {

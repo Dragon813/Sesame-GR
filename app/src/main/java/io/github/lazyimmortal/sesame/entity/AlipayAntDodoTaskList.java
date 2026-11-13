@@ -10,16 +10,17 @@ import io.github.lazyimmortal.sesame.util.idMap.AntDodoTaskListMap;
 public class AlipayAntDodoTaskList extends IdAndName {
     private static List<AlipayAntDodoTaskList> list;
 
-    public AlipayAntDodoTaskList(String i, String n) {
+    public AlipayAntDodoTaskList(String i, String n, String iconUrl) {
         id = i;
         name = n;
+    icon = iconUrl;
     }
 
     public static List<AlipayAntDodoTaskList> getList() {
         if (list == null) {
             list = new ArrayList<>();
             for (Map.Entry<String, String> entry : AntDodoTaskListMap.getMap().entrySet()) {
-                list.add(new AlipayAntDodoTaskList(entry.getKey(), entry.getValue()));
+                list.add(new AlipayAntDodoTaskList(entry.getKey(), entry.getKey(), entry.getValue()));
             }
         }
         return list;

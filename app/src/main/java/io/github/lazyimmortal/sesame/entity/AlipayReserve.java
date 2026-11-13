@@ -1,5 +1,6 @@
 package io.github.lazyimmortal.sesame.entity;
 
+import io.github.lazyimmortal.sesame.util.IconRegistry;
 import io.github.lazyimmortal.sesame.util.idMap.ReserveIdMap;
 
 import java.util.ArrayList;
@@ -22,6 +23,9 @@ public class AlipayReserve extends IdAndName {
             for (Map.Entry<String, String> entry : idSet) {
                 list.add(new AlipayReserve(entry.getKey(), entry.getValue()));
             }
+        }
+        for (AlipayReserve item : list) {
+            item.icon = IconRegistry.get(IconRegistry.SCOPE_RESERVE, item.id);
         }
         return list;
     }

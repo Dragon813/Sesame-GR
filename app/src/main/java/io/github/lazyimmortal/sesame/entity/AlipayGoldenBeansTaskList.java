@@ -12,16 +12,17 @@ import io.github.lazyimmortal.sesame.util.idMap.GoldenBeansTaskListMap;
 public class AlipayGoldenBeansTaskList extends IdAndName {
     private static List<AlipayGoldenBeansTaskList> list;
 
-    public AlipayGoldenBeansTaskList(String i, String n) {
+    public AlipayGoldenBeansTaskList(String i, String n, String iconUrl) {
         id = i;
         name = n;
+    icon = iconUrl;
     }
 
     public static List<AlipayGoldenBeansTaskList> getList() {
         if (list == null) {
             list = new ArrayList<>();
             for (Map.Entry<String, String> entry : GoldenBeansTaskListMap.getMap().entrySet()) {
-                list.add(new AlipayGoldenBeansTaskList(entry.getKey(), entry.getValue()));
+                list.add(new AlipayGoldenBeansTaskList(entry.getKey(), entry.getKey(), entry.getValue()));
             }
         }
         return list;

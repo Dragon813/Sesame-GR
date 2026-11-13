@@ -19,6 +19,7 @@ import io.github.lazyimmortal.sesame.model.base.TaskCommon;
 import io.github.lazyimmortal.sesame.model.task.antFarm.AntFarm.TaskStatus;
 import io.github.lazyimmortal.sesame.model.task.antForest.AntForestRpcCall;
 import io.github.lazyimmortal.sesame.util.Log;
+import io.github.lazyimmortal.sesame.util.TaskIconUtil;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
 import io.github.lazyimmortal.sesame.util.Statistics;
 import io.github.lazyimmortal.sesame.util.Status;
@@ -184,7 +185,7 @@ public class AntOcean extends ModelTask {
             //whiteList.add("逛一芝麻树");
             // 可继续添加更多白名单任务
             for (String task : blackList) {
-                AntOceanAntiepTaskListMap.add(task, task);
+                AntOceanAntiepTaskListMap.add(task, "");
             }
 
             if (queryTaskList) {
@@ -196,7 +197,7 @@ public class AntOcean extends ModelTask {
                         jo = ja.getJSONObject(i);
                         JSONObject bizInfo = new JSONObject(jo.getString("bizInfo"));
                         String taskTitle = bizInfo.optString("taskTitle");
-                        AntOceanAntiepTaskListMap.add(taskTitle, taskTitle);
+                        AntOceanAntiepTaskListMap.add(taskTitle, TaskIconUtil.extractIcon(bizInfo));
                     }
                 }
                 //保存任务到配置文件
@@ -248,7 +249,7 @@ public class AntOcean extends ModelTask {
             //whiteList.add("逛一芝麻树");
             // 可继续添加更多白名单任务
             for (String task : blackList) {
-                AntOceanFishBlackListMap.add(task, task);
+                AntOceanFishBlackListMap.add(task, "");
             }
 
             //初始化AntOceanFishBlackListMap
@@ -268,7 +269,7 @@ public class AntOcean extends ModelTask {
                     if (taskBaseInfo == null) continue;
                     JSONObject bizInfo = new JSONObject(taskBaseInfo.optString("bizInfo", "{}"));
                     String taskTitle = bizInfo.getString("taskTitle");
-                    AntOceanFishBlackListMap.add(taskTitle, taskTitle);
+                    AntOceanFishBlackListMap.add(taskTitle, TaskIconUtil.extractIcon(bizInfo));
                 }
 
                 AntOceanFishBlackListMap.save();
@@ -892,12 +893,24 @@ public class AntOcean extends ModelTask {
                 if (TaskStatus.RECEIVED.name().equals(taskStatus)) {
                     continue;
                 }
-                if (TaskStatus.TODO.name().equals(taskStatus) && !finishOceanTask(jo)) {
-                    continue;
+                int rightsTimes = jo.optInt("rightsTimes", 0);
+                int rightsTimesLimit = jo.optInt("rightsTimesLimit", 0);
+                //已完成的档先领奖；还有剩余档位时继续推进
+                if (!TaskStatus.TODO.name().equals(taskStatus)) {
+                    receiveTaskAward(sceneCode, taskType, taskTitle);
+                    if (rightsTimesLimit <= rightsTimes) {
+                        continue;
+                    }
                 }
-                TimeUtil.sleep(500);
-
-                receiveTaskAward(sceneCode, taskType, taskTitle);
+                int timesToDo = TaskAlternative.rightsTimesToDo(rightsTimes, rightsTimesLimit);
+                for (int cnt = 0; cnt < timesToDo; cnt++) {
+                    if (!finishOceanTask(jo,
+                            TaskAlternative.rightsProgressText(rightsTimes, rightsTimesLimit, cnt))) {
+                        break;
+                    }
+                    TimeUtil.sleep(500);
+                    receiveTaskAward(sceneCode, taskType, taskTitle);
+                }
             }
         } catch (Throwable t) {
             Log.i(TAG, "queryTaskList err:");
@@ -922,28 +935,33 @@ public class AntOcean extends ModelTask {
         }
     }
 
-    private Boolean finishOceanTask(JSONObject task) {
+    private Boolean finishOceanTask(JSONObject task, String progress) {
         try {
             if (task.has("taskProgress")) {
                 return false;
             }
             JSONObject bizInfo = new JSONObject(task.getString("bizInfo"));
             String taskTitle = bizInfo.optString("taskTitle");
-            //第1步：待完成的游戏任务（不在游戏任务黑名单里的直接调备用接口完成）
-            if (TaskAlternative.handleGameTask("AntOceanAntiepTaskList", taskTitle, "TODO",
-                    task.optString("taskType"), task.optString("sceneCode"), task.optString("sceneCode"), "ANTFOCEAN")) {
-                //备用接口只是伪申报，服务端任务状态仍为 TODO，立即领奖会报「任务未完成,无法领取」；
-                //等下一轮列表变为 FINISHED 后再走正常领奖流程
-                return false;
-            }
-            //第2步：黑名单任务跳过
+            //第1步：黑名单任务跳过（游戏/跳转第三方任务由 TaskAlternative 执行一次后跳过）
             if (AntOceanAntiepTaskList.getValue().contains(taskTitle)) {
+                TaskAlternative.handleGameTask(new TaskAlternative.GameTask("AntOceanAntiepTaskList",
+                        taskTitle, bizInfo.optString("desc", bizInfo.optString("taskDesc")),
+                        //海洋任务链接字段是 taskJumpUrl，兼容旧结构回落 targetUrl
+                        TaskAlternative.firstNonEmpty(bizInfo.optString("taskJumpUrl"),
+                                bizInfo.optString("targetUrl")), task.optString("taskStatus", "TODO"))
+                        .bizKey(task.optString("taskType"))
+                        .rights(task.optInt("rightsTimes", 0), task.optInt("rightsTimesLimit", 0))
+                        .taskPlayType(task.optString("taskPlayType", task.optString("taskProdPlayType")))
+                        .taskMode(task.optString("taskMode"))
+                        .taskSceneCode(task.optString("sceneCode"))
+                        .scene(task.optString("sceneCode"), "ANTFOCEAN")
+                        .version(AntOceanRpcCall.VERSION));
                 return false;
             }
             if (taskTitle.equals("每日任务：答题学海洋知识")) {
                 // 答题操作
                 if (answerQuestion()) {
-                    Log.forest("海洋任务🧾完成[" + taskTitle + "]");
+                    Log.forest("海洋任务🧾完成[" + taskTitle + "]" + progress);
                     return true;
                 }
             }
@@ -956,7 +974,7 @@ public class AntOcean extends ModelTask {
                 //检查并标记黑名单任务
                 MessageUtil.checkResultCodeAndMarkTaskBlackList("AntOceanAntiepTaskList", taskTitle, jo);
                 if (MessageUtil.checkSuccess(TAG, jo)) {
-                    Log.forest("海洋任务🧾完成[" + taskTitle + "]");
+                    Log.forest("海洋任务🧾完成[" + taskTitle + "]" + progress);
                     return true;
                 }
             }
@@ -1170,6 +1188,7 @@ public class AntOcean extends ModelTask {
             // 3. 查询并处理任务
             if (antfishAutoTask.getValue()) {
                 antfishHandleTasks();
+                antfishLikeFish();
             }
 
             // 4. 执行摸鱼
@@ -1351,6 +1370,106 @@ public class AntOcean extends ModelTask {
     }
 
     /**
+     * 点赞别人的鱼得能量
+     */
+    private void antfishLikeFish() {
+        if (Status.hasFlagToday("Ocean::ANTFISH_LIKE_LIMIT")) {
+            return;
+        }
+        try {
+            int energyGained = 0;
+            int likeCount = 0;
+            final int MAX_LIKE_ATTEMPTS = 35;
+            likeLoop:
+            while (likeCount < MAX_LIKE_ATTEMPTS) {
+                JSONObject listJo = new JSONObject(AntOceanRpcCall.antfishQueryAppraiseList());
+                if (!MessageUtil.checkResultCode(TAG, listJo)) {
+                    break;
+                }
+                if (listJo.optInt("appraiseRewardRemainNum", -1) == 0) {
+                    Status.flagToday("Ocean::ANTFISH_LIKE_LIMIT");
+                    break;
+                }
+                JSONArray fishList = listJo.optJSONArray("fishList");
+                if (fishList == null || fishList.length() == 0) {
+                    break;
+                }
+
+                boolean hasLiked = false;
+                for (int i = 0; i < fishList.length() && likeCount < MAX_LIKE_ATTEMPTS; i++) {
+                    JSONObject fishJo = fishList.optJSONObject(i);
+                    if (fishJo == null) {
+                        continue;
+                    }
+                    JSONObject appraiseInfo = fishJo.optJSONObject("appraiseVO");
+                    if (appraiseInfo == null || !appraiseInfo.optBoolean("canAppraise", false)) {
+                        continue;
+                    }
+
+                    String fishImageId = fishJo.optString("imageId", "");
+                    String fishSeasonId = fishJo.optString("seasonId", "");
+                    String receiverUserId = appraiseInfo.optString("receiveAppraiseUserId", "");
+                    if (receiverUserId.isEmpty()) {
+                        receiverUserId = fishJo.optString("userId", "");
+                    }
+                    if (fishImageId.isEmpty() || fishSeasonId.isEmpty() || receiverUserId.isEmpty()) {
+                        continue;
+                    }
+
+                    JSONObject likeJo = new JSONObject(AntOceanRpcCall.antfishAppraise(fishImageId, fishSeasonId, receiverUserId));
+                    if (!MessageUtil.checkResultCode(TAG, likeJo)) {
+                        Log.forest("海洋摸鱼🐟点赞失败");
+                        break likeLoop;
+                    }
+                    JSONArray rewards = likeJo.optJSONArray("appraiseRewardList");
+                    int energyOnce = 0;
+                    for (int j = 0; rewards != null && j < rewards.length(); j++) {
+                        JSONObject rewardJo = rewards.optJSONObject(j);
+                        if (rewardJo == null) {
+                            continue;
+                        }
+                        JSONObject extInfo = rewardJo.optJSONObject("extInfo");
+                        JSONObject popupJo = extInfo == null ? null : extInfo.optJSONObject("popup");
+                        if (popupJo != null) {
+                            try {
+                                energyOnce += Integer.parseInt(popupJo.optString("rightsNums", "0"));
+                            } catch (NumberFormatException ignored) {
+                            }
+                        }
+                    }
+                    energyGained += energyOnce;
+                    likeCount++;
+                    hasLiked = true;
+
+                    if (energyOnce == 0) {
+                        Status.flagToday("Ocean::ANTFISH_LIKE_LIMIT");
+                        break likeLoop;
+                    }
+                    if (likeJo.optInt("appraiseRewardRemainNum", -1) == 0) {
+                        Status.flagToday("Ocean::ANTFISH_LIKE_LIMIT");
+                        break likeLoop;
+                    }
+                    TimeUtil.sleep(1000);
+                }
+                if (!hasLiked) {
+                    break;
+                }
+            }
+            if (likeCount > 0 && energyGained == 0) {
+                Status.flagToday("Ocean::ANTFISH_LIKE_LIMIT");
+                Log.record("海洋摸鱼🐟今日点赞已达上限，本轮点赞" + likeCount + "次无奖励");
+            } else if (likeCount > 0) {
+                Log.forest("海洋摸鱼🐟点赞[" + likeCount + "]次共获得" + energyGained + "g能量#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+            } else {
+                Log.record("海洋摸鱼🐟今日无可点赞次数");
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "antfishLikeFish err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    /**
      * 处理任务（查询并完成任务获取摸鱼次数）
      */
     private void antfishHandleTasks() {
@@ -1397,17 +1516,23 @@ public class AntOcean extends ModelTask {
                     }
                     continue;
                 }
-                //黑名单任务跳过
+                //黑名单任务跳过（游戏/跳转第三方任务由 TaskAlternative 执行一次后跳过）
                 if (AntOceanFishBlackList.getValue().contains(taskTitle)) {
+                    TaskAlternative.handleGameTask(new TaskAlternative.GameTask("AntOceanFishBlackList",
+                            taskTitle, bizInfo.optString("desc", bizInfo.optString("taskDesc")),
+                            //海洋任务链接字段是 taskJumpUrl，兼容旧结构回落 targetUrl
+                            TaskAlternative.firstNonEmpty(bizInfo.optString("taskJumpUrl"),
+                                    bizInfo.optString("targetUrl")), taskStatus)
+                            .bizKey(taskType)
+                            .taskPlayType(taskBaseInfo.optString("taskPlayType", taskBaseInfo.optString("taskProdPlayType")))
+                            .taskMode(taskBaseInfo.optString("taskMode"))
+                            .taskSceneCode("ANTAIFISH")
+                            .scene("ANTAIFISH", "ANTAIFISH")
+                            .version(AntOceanRpcCall.VERSION));
                     continue;
                 }
                 // 处理其他 TODO 状态任务
                 if ("TODO".equals(taskStatus)) {
-                    //游戏任务先走 doFarmTask 伪申报（sceneCode/source 固定 ANTFARM/H5，与模组无关）
-                    if (TaskAlternative.handleGameTask("AntOceanFishBlackList", taskTitle, taskStatus,
-                            taskType, "ANTAIFISH", "ANTAIFISH", "ANTAIFISH")) {
-                        continue;
-                    }
                     if (antfishFinishTask(taskTitle, taskType)) {
                         if (antfishReceiveTaskAward(taskType)) {
                             Log.forest("摸鱼任务🎖️领取[" + taskTitle + "]获得摸鱼次数*" + awardCount);

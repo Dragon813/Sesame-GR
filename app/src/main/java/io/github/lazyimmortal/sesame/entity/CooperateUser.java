@@ -1,5 +1,6 @@
 package io.github.lazyimmortal.sesame.entity;
 
+import io.github.lazyimmortal.sesame.util.IconRegistry;
 import io.github.lazyimmortal.sesame.util.idMap.CooperationIdMap;
 
 import java.util.ArrayList;
@@ -18,7 +19,9 @@ public class CooperateUser extends IdAndName {
         List<CooperateUser> list = new ArrayList<>();
         Set<Map.Entry<String, String>> idSet = CooperationIdMap.getMap().entrySet();
         for (Map.Entry<String, String> entry : idSet) {
-            list.add(new CooperateUser(entry.getKey(), entry.getValue()));
+            CooperateUser user = new CooperateUser(entry.getKey(), entry.getValue());
+            user.icon = IconRegistry.get(IconRegistry.SCOPE_COOPERATE, entry.getKey());
+            list.add(user);
         }
         return list;
     }

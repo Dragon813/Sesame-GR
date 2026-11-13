@@ -7,15 +7,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 import io.github.lazyimmortal.sesame.entity.CustomOption;
 import io.github.lazyimmortal.sesame.util.FileUtil;
 import io.github.lazyimmortal.sesame.util.JsonUtil;
 import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
+import io.github.lazyimmortal.sesame.util.TaskIconUtil;
 
 /**
- * 游戏任务收集表（所有账号共用）：key=任务名称，value=出现过的任务列表（listTitle）集合。
+ * 游戏任务收集表（所有账号共用）：key=任务名[描述]，value=出现过的任务列表类（listTitle）集合。
  *
  * <p>记录来源：
  * <ul>
@@ -28,15 +30,19 @@ public class MiniGameTaskListMap {
 
     private static final Map<String, List<String>> idMap = new ConcurrentHashMap<>();
 
+    /** 任务图标：key=任务名[描述]（与 idMap 同键），value=图标地址，空串表示无图标 */
+    private static final Map<String, String> iconMap = new ConcurrentHashMap<>();
+
     private static final Map<String, List<String>> readOnlyIdMap = Collections.unmodifiableMap(idMap);
 
     private static volatile boolean loaded = false;
 
     /**
-     * 游戏任务标题总白名单：所有任务列表共用，命中任一即视为游戏任务（走备用接口完成）。
+     * 游戏任务标题总白名单：所有任务列表共用，命中任一即视为游戏任务（走提交接口完成）。
      * 仅当任务标题未命中分项黑名单时，才会再查本白名单。
      */
-    public static final String[] COMMON_GAME_TASK_WHITELIST = {"玩游戏得", "去玩"};
+    //public static final String[] COMMON_GAME_TASK_WHITELIST = {"玩游戏得", "去玩"};
+    public static final String[] COMMON_GAME_TASK_WHITELIST = {};
 
     /**
      * 各任务列表专属的游戏任务标题黑名单，key=任务列表 listTitle。
@@ -103,21 +109,178 @@ public class MiniGameTaskListMap {
         return false;
     }
 
-    /** 「任务名称 + 任务列表」组合键，用于每个账号独立的不允许执行列表。 */
-    public static String key(String taskTitle, String listTitle) {
-        return taskTitle + "||" + listTitle;
+    /** 带括号的进度，如「(50/8000)」「（3/5）」，只留分母（→「8000」） */
+    private static final Pattern BRACKET_PROGRESS_PATTERN = Pattern.compile("[(（]\\s*\\d+\\s*/\\s*(\\d+)\\s*[)）]");
+
+    /** 不带括号的进度，如「做任务已攒2430/3000」，只留分母（→「3000」） */
+    private static final Pattern BARE_PROGRESS_PATTERN = Pattern.compile("\\d+\\s*/\\s*(\\d+)");
+
+    /** 单独的括号数字，如「做任务攒(8000)」，去括号只留数字（→「8000」） */
+    private static final Pattern BRACKET_NUMBER_PATTERN = Pattern.compile("[(（]\\s*(\\d+)\\s*[)）]");
+
+    /** 任务显示名：{@code 任务名[描述]}；描述为空时只用任务名；描述中的动态进度只留目标值。 */
+    public static String name(String taskTitle, String desc) {
+        if (taskTitle == null) {
+            return "";
+        }
+        String trimmed = normalize(desc == null ? "" : desc.trim());
+        return trimmed.isEmpty() ? taskTitle : taskTitle + "[" + trimmed + "]";
     }
 
-    /** 选项列表：每个「任务名称 -> 任务列表」一项，供设置界面勾选。 */
+    /**
+     * 归并描述里的动态进度，只保留目标值且不留括号：
+     * 「做任务已攒2430/3000」→「做任务已攒3000」、「做任务攒(8000)」→「做任务攒8000」。
+     * 避免同一任务按进度裂变出大量条目。
+     */
+    private static String normalize(String desc) {
+        String result = readableDesc(desc);
+        result = BRACKET_PROGRESS_PATTERN.matcher(result).replaceAll("$1");
+        result = BARE_PROGRESS_PATTERN.matcher(result).replaceAll("$1");
+        return BRACKET_NUMBER_PATTERN.matcher(result).replaceAll("$1");
+    }
+
+    /** 描述以 JSON 数组/对象下发时（如月卡的多段说明），取出其中的可读文案，避免整段 JSON 拼进任务名。 */
+    private static String readableDesc(String desc) {
+        String text = desc == null ? "" : desc.trim();
+        if (!text.startsWith("{") && !text.startsWith("[")) {
+            return text;
+        }
+        try {
+            Object parsed = JsonUtil.parseObject(text, Object.class);
+            Object node = parsed;
+            if (node instanceof List && !((List<?>) node).isEmpty()) {
+                node = ((List<?>) node).get(0);
+            }
+            if (node instanceof Map) {
+                Map<?, ?> map = (Map<?, ?>) node;
+                for (String field : new String[]{"baseDesc", "desc", "description", "subTitle", "text", "content", "title"}) {
+                    Object value = map.get(field);
+                    if (value instanceof String && !((String) value).trim().isEmpty()) {
+                        return cleanPlaceholder((String) value);
+                    }
+                }
+                for (Object value : map.values()) {
+                    if (value instanceof String && !((String) value).trim().isEmpty()) {
+                        return cleanPlaceholder((String) value);
+                    }
+                }
+            } else if (node instanceof String) {
+                return cleanPlaceholder((String) node);
+            }
+        } catch (Throwable ignored) {
+            // 不是合法 JSON，保持原文
+        }
+        return text;
+    }
+
+    /** 去掉描述模板里的占位符，如「剩余{remainingDays}天」→「剩余天」。 */
+    private static String cleanPlaceholder(String text) {
+        return text.replaceAll("\\{[^{}]*\\}", "").trim();
+    }
+
+    /** 「任务名[描述] + 任务列表类」组合键，用于每个账号独立的不允许执行列表。 */
+    public static String key(String taskName, String listTitle) {
+        return taskName + "||" + listTitle;
+    }
+
+    /** 选项列表：每个「任务名[描述] -> 任务列表类」一项，供设置界面勾选（带任务图标）。 */
     public static List<CustomOption> getOptions() {
         List<CustomOption> options = new ArrayList<>();
         for (Map.Entry<String, List<String>> entry : getMap().entrySet()) {
             for (String listTitle : entry.getValue()) {
-                options.add(new CustomOption(key(entry.getKey(), listTitle),
-                        entry.getKey() + " | " + MessageUtil.getTaskListName(listTitle)));
+                CustomOption option = new CustomOption(key(entry.getKey(), listTitle),
+                        entry.getKey() + " | " + MessageUtil.getTaskListName(listTitle));
+                option.icon = backfillIcon(entry.getKey(), listTitle);
+                options.add(option);
             }
         }
         return options;
+    }
+
+    /** 取任务图标；历史收集条目无图标时从任务所在清单反查补录（key 带[描述]的剥掉再查）。 */
+    private static String backfillIcon(String taskName, String listTitle) {
+        String icon = getIcon(taskName);
+        if (TaskIconUtil.isIconUrl(icon)) {
+            return icon;
+        }
+        icon = resolveIcon(listTitle, taskName);
+        if (!TaskIconUtil.isIconUrl(icon)) {
+            int idx = taskName.lastIndexOf('[');
+            if (idx > 0 && taskName.endsWith("]")) {
+                icon = resolveIcon(listTitle, taskName.substring(0, idx));
+            }
+        }
+        if (TaskIconUtil.isIconUrl(icon)) {
+            iconMap.put(taskName, icon);
+            saveIcons();
+        }
+        return TaskIconUtil.isIconUrl(icon) ? icon : "";
+    }
+
+    /** 任务图标地址（key=任务名[描述]），无图标返回空串。 */
+    public static String getIcon(String taskName) {
+        ensureLoaded();
+        String icon = iconMap.get(taskName);
+        return icon == null ? "" : icon;
+    }
+
+    /** 从任务所在清单（各 XxxTaskListMap，value 即图标地址）反查任务图标。 */
+    private static String resolveIcon(String listTitle, String taskTitle) {
+        if (listTitle == null || taskTitle == null) {
+            return "";
+        }
+        String icon = null;
+        switch (listTitle) {
+            case "AntFarmDoFarmTaskList":
+                icon = AntFarmDoFarmTaskListMap.get(taskTitle);
+                break;
+            case "AntFarmDrawMachineTaskList":
+                icon = AntFarmDrawMachineTaskListMap.get(taskTitle);
+                break;
+            case "AntFarmChickenChefTaskList":
+                icon = AntFarmChickenChefTaskListMap.get(taskTitle);
+                break;
+            case "AntOrchardTaskList":
+                icon = AntOrchardTaskListMap.get(taskTitle);
+                break;
+            case "AntOrchardDrawTaskList":
+                icon = AntOrchardDrawTaskListMap.get(taskTitle);
+                break;
+            case "AntForestVitalityTaskList":
+                icon = AntForestVitalityTaskListMap.get(taskTitle);
+                break;
+            case "AntForestHuntTaskList":
+                icon = AntForestHuntTaskListMap.get(taskTitle);
+                break;
+            case "MonopolyTaskList":
+                icon = MonopolyTaskListMap.get(taskTitle);
+                break;
+            case "AntOceanAntiepTaskList":
+                icon = AntOceanAntiepTaskListMap.get(taskTitle);
+                break;
+            case "AntOceanFishBlackList":
+                icon = AntOceanFishBlackListMap.get(taskTitle);
+                break;
+            case "AntStallTaskList":
+                icon = AntStallTaskListMap.get(taskTitle);
+                break;
+            case "AntDodoTaskList":
+                icon = AntDodoTaskListMap.get(taskTitle);
+                break;
+            case "GoldenBeansTaskList":
+                icon = GoldenBeansTaskListMap.get(taskTitle);
+                break;
+            case "MemberCreditSesameTaskList":
+                icon = MemberCreditSesameTaskListMap.get(taskTitle);
+                break;
+            case "AntSportsTaskList":
+                icon = AntSportsTaskListMap.get(taskTitle);
+                break;
+            case "AntMemberTaskList":
+                icon = AntMemberTaskListMap.get(taskTitle);
+                break;
+        }
+        return TaskIconUtil.isIconUrl(icon) ? icon : "";
     }
 
     public static Map<String, List<String>> getMap() {
@@ -130,8 +293,24 @@ public class MiniGameTaskListMap {
         return idMap.get(key);
     }
 
-    /** 记录一条「任务名称 -> 任务列表」映射；已存在则忽略，新增后落盘。 */
-    public synchronized static void add(String key, String value) {
+    /** 记录一条「任务名[描述] -> 任务列表类」映射；已存在则忽略，新增后落盘。图标从任务所在清单反查补录。 */
+    public synchronized static void add(String taskTitle, String desc, String listTitle) {
+        String taskName = name(taskTitle, desc);
+        ensureLoaded();
+        //图标: 已有有效图标则保留, 否则从任务所在清单反查; 清单里暂无则留空, 等清单同步后再补
+        String oldIcon = iconMap.get(taskName);
+        if (!TaskIconUtil.isIconUrl(oldIcon)) {
+            String icon = resolveIcon(listTitle, taskTitle);
+            if (TaskIconUtil.isIconUrl(icon)) {
+                iconMap.put(taskName, icon);
+                saveIcons();
+            }
+        }
+        add(taskName, listTitle);
+    }
+
+    /** 底层写入：key 为已组装好的任务名，直接落表。 */
+    private synchronized static void add(String key, String value) {
         ensureLoaded();
         List<String> list = idMap.get(key);
         if (list == null) {
@@ -143,18 +322,20 @@ public class MiniGameTaskListMap {
         }
         list.add(value);
         if (save()) {
-            Log.other("游戏任务🎮收集[" + key + "]来源[" + MessageUtil.getTaskListName(value) + "]");
+            Log.record("游戏任务🔱收集[" + key + "]来源[" + MessageUtil.getTaskListName(value) + "]");
         }
     }
 
     public synchronized static void remove(String key) {
         ensureLoaded();
         idMap.remove(key);
+        iconMap.remove(key);
         save();
     }
 
     public synchronized static void load() {
         idMap.clear();
+        iconMap.clear();
         try {
             String body = FileUtil.readFromFile(FileUtil.getMiniGameTaskListMapFile());
             if (!body.isEmpty()) {
@@ -162,17 +343,35 @@ public class MiniGameTaskListMap {
                 });
                 idMap.putAll(newMap);
             }
+            String iconBody = FileUtil.readFromFile(FileUtil.getMiniGameTaskIconMapFile());
+            if (!iconBody.isEmpty()) {
+                Map<String, String> newIcons = JsonUtil.parseObject(iconBody, new TypeReference<Map<String, String>>() {
+                });
+                for (Map.Entry<String, String> entry : newIcons.entrySet()) {
+                    String value = entry.getValue();
+                    iconMap.put(entry.getKey(), TaskIconUtil.isIconUrl(value) ? value : "");
+                }
+            }
         } catch (Exception e) {
             Log.printStackTrace(e);
         }
     }
 
     public synchronized static boolean save() {
-        return FileUtil.write2File(JsonUtil.toJsonString(idMap), FileUtil.getMiniGameTaskListMapFile());
+        boolean success = FileUtil.write2File(JsonUtil.toJsonString(idMap), FileUtil.getMiniGameTaskListMapFile());
+        saveIcons();
+        return success;
+    }
+
+    /** 图标表落盘, 并预下载涉及到的图标（已缓存的跳过）。 */
+    public synchronized static void saveIcons() {
+        FileUtil.write2File(JsonUtil.toJsonString(iconMap), FileUtil.getMiniGameTaskIconMapFile());
+        TaskIconUtil.predownload(iconMap.values());
     }
 
     public synchronized static void clear() {
         idMap.clear();
+        iconMap.clear();
     }
 
     private static void ensureLoaded() {

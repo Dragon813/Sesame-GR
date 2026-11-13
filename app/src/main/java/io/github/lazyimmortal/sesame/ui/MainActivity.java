@@ -16,6 +16,7 @@ import android.os.Looper;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -123,6 +124,21 @@ public class MainActivity extends BaseActivity {
         if (positiveButton != null) {
             positiveButton.setTextColor(ContextCompat.getColor(this, R.color.button));
         }
+        prewarmWebView();
+    }
+
+    /* 新UI设置在WebView中: 首次创建需初始化Chromium内核(耗时数百毫秒), 趁主界面空闲提前触发, 进程内后续WebView(含旧UI切新UI)即省去冷启动 */
+    private void prewarmWebView() {
+        if (!AppConfig.INSTANCE.getNewUI()) {
+            return;
+        }
+        viewHandler.postDelayed(() -> {
+            try {
+                new WebView(this).destroy();
+            } catch (Throwable ignored) {
+                //系统WebView不可用/更新中时放弃预热, 不影响正常打开
+            }
+        }, 1000);
     }
 
     @Override

@@ -72,6 +72,8 @@ public class SettingsActivity extends BaseActivity {
         NewAncientTreeIdMap.load();
         BeachIdMap.load();
         PlantSceneIdMap.load();
+        IconRegistry.load();
+        IconRegistry.prefetch();
         rpcRequestMap.load();
         ForestHuntIdMap.load();
         MemberCreditSesameTaskListMap.load();
@@ -79,6 +81,7 @@ public class SettingsActivity extends BaseActivity {
         AntForestHuntTaskListMap.load();
         AntFarmDoFarmTaskListMap.load();
         AntFarmDrawMachineTaskListMap.load();
+        AntFarmChickenChefTaskListMap.load();
         AntDodoTaskListMap.load();
         AntOceanAntiepTaskListMap.load();
         AntOceanFishBlackListMap.load();

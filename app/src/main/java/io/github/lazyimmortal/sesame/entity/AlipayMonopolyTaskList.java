@@ -12,16 +12,17 @@ import io.github.lazyimmortal.sesame.util.idMap.MonopolyTaskListMap;
 public class AlipayMonopolyTaskList extends IdAndName {
     private static List<AlipayMonopolyTaskList> list;
 
-    public AlipayMonopolyTaskList(String i, String n) {
+    public AlipayMonopolyTaskList(String i, String n, String iconUrl) {
         id = i;
         name = n;
+    icon = iconUrl;
     }
 
     public static List<AlipayMonopolyTaskList> getList() {
         if (list == null) {
             list = new ArrayList<>();
             for (Map.Entry<String, String> entry : MonopolyTaskListMap.getMap().entrySet()) {
-                list.add(new AlipayMonopolyTaskList(entry.getKey(), entry.getValue()));
+                list.add(new AlipayMonopolyTaskList(entry.getKey(), entry.getKey(), entry.getValue()));
             }
         }
         return list;

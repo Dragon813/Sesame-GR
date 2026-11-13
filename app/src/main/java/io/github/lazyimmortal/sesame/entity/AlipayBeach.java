@@ -1,5 +1,6 @@
 package io.github.lazyimmortal.sesame.entity;
 
+import io.github.lazyimmortal.sesame.util.IconRegistry;
 import io.github.lazyimmortal.sesame.util.idMap.BeachIdMap;
 
 import java.util.ArrayList;
@@ -20,6 +21,9 @@ public class AlipayBeach extends IdAndName {
             for (Map.Entry<String, String> entry : BeachIdMap.getMap().entrySet()) {
                 list.add(new AlipayBeach(entry.getKey(), entry.getValue()));
             }
+        }
+        for (AlipayBeach item : list) {
+            item.icon = IconRegistry.get(IconRegistry.SCOPE_BEACH, item.id);
         }
         return list;
     }

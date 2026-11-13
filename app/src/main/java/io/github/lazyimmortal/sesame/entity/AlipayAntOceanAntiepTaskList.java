@@ -10,16 +10,17 @@ import io.github.lazyimmortal.sesame.util.idMap.AntOceanAntiepTaskListMap;
 public class AlipayAntOceanAntiepTaskList extends IdAndName {
     private static List<AlipayAntOceanAntiepTaskList> list;
 
-    public AlipayAntOceanAntiepTaskList(String i, String n) {
+    public AlipayAntOceanAntiepTaskList(String i, String n, String iconUrl) {
         id = i;
         name = n;
+    icon = iconUrl;
     }
 
     public static List<AlipayAntOceanAntiepTaskList> getList() {
         if (list == null) {
             list = new ArrayList<>();
             for (Map.Entry<String, String> entry : AntOceanAntiepTaskListMap.getMap().entrySet()) {
-                list.add(new AlipayAntOceanAntiepTaskList(entry.getKey(), entry.getValue()));
+                list.add(new AlipayAntOceanAntiepTaskList(entry.getKey(), entry.getKey(), entry.getValue()));
             }
         }
         return list;

@@ -25,7 +25,10 @@ public class AlipayUser extends IdAndName {
             UserEntity userEntity = entry.getValue();
             try {
                 if (filterFunc.apply(userEntity)) {
-                    list.add(new AlipayUser(entry.getKey(), userEntity.getFullName()));
+                    AlipayUser user = new AlipayUser(entry.getKey(), userEntity.getFullName());
+                    //头像地址交给 ListAdapter 按好友头像缓存（avatar 目录）显示
+                    user.icon = userEntity.getHeadImageUrl();
+                    list.add(user);
                 }
             } catch (Throwable t) {
                 Log.printStackTrace(t);

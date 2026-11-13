@@ -16,7 +16,7 @@ import io.github.lazyimmortal.sesame.util.StringUtil;
 import io.github.lazyimmortal.sesame.util.idMap.UserIdMap;
 
 public class AntFarmRpcCall {
-    private static final String VERSION = "1.8.2302070202.46";
+    public static final String VERSION = "1.8.2302070202.46";
 
     public static String enterFarm(String userId) {
         String args = "[{\"queryLastRecordNum\":true,\"recall\":false,\"requestType\":\"NORMAL\"," + "\"sceneCode" + "\":\"ANTFARM\",\"source\":\"H5\",\"userId\":\"" + userId + "\"}]";
@@ -128,7 +128,19 @@ public class AntFarmRpcCall {
 
     //{"bizKey":"ccl_rongrongxiaoji","requestType":"RPC","sceneCode":"ANTFARM","source":"antfarm_villa","taskSceneCode":"ANTFARM_DAILY_DRAW_TASK"}
     public static String doFarmTask(String bizKey, String taskSceneCode) {
-        String args1 = "[{\"bizKey\":\"" + bizKey + "\",\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"taskSceneCode\":\"" + taskSceneCode + "\",\"version\":\"" + VERSION + "\"}]";
+        // 不同 taskSceneCode 对应不同 source：
+        // ANTFARM_IP_DRAW_TASK → ip_ccl / antfarm_villa
+        // ANTFARM_DAILY_DRAW_TASK → antfarm_villa
+        // 其他 → H5
+        String source;
+        if ("ANTFARM_IP_DRAW_TASK".equals(taskSceneCode)) {
+            source = "ip_ccl";
+        } else if ("ANTFARM_DAILY_DRAW_TASK".equals(taskSceneCode)) {
+            source = "antfarm_villa";
+        } else {
+            source = "H5";
+        }
+        String args1 = "[{\"bizKey\":\"" + bizKey + "\",\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM\",\"source\":\"" + source + "\",\"taskSceneCode\":\"" + taskSceneCode + "\",\"version\":\"" + VERSION + "\"}]";
         return ApplicationHook.requestString("com.alipay.antfarm.doFarmTask", args1);
     }
 
@@ -339,6 +351,38 @@ public class AntFarmRpcCall {
 
     public static String collectKitchenGarbage() {
         return ApplicationHook.requestString("com.alipay.antfarm.collectKitchenGarbage", "[{\"requestType\":\"RPC\"," + "\"sceneCode\":\"ANTFARM\",\"source\":\"VILLA\"," + "\"version" + "\":\"unknown\"}]");
+    }
+
+    /* 小鸡大厨(AI厨房) */
+    public static final String AI_KITCHEN_TASK_SCENE = "ANTFARM_AI_KITCHEN_TASK";
+
+    public static String enterAiKitchen() {
+        return ApplicationHook.requestString("com.alipay.antfarm.enterAiKitchen", "[{\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM\",\"source\":\"aikitchen_daily\"}]");
+    }
+
+    public static String cookAiKitchen(String ingredientIds, String seasonId) {
+        return ApplicationHook.requestString("com.alipay.antfarm.cookAiKitchen", "[{\"ingredientIds\":[" + ingredientIds + "],\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM\",\"seasonId\":\"" + seasonId + "\",\"source\":\"aikitchen_daily\"}]");
+    }
+
+    public static String getAiKitchenCookbookInfo(String seasonId) {
+        return ApplicationHook.requestString("com.alipay.antfarm.getAiKitchenCookbookInfo", "[{\"pageNum\":1,\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM\",\"seasonId\":\"" + seasonId + "\",\"sortField\":\"HIGHEST_SCORE_COOK_TIME\",\"source\":\"H5\"}]");
+    }
+
+    public static String queryAiKitchenDishDetail(String dishId, String seasonId) {
+        return ApplicationHook.requestString("com.alipay.antfarm.queryAiKitchenDishDetail", "[{\"dishId\":\"" + dishId + "\",\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM\",\"seasonId\":\"" + seasonId + "\",\"source\":\"H5\"}]");
+    }
+
+    public static String shareAiKitchenIngredient(String ingredientId, String receiverId, String seasonId) {
+        String requestId = receiverId + System.currentTimeMillis();
+        return ApplicationHook.requestString("com.alipay.antfarm.shareAiKitchenIngredient", "[{\"ingredientId\":\"" + ingredientId + "\",\"receiverId\":\"" + receiverId + "\",\"requestId\":\"" + requestId + "\",\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM\",\"seasonId\":\"" + seasonId + "\",\"source\":\"aikitchen_daily\"}]");
+    }
+
+    public static String listAiKitchenTask() {
+        return listFarmDrawTask(AI_KITCHEN_TASK_SCENE);
+    }
+
+    public static String finishTaskantfarm(String bizKey, String outBizNo, String taskType, String userId) {
+        return ApplicationHook.requestString("com.alipay.antieptask.finishTaskantfarm", "[{\"bizKey\":\"" + bizKey + "\",\"outBizNo\":\"" + outBizNo + "\",\"requestType\":\"NORMAL\",\"sceneCode\":\"" + AI_KITCHEN_TASK_SCENE + "\",\"source\":\"aikitchen_daily\",\"taskSceneCode\":\"" + AI_KITCHEN_TASK_SCENE + "\",\"taskType\":\"" + taskType + "\",\"userId\":\"" + userId + "\"}]");
     }
 
     /* 日常任务 */
@@ -769,5 +813,18 @@ public class AntFarmRpcCall {
         String data = "[{" + "\"bizType\":\"ANTFARM\"," + "\"commonDegradeFilterRequest\":{" + "\"deviceLevel\":\"high\"," + "\"platform\":\"Android\"," + "\"unityDeviceLevel\":\"high\"" + "}," + "\"recentAppRecordList\":[]," + "\"requestType\":\"NORMAL\"," + "\"sceneCode\":\"ANTFARM\"," + "\"source\":\"H5\"," + "\"version\":\"" + VERSION + "\"" + "}]";
 
         return ApplicationHook.requestString("com.alipay.charitygamecenter.queryGameList", data);
+    }
+
+    /* 天天答题 */
+
+    public static String dadaDailyHome(String activityId) {
+        return ApplicationHook.requestString("com.alipay.reading.game.dadaDaily.home",
+                "[{\"activityId\":" + activityId + ",\"dadaVersion\":\"1.3.0\",\"version\":1}]");
+    }
+
+    public static String dadaDailySubmit(String activityId, String answer, Long questionId) {
+        return ApplicationHook.requestString("com.alipay.reading.game.dadaDaily.submit",
+                "[{\"activityId\":" + activityId + ",\"answer\":\"" + answer + "\",\"dadaVersion\":\"1.3.0\"," +
+                "\"questionId\":" + questionId + ",\"version\":1}]");
     }
 }

@@ -7,7 +7,10 @@ import io.github.lazyimmortal.sesame.util.Log;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
 
 public class AntSportsRpcCall {
-    private static final String chInfo = "ch_appcenter__chsub_9patch", timeZone = "Asia/Shanghai", version = "3.0.1" + ".2", alipayAppVersion = "0.0.852", cityCode = "330100", appId = "2021002116659397";
+    private static final String chInfo = "ch_appcenter__chsub_9patch", timeZone = "Asia/Shanghai", alipayAppVersion = "0.0.852", cityCode = "330100", appId = "2021002116659397";
+
+    /** 运动任务 RPC 版本号。 */
+    public static final String VERSION = "3.0.1.2";
     
     // 运动任务查询
     // {"apiVersion":"energy","canAddHome":false,"chInfo":"medical_health","clientAuthStatus":"not_support",
@@ -222,7 +225,7 @@ public class AntSportsRpcCall {
     
     /* 这个好像没用 */
     public static String exchangeSuccess(String exchangeId) {
-        String args1 = "[{\"exchangeId\":\"" + exchangeId + "\",\"timezone\":\"GMT+08:00\",\"version\":\"" + version + "\"}]";
+        String args1 = "[{\"exchangeId\":\"" + exchangeId + "\",\"timezone\":\"GMT+08:00\",\"version\":\"" + VERSION + "\"}]";
         return ApplicationHook.requestString("alipay.charity.mobile.donate.exchange.success", args1);
     }
     
@@ -431,7 +434,7 @@ public class AntSportsRpcCall {
         return ApplicationHook.requestString("com.alipay.neverland.biz.rpc.queryMapInfo", arg);
     }
 
-    // 悦动健康岛地图详情(含能量进度/建筑阶段), 参数对照抓包queryMapInfoNew
+    // 悦动健康岛地图详情(含能量进度/建筑阶段), 参数见 queryMapInfoNew
     public static String queryMapInfoNew(String branchId, String mapId) {
         String arg = "[{\"branchId\":\"" + branchId + "\",\"mapId\":\"" + mapId + "\",\"source\":\"ch_toufang__yundongshouye\"}]";
         return ApplicationHook.requestString("com.alipay.neverland.biz.rpc.queryMapInfoNew", arg);

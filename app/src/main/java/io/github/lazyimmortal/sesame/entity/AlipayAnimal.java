@@ -1,5 +1,6 @@
 package io.github.lazyimmortal.sesame.entity;
 
+import io.github.lazyimmortal.sesame.util.IconRegistry;
 import io.github.lazyimmortal.sesame.util.idMap.AnimalIdMap;
 
 import java.util.ArrayList;
@@ -22,6 +23,9 @@ public class AlipayAnimal extends IdAndName {
             for (Map.Entry<String, String> entry : idSet) {
                 list.add(new AlipayAnimal(entry.getKey(), entry.getValue()));
             }
+        }
+        for (AlipayAnimal item : list) {
+            item.icon = IconRegistry.get(IconRegistry.SCOPE_ANIMAL, item.id);
         }
         return list;
     }

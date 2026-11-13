@@ -6,8 +6,10 @@ import org.json.JSONObject;
 import java.util.Calendar;
 import java.util.Set;
 
+import io.github.lazyimmortal.sesame.model.base.TaskAlternative;
 import io.github.lazyimmortal.sesame.model.task.antOrchard.GoldenBeanRpcCall;
 import io.github.lazyimmortal.sesame.util.Log;
+import io.github.lazyimmortal.sesame.util.TaskIconUtil;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
 import io.github.lazyimmortal.sesame.util.Status;
 import io.github.lazyimmortal.sesame.util.TimeUtil;
@@ -16,7 +18,7 @@ import io.github.lazyimmortal.sesame.util.idMap.GoldenBeansTaskListMap;
 /**
  * 支付宝-芝麻炼金（芝麻信用-攒芝麻分-芝麻炼金）+ 炼金入口金豆夺宝业务逻辑。
  * <p>
- * 已实现（接口均由抓包 RPC.txt 2026-10-19 确认）：
+ * 已实现（接口于 2026-10-19 确认）：
  * <ul>
  *     <li>芝麻炼金：每日签到（CheckInTaskRpcManager sceneCode=alchemy）</li>
  *     <li>芝麻炼金：自动炼金（每轮检查剩余次数即炼金，体力不足/满级时停止，无当日标记，循环限速+死循环保护）</li>
@@ -217,7 +219,7 @@ public class SesameAlchemy {
             TimeUtil.sleep(500);
             if (MessageUtil.checkResultCode(TAG, completeJo)) {
                 JSONObject completeData = completeJo.optJSONObject("data");
-                // 奖励以completeTask响应data.zmlNum为准（抓包验证），缺失回退queryTask的rewardAmount
+                // 奖励以completeTask响应data.zmlNum为准，缺失回退queryTask的rewardAmount
                 int award = completeData != null ? completeData.optInt("zmlNum", taskVO.optInt("rewardAmount", 0)) : taskVO.optInt("rewardAmount", 0);
                 Log.other("芝麻炼金⏰限时补贴[" + title + "]#获得[" + award + "芝麻粒]");
             }
@@ -485,7 +487,7 @@ public class SesameAlchemy {
                     JSONObject taskDisplayConfig = task == null ? null : task.optJSONObject("taskDisplayConfig");
                     String title = taskDisplayConfig == null ? "" : taskDisplayConfig.optString("title");
                     if (!title.isEmpty()) {
-                        GoldenBeansTaskListMap.add(title, title);
+                        GoldenBeansTaskListMap.add(title, TaskIconUtil.extractIcon(taskDisplayConfig));
                     }
                 }
             }
@@ -587,10 +589,11 @@ public class SesameAlchemy {
                     // 多次任务（rightsTimesLimit>1）一次补齐：逐档finishTask，否则只完成第一档
                     int rightsTimes = task.optInt("rightsTimes", 0);
                     int rightsTimesLimit = task.optInt("rightsTimesLimit", 0);
-                    int remain = rightsTimesLimit > rightsTimes ? rightsTimesLimit - rightsTimes : 1;
+                    int remain = TaskAlternative.rightsTimesToDo(rightsTimes, rightsTimesLimit);
                     boolean anyDone = false;
                     for (int cnt = 0; cnt < remain; cnt++) {
-                        if (!finishTask(sceneCode, taskType, title)) {
+                        if (!finishTask(sceneCode, taskType, title,
+                                TaskAlternative.rightsProgressText(rightsTimes, rightsTimesLimit, cnt))) {
                             break; // 做不了就收手，不再空转剩余次数
                         }
                         anyDone = true;
@@ -628,13 +631,13 @@ public class SesameAlchemy {
     /**
      * 完成炼金金豆任务
      */
-    private static boolean finishTask(String sceneCode, String taskType, String title) {
+    private static boolean finishTask(String sceneCode, String taskType, String title, String progress) {
         try {
             JSONObject jo = new JSONObject(GoldenBeanRpcCall.finishTask(GoldenBeanRpcCall.BIZ_TYPE_ZHIMA, GoldenBeanRpcCall.SOURCE_ZHIMA, GoldenBeanRpcCall.VERSION_ZHIMA, sceneCode, taskType));
             TimeUtil.sleep(500);
             MessageUtil.checkResultCodeAndMarkTaskBlackList("GoldenBeansTaskList", title, jo);
             if (MessageUtil.checkSuccess(TAG, jo)) {
-                Log.other("炼金金豆🧾完成任务[" + title + "]");
+                Log.other("炼金金豆🧾完成任务[" + title + "]" + progress);
                 return true;
             }
         } catch (Throwable t) {
@@ -670,7 +673,7 @@ public class SesameAlchemy {
      * 2. 当日兑换芝麻粒上限(dailyLimit, 0=不限制)：与服务器今日可兑芝麻粒(effectiveExchangeManure)看谁低取谁
      * 3. 服务端最低兑换额(minExchangeAmount，单位金豆)，低于则跳过
      * <p>
-     * 抓包口径：currentManure=芝麻粒总余额；effectiveExchangeManure=今日还可兑的芝麻粒数(=remainQuota/beanReward)；
+     * 字段口径：currentManure=芝麻粒总余额；effectiveExchangeManure=今日还可兑的芝麻粒数(=remainQuota/beanReward)；
      * exchangeBeanAmount按金豆提交，服务端折算manureCost(芝麻粒)，响应beanDelta为实得金豆、remainQuota为兑换后剩余额度。
      */
     private static void exchangeManure(JSONObject exchangeInfo, int dailyLimit, int reserveZml) {

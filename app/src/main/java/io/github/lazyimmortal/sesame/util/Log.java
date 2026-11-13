@@ -5,11 +5,13 @@ import com.elvishew.xlog.Logger;
 import com.elvishew.xlog.XLog;
 import com.elvishew.xlog.flattener.PatternFlattener;
 import com.elvishew.xlog.printer.file.FilePrinter;
+import com.elvishew.xlog.printer.file.backup.BackupStrategy2;
 import com.elvishew.xlog.printer.file.backup.NeverBackupStrategy;
 import com.elvishew.xlog.printer.file.clean.NeverCleanStrategy;
 import com.elvishew.xlog.printer.file.naming.FileNameGenerator;
 import io.github.lazyimmortal.sesame.model.normal.base.BaseModel;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -52,7 +54,7 @@ public class Log {
     private static final Logger runtimeLogger = XLog.tag("RUNTIME").printers(
             new FilePrinter.Builder(FileUtil.LOG_DIRECTORY_FILE.getPath())
                     .fileNameGenerator(new CustomDateFileNameGenerator("runtime"))
-                    .backupStrategy(new NeverBackupStrategy())
+                    .backupStrategy(new SizePagedBackupStrategy(50L * 1024 * 1024))
                     .cleanStrategy(new NeverCleanStrategy())
                     .flattener(new PatternFlattener("{d HH:mm:ss.SSS} {t}: {m}"))
                     .build()).build();
@@ -248,6 +250,38 @@ public class Log {
         }
         timeStamp = d.getTime();
         return timeStamp;
+    }
+
+    /**
+     * 按文件大小分页的备份策略同名日志继续写入.: 当前日志文件达到maxSize后, 重命名为 名称.序号.log(如 runtime.2026-11-07.1.log), 再新建
+     * 份数不限制(NO_LIMIT), 由 FileUtil.clearLog() 按保存天数统一清理.
+     */
+    public static class SizePagedBackupStrategy implements BackupStrategy2 {
+
+        private final long maxSize;
+
+        public SizePagedBackupStrategy(long maxSize) {
+            this.maxSize = maxSize;
+        }
+
+        @Override
+        public boolean shouldBackup(File file) {
+            return file.length() >= maxSize;
+        }
+
+        @Override
+        public int getMaxBackupIndex() {
+            return NO_LIMIT;
+        }
+
+        @Override
+        public String getBackupFileName(String fileName, int index) {
+            int dot = fileName.lastIndexOf('.');
+            if (dot <= 0) {
+                return fileName + "." + index;
+            }
+            return fileName.substring(0, dot) + "." + index + fileName.substring(dot);
+        }
     }
 
     public static class CustomDateFileNameGenerator implements FileNameGenerator {

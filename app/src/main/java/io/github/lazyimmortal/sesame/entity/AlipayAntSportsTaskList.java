@@ -12,16 +12,17 @@ import io.github.lazyimmortal.sesame.util.idMap.MemberCreditSesameTaskListMap;
 public class AlipayAntSportsTaskList extends IdAndName {
     private static List<AlipayAntSportsTaskList> list;
 
-    public AlipayAntSportsTaskList(String i, String n) {
+    public AlipayAntSportsTaskList(String i, String n, String iconUrl) {
         id = i;
         name = n;
+    icon = iconUrl;
     }
 
     public static List<AlipayAntSportsTaskList> getList() {
         if (list == null) {
             list = new ArrayList<>();
             for (Map.Entry<String, String> entry : AntSportsTaskListMap.getMap().entrySet()) {
-                list.add(new AlipayAntSportsTaskList(entry.getKey(), entry.getValue()));
+                list.add(new AlipayAntSportsTaskList(entry.getKey(), entry.getKey(), entry.getValue()));
             }
         }
         return list;

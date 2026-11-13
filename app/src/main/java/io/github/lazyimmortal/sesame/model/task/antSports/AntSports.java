@@ -28,11 +28,13 @@ import io.github.lazyimmortal.sesame.entity.AlipayUser;
 import io.github.lazyimmortal.sesame.entity.WalkPath;
 import io.github.lazyimmortal.sesame.hook.ApplicationHook;
 import io.github.lazyimmortal.sesame.hook.Toast;
+import io.github.lazyimmortal.sesame.model.base.TaskAlternative;
 import io.github.lazyimmortal.sesame.model.base.TaskCommon;
 import io.github.lazyimmortal.sesame.model.extensions.ExtensionsHandle;
 import io.github.lazyimmortal.sesame.model.task.antStall.AntStall;
 import io.github.lazyimmortal.sesame.model.task.antStall.AntStallRpcCall;
 import io.github.lazyimmortal.sesame.util.Log;
+import io.github.lazyimmortal.sesame.util.TaskIconUtil;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
 import io.github.lazyimmortal.sesame.util.RandomUtil;
 import io.github.lazyimmortal.sesame.util.Status;
@@ -468,7 +470,7 @@ public class AntSports extends ModelTask {
             Set<String> whiteList = new HashSet<>();// 从黑名单中移除该任务
             //whiteList.add("逛一逛树");
             for (String task : blackList) {
-                AntSportsTaskListMap.add(task, task);
+                AntSportsTaskListMap.add(task, "");
             }
 
             if (sportsTasks) {
@@ -480,7 +482,7 @@ public class AntSports extends ModelTask {
                         for (int i = 0; i < taskLists.length(); i++) {
                             JSONObject taskList = taskLists.getJSONObject(i);
                             String taskName = taskList.getString("taskName");
-                            AntSportsTaskListMap.add(taskName, taskName);
+                            AntSportsTaskListMap.add(taskName, TaskIconUtil.extractIcon(taskList));
                         }
                     }
                 }
@@ -590,8 +592,17 @@ public class AntSports extends ModelTask {
                     }
                     continue;
                 }
-                //黑名单任务跳过
+                //黑名单任务跳过（游戏/跳转第三方任务由 TaskAlternative 执行一次后跳过）
                 if (AntSportsTaskList.getValue().contains(taskName)) {
+                    TaskAlternative.handleGameTask(new TaskAlternative.GameTask("AntSportsTaskList",
+                            taskName, "", "",
+                            TaskStatus.WAIT_COMPLETE.name().equals(taskStatus) ? "TODO" : taskStatus)
+                            .bizKey(jo.optString("taskId"))
+                            .taskPlayType(jo.optString("taskPlayType", jo.optString("taskProdPlayType")))
+                            .taskMode(jo.optString("taskMode"))
+                            .taskSceneCode("ANTSPORTS")
+                            .scene("ANTSPORTS", "medical_health")
+                            .version(AntSportsRpcCall.VERSION));
                     continue;
                 }
                 if (!jo.has("taskAction")) {

@@ -32,7 +32,8 @@ public class FriendWatch extends IdAndName {
 
     public String headImageUrl;
 
-    public String firstAlphaChar;
+    /* 标题行(头像右侧第一行): 用户名|真实姓名(登录名), 与"不收取能量"列表的fullName同格式; 无好友表数据时回退纯用户名 */
+    public String titleText;
 
     public String bodyText;
 
@@ -319,6 +320,8 @@ public class FriendWatch extends IdAndName {
                 }
                 UserEntity userEntity = UserIdMap.get(id);
                 if (userEntity != null) {
+                    //标题行与"不收取能量"列表一致: 用户名|真实姓名(登录名)
+                    friendWatch.titleText = userEntity.getFullName();
                     //更改时间(extVersion)/成为好友时间(version)为毫秒时间戳, 单删(isDelete)为true时标记
                     java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
                     if (userEntity.getRegisterTime() != null && userEntity.getRegisterTime() > 0) {
@@ -331,7 +334,8 @@ public class FriendWatch extends IdAndName {
                         friendWatch.delete = true;
                     }
                     friendWatch.headImageUrl = userEntity.getHeadImageUrl();
-                    friendWatch.firstAlphaChar = userEntity.getFirstAlphaChar();
+                    //新UI列表图标取好友头像
+                    friendWatch.icon = userEntity.getHeadImageUrl();
                 }
                 //条目正文上下各空一行, 分割线两侧留空
                 friendWatch.bodyText = "\n" + showText + "\n";

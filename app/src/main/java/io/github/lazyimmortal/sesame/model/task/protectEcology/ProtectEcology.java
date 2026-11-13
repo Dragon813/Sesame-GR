@@ -156,15 +156,19 @@ public class ProtectEcology extends ModelTask {
                     String region = jo.getString("region");
                     itemName = itemName + "[" + region + "|" + organization + "]";
                     TreeIdMap.add(itemId, itemName + "(" + jo.getInt("energy") + "g)");
+                    IconRegistry.put(IconRegistry.SCOPE_TREE, itemId, TaskIconUtil.extractIcon(jo));
                 } else if (Objects.equals("RESERVE", jo.getString("projectType"))) {
                     ReserveIdMap.add(itemId, itemName + "(" + jo.getInt("energy") + "g)");
+                    IconRegistry.put(IconRegistry.SCOPE_RESERVE, itemId, TaskIconUtil.extractIcon(jo));
                 } else if (Objects.equals("ANIMAL", jo.getString("projectType"))) {
                     AnimalIdMap.add(itemId, itemName + "(" + jo.getInt("energy") + "g)");
+                    IconRegistry.put(IconRegistry.SCOPE_ANIMAL, itemId, TaskIconUtil.extractIcon(jo));
                 }
             }
             TreeIdMap.save();
             ReserveIdMap.save();
             AnimalIdMap.save();
+            IconRegistry.saveAndPrefetch();
 
         } catch (Throwable t) {
             Log.i(TAG, "initForest err:");
@@ -181,14 +185,20 @@ public class ProtectEcology extends ModelTask {
             BeachIdMap.load();
             for (int i = 0; i < cultivationList.length(); i++) {
                 JSONObject jo = cultivationList.getJSONObject(i);
+                //图标与可否申领无关(extendInfo.iconUrl), 所有条目都登记, 历史列表项也能取到图
+                String templateCode = jo.optString("templateCode");
+                if (!templateCode.isEmpty()) {
+                    IconRegistry.put(IconRegistry.SCOPE_BEACH, templateCode, TaskIconUtil.extractIcon(jo));
+                }
                 if (!Objects.equals("AVAILABLE", jo.getString("applyAction"))) {
                     continue;
                 }
                 if (Objects.equals("BEACH", jo.optString("templateSubType")) || Objects.equals("COOPERATE_PLANT", jo.getString("templateType")) || Objects.equals("PROTECT", jo.getString("templateType"))) {
-                    BeachIdMap.add(jo.getString("templateCode"), jo.getString("cultivationName") + "(" + jo.getInt("energy") + "g)");
+                    BeachIdMap.add(templateCode, jo.getString("cultivationName") + "(" + jo.getInt("energy") + "g)");
                 }
             }
             BeachIdMap.save();
+            IconRegistry.saveAndPrefetch();
         } catch (Throwable t) {
             Log.i(TAG, "initOcean err:");
             Log.printStackTrace(TAG, t);
@@ -206,8 +216,14 @@ public class ProtectEcology extends ModelTask {
             for (int i = 0; i < cooperatePlants.length(); i++) {
                 jo = cooperatePlants.getJSONObject(i);
                 String cooperationId = jo.getString("cooperationId");
+                //合种图标: cooperateTemplate.iconUrl
+                JSONObject cooperateTemplate = jo.optJSONObject("cooperateTemplate");
+                if (cooperateTemplate != null) {
+                    IconRegistry.put(IconRegistry.SCOPE_COOPERATE, cooperationId, cooperateTemplate.optString("iconUrl"));
+                }
                 queryCooperatePlant(userId, cooperationId);
             }
+            IconRegistry.saveAndPrefetch();
             CooperationIdMap.save(userId);
         } catch (Throwable t) {
             Log.i(TAG, "cooperateWater err:");
@@ -452,6 +468,9 @@ public class ProtectEcology extends ModelTask {
             if (treeItems == null) {
                 return;
             }
+            //先加载历史记录, 避免本次无马拉松/古树活动时盲写空表覆盖已收集条目
+            MarathonIdMap.load();
+            NewAncientTreeIdMap.load();
             for (int i = 0; i < treeItems.length(); i++) {
                 JSONObject jo = treeItems.getJSONObject(i);
                 jo = jo.getJSONObject("extendInfo");
@@ -459,12 +478,14 @@ public class ProtectEcology extends ModelTask {
                 if (Objects.equals("marathon", jo.optString("activityType"))) {
                     String activityId = StringUtil.getSubString(jo.getString("actionUrl"), "activityId%3D", "%26");
                     MarathonIdMap.add(activityId, activityName);
+                    IconRegistry.put(IconRegistry.SCOPE_MARATHON, activityId, TaskIconUtil.extractIcon(jo));
                     if (protectMarathonType.getValue() != ProtectType.NONE) {
                         marathonQueryActivity(activityId);
                     }
                 } else if (activityName.contains("古树医生")) {
                     String activityId = StringUtil.getSubString(jo.getString("actionUrl"), "activityId%3D", "%26");
                     NewAncientTreeIdMap.add(activityId, activityName);
+                    IconRegistry.put(IconRegistry.SCOPE_ANCIENT_TREE, activityId, TaskIconUtil.extractIcon(jo));
                     if (protectNewAncientTreeType.getValue() != ProtectType.NONE) {
                         carbonQueryActivity(activityId);
                     }
@@ -472,6 +493,7 @@ public class ProtectEcology extends ModelTask {
             }
             MarathonIdMap.save();
             NewAncientTreeIdMap.save();
+            IconRegistry.saveAndPrefetch();
         } catch (Throwable t) {
             Log.i(TAG, "protectCarbon err:");
             Log.printStackTrace(TAG, t);

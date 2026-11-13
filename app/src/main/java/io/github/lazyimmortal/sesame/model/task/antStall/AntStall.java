@@ -338,7 +338,7 @@ public class AntStall extends ModelTask {
             Set<String> whiteList = new HashSet<>();// 从黑名单中移除该任务
             //whiteList.add("逛一逛树");
             for (String task : blackList) {
-                AntStallTaskListMap.add(task, task);
+                AntStallTaskListMap.add(task, "");
             }
             
             if (taskList) {
@@ -353,7 +353,7 @@ public class AntStall extends ModelTask {
                         JSONObject task = taskModels.getJSONObject(i);
                         JSONObject bizInfo = new JSONObject(task.getString("bizInfo"));
                         String title = bizInfo.getString("title");
-                        AntStallTaskListMap.add(title, title);
+                        AntStallTaskListMap.add(title, TaskIconUtil.extractIcon(bizInfo));
                     }
                 }
                 //保存任务到配置文件
@@ -774,27 +774,43 @@ public class AntStall extends ModelTask {
                 String taskType = task.getString("taskType");
                 JSONObject bizInfo = new JSONObject(task.getString("bizInfo"));
                 String title = bizInfo.getString("title");
+                int rightsTimes = task.optInt("rightsTimes", 0);
+                int rightsTimesLimit = task.optInt("rightsTimesLimit", 0);
                 //第1步：可领奖任务优先领奖
                 if (!Objects.equals(TaskStatus.TODO.name(), taskStatus)) {
                     receiveTaskAward(taskType, title);
-                    continue;
+                    //还有剩余档位时继续往下推进，做到一次进入推满
+                    if (rightsTimesLimit <= rightsTimes) {
+                        continue;
+                    }
                 }
-                //第2步：待完成的游戏任务（不在游戏任务黑名单里的直接调备用接口完成）
-                if (TaskAlternative.handleGameTask("AntStallTaskList", title, taskStatus,
-                        taskType, "ANTSTALL_TASK", "ANTSTALL_TASK", "AST")) {
-                    continue;
-                }
-                //第3步：黑名单任务跳过
+                //第2步：黑名单任务跳过（游戏/跳转第三方任务由 TaskAlternative 执行一次后跳过）
                 if (AntStallTaskList.getValue().contains(title)) {
+                    TaskAlternative.handleGameTask(new TaskAlternative.GameTask("AntStallTaskList",
+                            title, bizInfo.optString("desc", bizInfo.optString("taskDesc")),
+                            bizInfo.optString("targetUrl"), taskStatus)
+                            .bizKey(taskType)
+                            .rights(rightsTimes, rightsTimesLimit)
+                            .taskRemain(Math.max(0, task.optInt("taskRequire", 0) - task.optInt("taskProgress", 0)))
+                            .taskPlayType(task.optString("taskPlayType", task.optString("taskProdPlayType")))
+                            .taskMode(task.optString("taskMode"))
+                            .taskSceneCode("ANTSTALL_TASK")
+                            .scene("ANTSTALL_TASK", "AST")
+                            .version(AntStallRpcCall.VERSION));
                     continue;
                 }
                 
-                if (!doStallTask(task, title)) {
-                    continue;
+                //有剩余档位时循环推满
+                int timesToDo = TaskAlternative.rightsTimesToDo(rightsTimes, rightsTimesLimit);
+                for (int cnt = 0; cnt < timesToDo; cnt++) {
+                    if (!doStallTask(task, title)) {
+                        break;
+                    }
+                    Log.farm("新村任务🧾完成[" + title + "]"
+                            + TaskAlternative.rightsProgressText(rightsTimes, rightsTimesLimit, cnt));
+                    TimeUtil.sleep(1000);
+                    receiveTaskAward(taskType, title);
                 }
-                Log.farm("新村任务🧾完成[" + title + "]");
-                TimeUtil.sleep(1000);
-                receiveTaskAward(taskType, title);
             }
             //为了防止异常，新村任务只做一次
             if (doTaskOnce.getValue()) {

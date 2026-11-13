@@ -74,6 +74,8 @@ import io.github.lazyimmortal.sesame.util.FileUtil;
 import io.github.lazyimmortal.sesame.util.JsonUtil;
 import io.github.lazyimmortal.sesame.util.ListUtil;
 import io.github.lazyimmortal.sesame.util.Log;
+import io.github.lazyimmortal.sesame.util.IconRegistry;
+import io.github.lazyimmortal.sesame.util.TaskIconUtil;
 import io.github.lazyimmortal.sesame.util.MessageUtil;
 import io.github.lazyimmortal.sesame.util.NotificationUtil;
 import io.github.lazyimmortal.sesame.util.RandomUtil;
@@ -853,7 +855,7 @@ public class AntForestV2 extends ModelTask {
             Log.printStackTrace(TAG, th);
         }
 
-        //活力值: 新版queryHomePage不再返回, 改查queryTaskList; 已对照RPC.txt抓包验证真实路径为userVitalityInfo.totalVitalityAmount(另有过期值overDueVitalityAmount)
+        //活力值: 新版queryHomePage不再返回, 改查queryTaskList; 已确认真实路径为userVitalityInfo.totalVitalityAmount(另有过期值overDueVitalityAmount)
         try {
             JSONObject vitalityJo = new JSONObject(AntForestRpcCall.queryTaskList());
             if (MessageUtil.checkResultCode(TAG, vitalityJo)) {
@@ -2022,7 +2024,7 @@ public class AntForestV2 extends ModelTask {
             whiteList.add("逛农场得落叶肥料");
             // 可继续添加更多白名单任务
             for (String task : blackList) {
-                AntForestVitalityTaskListMap.add(task, task);
+                AntForestVitalityTaskListMap.add(task, "");
             }
 
             if (receiveForestTaskAward) {
@@ -2040,7 +2042,7 @@ public class AntForestV2 extends ModelTask {
                                     JSONObject bizInfo = new JSONObject(taskBaseInfo.getString("bizInfo"));
                                     String taskType = taskBaseInfo.getString("taskType");
                                     String taskTitle = bizInfo.optString("taskTitle", taskType);
-                                    AntForestVitalityTaskListMap.add(taskTitle, taskTitle);
+                                    AntForestVitalityTaskListMap.add(taskTitle, TaskIconUtil.extractIcon(bizInfo));
                                 }
                             }
                         }
@@ -2059,7 +2061,7 @@ public class AntForestV2 extends ModelTask {
                                 JSONObject bizInfo = new JSONObject(taskBaseInfo.getString("bizInfo"));
                                 String taskType = taskBaseInfo.getString("taskType");
                                 String taskTitle = bizInfo.optString("taskTitle", taskType);
-                                AntForestVitalityTaskListMap.add(taskTitle, taskTitle);
+                                AntForestVitalityTaskListMap.add(taskTitle, TaskIconUtil.extractIcon(bizInfo));
                             }
                         }
                     }
@@ -2117,7 +2119,7 @@ public class AntForestV2 extends ModelTask {
             whiteList.add("消耗活力值得机会");
             // 可继续添加更多白名单任务
             for (String task : blackList) {
-                AntForestHuntTaskListMap.add(task, task);
+                AntForestHuntTaskListMap.add(task, "");
             }
 
             if (ForestHunt) {
@@ -2136,7 +2138,7 @@ public class AntForestV2 extends ModelTask {
                                 JSONObject taskBaseInfo = taskInfo.getJSONObject("taskBaseInfo");
                                 JSONObject bizInfo = new JSONObject(taskBaseInfo.getString("bizInfo"));
                                 String taskName = bizInfo.getString("title");
-                                AntForestHuntTaskListMap.add(taskName, taskName);
+                                AntForestHuntTaskListMap.add(taskName, TaskIconUtil.extractIcon(bizInfo));
                             }
                         }
                     }
@@ -2189,7 +2191,7 @@ public class AntForestV2 extends ModelTask {
                 //whiteList.add("消耗活力值得机会");
                 // 可继续添加更多白名单任务
                 for (String task : blackList) {
-                    MonopolyTaskListMap.add(task, task);
+                    MonopolyTaskListMap.add(task, "");
                 }
 
                 if (monopolyTasks) {
@@ -2202,7 +2204,7 @@ public class AntForestV2 extends ModelTask {
                                 JSONObject taskBaseInfo = task.getJSONObject("taskBaseInfo");
                                 JSONObject bizInfo = new JSONObject(taskBaseInfo.getString("bizInfo"));
                                 String taskTitle = bizInfo.getString("taskTitle");
-                                MonopolyTaskListMap.add(taskTitle, taskTitle);
+                                MonopolyTaskListMap.add(taskTitle, TaskIconUtil.extractIcon(bizInfo));
                             }
                         }
                     }
@@ -2715,18 +2717,32 @@ public class AntForestV2 extends ModelTask {
                 String taskTitle = bizInfo.optString("taskTitle", taskType);
                 String sceneCode = taskBaseInfo.getString("sceneCode");
                 String taskStatus = taskBaseInfo.getString("taskStatus");
+                int rightsTimes = taskInfo.optInt("rightsTimes", 0);
+                int rightsTimesLimit = taskInfo.optInt("rightsTimesLimit", 0);
                 //第1步：可领奖任务优先领奖
                 if (TaskStatus.FINISHED.name().equals(taskStatus)) {
                     receiveTaskAward(sceneCode, taskType, taskTitle);
-                } else if (TaskStatus.TODO.name().equals(taskStatus)) {
-                    //第2步：待完成的游戏任务（不在游戏任务黑名单里的直接调备用接口完成）
-                    if (TaskAlternative.handleGameTask("AntForestVitalityTaskList", taskTitle, taskStatus,
-                            taskType, sceneCode, sceneCode, "ANTFOREST")) {
-                        //备用接口响应不可信，不触发本轮重拉，成败以下一轮任务列表为准
+                    //还有剩余档位时继续往下推进，做到一次进入推满
+                    if (rightsTimesLimit <= rightsTimes) {
                         continue;
                     }
-                    //第3步：黑名单任务跳过
+                } else if (!TaskStatus.TODO.name().equals(taskStatus)) {
+                    continue;
+                }
+                {
+                    //第2步：黑名单任务跳过（游戏/跳转第三方任务由 TaskAlternative 执行一次后跳过）
                     if (AntForestVitalityTaskList.getValue().contains(taskTitle)) {
+                        TaskAlternative.handleGameTask(new TaskAlternative.GameTask("AntForestVitalityTaskList",
+                                taskTitle, bizInfo.optString("desc", bizInfo.optString("taskDesc")),
+                                bizInfo.optString("targetUrl"), taskStatus)
+                                .bizKey(taskType)
+                                .rights(rightsTimes, rightsTimesLimit)
+                                .taskRemain(Math.max(0, taskBaseInfo.optInt("taskRequire", 0) - taskBaseInfo.optInt("taskProgress", 0)))
+                                .taskPlayType(taskBaseInfo.optString("taskPlayType", taskBaseInfo.optString("taskProdPlayType")))
+                                .taskMode(taskBaseInfo.optString("taskMode"))
+                                .taskSceneCode(sceneCode)
+                                .scene(sceneCode, "ANTFOREST")
+                                .version(AntForestRpcCall.VERSION));
                         continue;
                     }
 
@@ -2746,7 +2762,13 @@ public class AntForestV2 extends ModelTask {
                         }
                     }
 
-                    if (finishTask(sceneCode, taskType, taskTitle, bizInfo.optString("taskDesc", ""))) {
+                    //有剩余档位时循环推满
+                    int timesToDo = TaskAlternative.rightsTimesToDo(rightsTimes, rightsTimesLimit);
+                    for (int cnt = 0; cnt < timesToDo; cnt++) {
+                        if (!finishTask(sceneCode, taskType, taskTitle, bizInfo.optString("taskDesc", ""),
+                                TaskAlternative.rightsProgressText(rightsTimes, rightsTimesLimit, cnt))) {
+                            break;
+                        }
                         //本轮完成成功后立即领奖
                         receiveTaskAward(sceneCode, taskType, taskTitle);
                     }
@@ -2833,7 +2855,8 @@ public class AntForestV2 extends ModelTask {
         return false;
     }
 
-    private Boolean finishTask(String sceneCode, String taskType, String taskTitle, String taskDesc) {
+    private Boolean finishTask(String sceneCode, String taskType, String taskTitle, String taskDesc,
+            String progress) {
         try {
             JSONObject jo = new JSONObject(AntForestRpcCall.finishTask(sceneCode, taskType));
             //检查并标记黑名单任务
@@ -2844,7 +2867,7 @@ public class AntForestV2 extends ModelTask {
                 return false;
             }
             if (MessageUtil.checkSuccess(TAG, jo)) {
-                Log.forest("森林任务🧾️完成[" + taskTitle + "]");
+                Log.forest("森林任务🧾️完成[" + taskTitle + "]" + progress);
                 return true;
             }
             Log.record("完成任务[" + taskTitle + "]失败");
@@ -2867,7 +2890,7 @@ public class AntForestV2 extends ModelTask {
                 String taskStatus = taskBaseInfo.getString("taskStatus");
                 if (TaskStatus.TODO.name().equals(taskStatus)) {
                     if (bizInfo.optBoolean("autoCompleteTask")) {
-                        finishTask(sceneCode, taskType, taskTitle, bizInfo.optString("taskDesc", ""));
+                        finishTask(sceneCode, taskType, taskTitle, bizInfo.optString("taskDesc", ""), "");
                     }
                 }
             }
@@ -3186,22 +3209,28 @@ public class AntForestV2 extends ModelTask {
                     }
                 }
                 if (TaskStatus.TODO.name().equals(taskStatus) || rightsTimes < rightsTimesLimit) {
-                    //第2步：待完成的游戏任务（不在游戏任务黑名单里的直接调备用接口完成）
-                    if (TaskAlternative.handleGameTask("AntForestVitalityTaskList", title, taskStatus,
-                            taskType, sceneCode, "ANTFOREST", "H5")) {
-                        continue;
-                    }
-                    //第3步：黑名单任务跳过
+                    //第2步：黑名单任务跳过（游戏/跳转第三方任务由 TaskAlternative 执行一次后跳过）
                     if (AntForestVitalityTaskList.getValue().contains(title)) {
+                        TaskAlternative.handleGameTask(new TaskAlternative.GameTask("AntForestVitalityTaskList",
+                                title, bizInfo.optString("taskDesc", bizInfo.optString("desc")),
+                                bizInfo.optString("targetUrl"), taskStatus)
+                                .bizKey(taskType)
+                                .rights(rightsTimes, rightsTimesLimit)
+                                .taskRemain(task.optInt("taskRemain", 0))
+                                .taskPlayType(task.optString("taskPlayType", task.optString("taskProdPlayType")))
+                                .taskMode(task.optString("taskMode"))
+                                .taskSceneCode(sceneCode)
+                                .scene("ANTFOREST", "H5")
+                                .version(AntForestRpcCall.VERSION));
                         continue;
                     }
                     if (TaskStatus.FINISHED.name().equals(taskStatus)) {
-                        if (finishTask(sceneCode, taskType, title + "(" + (rightsTimes + 1) + "/" + rightsTimesLimit + ")", bizInfo.optString("taskDesc", ""))) {
+                        if (finishTask(sceneCode, taskType, title + "(" + (rightsTimes + 1) + "/" + rightsTimesLimit + ")", bizInfo.optString("taskDesc", ""), "")) {
                             //本轮执行成功立即领奖
                             receiveTaskAward(sceneCode, taskType, title);
                         }
                     } else {
-                        if (finishTask(sceneCode, taskType, title, bizInfo.optString("taskDesc", ""))) {
+                        if (finishTask(sceneCode, taskType, title, bizInfo.optString("taskDesc", ""), "")) {
                             //本轮完成成功后立即领奖
                             receiveTaskAward(sceneCode, taskType, title);
                         }
@@ -3962,7 +3991,7 @@ public class AntForestV2 extends ModelTask {
             int energyCount = userInfo.optInt("energyCount");
             int stepCount = userInfo.optInt("stepCount");
 
-            // 排行信息(全容错,已对照RPC.txt queryMonopolyRanking抓包验证): 累计排名/证书/勋章取TOTAL榜myself,
+            // 排行信息(全容错,已按queryMonopolyRanking确认): 累计排名/证书/勋章取TOTAL榜myself,
             // 今日巡护名次/步数/勋章/证书取DAY榜myself, friendRanking各取前3(跳过无数据条目); 任一失败仅略过对应段不中断主流程
             Integer rank = null;
             Integer mapCount = null;
@@ -4719,13 +4748,20 @@ public class AntForestV2 extends ModelTask {
                     monopolyReceiveTaskAward(taskType, sceneCode, taskTitle);
                     continue;
                 }
-                //第2步：待完成的游戏任务（不在游戏任务黑名单里的直接调备用接口完成）
-                if (TaskAlternative.handleGameTask("MonopolyTaskList", taskTitle, taskStatus,
-                        taskType, sceneCode, sceneCode, "ANTFOREST")) {
-                    continue;
-                }
-                //第3步：黑名单任务跳过
+                //第2步：黑名单任务跳过（游戏/跳转第三方任务由 TaskAlternative 执行一次后跳过）
                 if (MonopolyTaskList.getValue().contains(taskTitle)) {
+                    TaskAlternative.handleGameTask(new TaskAlternative.GameTask("MonopolyTaskList",
+                            taskTitle, bizInfo.optString("desc", bizInfo.optString("taskDesc")),
+                            //保护地任务链接字段是 taskJumpUrl，兼容旧结构回落 targetUrl
+                            TaskAlternative.firstNonEmpty(bizInfo.optString("taskJumpUrl"),
+                                    bizInfo.optString("targetUrl")), taskStatus)
+                            .bizKey(taskType)
+                            .taskRemain(Math.max(0, taskBaseInfo.optInt("taskRequire", 0) - taskBaseInfo.optInt("taskProgress", 0)))
+                            .taskPlayType(taskBaseInfo.optString("taskPlayType", taskBaseInfo.optString("taskProdPlayType")))
+                            .taskMode(taskBaseInfo.optString("taskMode"))
+                            .taskSceneCode(sceneCode)
+                            .scene(sceneCode, "ANTFOREST")
+                            .version(AntForestRpcCall.VERSION));
                     continue;
                 }
                 if (taskStatus.equals("RECEIVED")) {
@@ -4751,7 +4787,7 @@ public class AntForestV2 extends ModelTask {
 
     /**
      * 新版保护地：「去保护/了解XX保护地」类任务的前置页面访问。
-     * 判定特征（抓包验证）：taskJumpUrl 指向保护地兑换页 180020010001247580/exchange.html 且带 projectId，
+     * 判定特征：taskJumpUrl 指向保护地兑换页 180020010001247580/exchange.html 且带 projectId，
      * 手动操作时页面加载会调 queryTreeForExchange（source/projectId 取自跳转链接），此处复刻该时序。
      * 覆盖实例：「去保护玉树东仲保护地」(source=monopoly_exchange_mappage)、
      * 「去了解无斑雨蛙保护」(source=gongminkexuejia)。非这类任务或解析失败时静默跳过，不影响后续兜底。
@@ -5431,6 +5467,8 @@ public class AntForestV2 extends ModelTask {
             if (itemInfoVOList == null) {
                 return;
             }
+            //先加载历史商品, 逐个spu保存时会整体写盘, 不加载会只剩最后一个spu的sku
+            VitalityBenefitIdMap.load(UserIdMap.getCurrentUid());
             for (int i = 0; i < itemInfoVOList.length(); i++) {
                 JSONObject itemInfoVO = itemInfoVOList.getJSONObject(i);
                 getSkuInfoByItemInfoVO(itemInfoVO);
@@ -5447,6 +5485,8 @@ public class AntForestV2 extends ModelTask {
             if (!MessageUtil.checkSuccess(TAG, jo)) {
                 return;
             }
+            //独立入口也要先加载历史商品, 避免保存时覆盖
+            VitalityBenefitIdMap.load(UserIdMap.getCurrentUid());
             JSONObject spuItemInfoVo = jo.getJSONObject("spuItemInfoVO");
             getSkuInfoByItemInfoVO(spuItemInfoVo);
         } catch (Throwable th) {
@@ -5468,8 +5508,10 @@ public class AntForestV2 extends ModelTask {
                 }
                 skuInfo.put(skuId, skuModel);
                 VitalityBenefitIdMap.add(skuId, skuName);
+                IconRegistry.put(IconRegistry.SCOPE_VITALITY_BENEFIT, skuId, TaskIconUtil.extractIcon(skuModel, spuItem));
             }
             VitalityBenefitIdMap.save(UserIdMap.getCurrentUid());
+            IconRegistry.saveAndPrefetch();
         } catch (Throwable th) {
             Log.i(TAG, "getSkuInfoByItemInfoVO err:");
             Log.printStackTrace(TAG, th);
