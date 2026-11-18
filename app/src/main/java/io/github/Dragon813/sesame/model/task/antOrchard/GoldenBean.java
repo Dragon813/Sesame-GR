@@ -1,0 +1,853 @@
+package io.github.Dragon813.sesame.model.task.antOrchard;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
+import io.github.Dragon813.sesame.model.task.antForest.AntForestRpcCall;
+import io.github.Dragon813.sesame.model.task.antGame.GameTask;
+import io.github.Dragon813.sesame.util.Log;
+import io.github.Dragon813.sesame.util.MessageUtil;
+import io.github.Dragon813.sesame.util.Status;
+import io.github.Dragon813.sesame.util.TimeUtil;
+import io.github.Dragon813.sesame.util.idMap.UserIdMap;
+import io.github.Dragon813.sesame.model.task.antGame.TaskAlternative;
+import io.github.Dragon813.sesame.model.normal.base.BaseModel;
+import io.github.Dragon813.sesame.util.idMap.MiniGameTaskListMap;
+
+/**
+ * 支付宝-金豆夺宝（芭芭农场下的新玩法）业务逻辑。
+ * <p>
+ * 已实现（接口均已确认）：
+ * <ul>
+ *     <li>领支金豆/金豆苗收取（调 index 时服务端自动收取，读 sproutCollectedDelta 记录）</li>
+ *     <li>每日签到领金豆（sign）</li>
+ *     <li>每日求签夺宝（fortuneDraw）</li>
+ *     <li>金猫矿工挖矿（miner.index + miner.grab 循环下钩抓豆）</li>
+ *     <li>金豆乐园自动砸蛋（drawGameCenterAward，288豆/次）</li>
+ *     <li>金豆乐园自动玩游戏刷砸蛋机会（GameTask channel=goldenbean，上报农场上车车/对对碰乐园）</li>
+ *     <li>完成任务领金豆（finishTask + receiveTaskAward，带黑名单与当日去重，尊重风控）</li>
+ *     <li>浮动金豆收取（floatingBeans，限时豆过期作废，借鉴参考实现）</li>
+ *     <li>限时加量弹窗任务（marketingPopupTask，模拟点击弹窗后领奖，借鉴参考实现）</li>
+ *     <li>常用来访任务（用首页入口source重访index触发自动发奖，借鉴参考实现）</li>
+ *     <li>游戏任务上报（对对碰乐园/森林小车车/森林救援队走gamesapi2真实上报，借鉴参考实现）</li>
+ *     <li>肥料换金豆（manureExchange，支持当日兑换肥料上限与剩余肥料下限，上限与服务器取低者，均0=不限制）</li>
+ * </ul>
+ * 风控：每日去重/服务端状态判断/循环限速/死循环保护；结果写 farm.log，诊断写 debug.log。
+ */
+public class GoldenBean {
+
+    private static final String TAG = "GoldenBean";
+
+    /**
+     * 完成任务黑名单：这些任务需要真实交互（玩游戏/支付/外跳/订阅），
+     * 不主动通过 RPC 完成，避免异常请求触发风控。按 taskDisplayConfig.type 匹配。
+     */
+    private static final Set<String> TASK_TYPE_BLACKLIST = new HashSet<>();
+
+    /**
+     * 按 taskType(spmExtend里的类型)黑名单：这些任务不支持 finishTask 直接完成，
+     * 靠对应功能的实际动作完成，避免"不支持rpc调用"等无效请求。
+     */
+    private static final Set<String> TASK_ID_BLACKLIST = new HashSet<>();
+
+    static {
+        TASK_TYPE_BLACKLIST.add("GAME_ZH");          // 玩游戏类（寻道大千/消消消/对对碰/逛金豆乐园…）
+        TASK_TYPE_BLACKLIST.add("KUAISHOU");         // 逛一逛快手（外跳）
+        TASK_TYPE_BLACKLIST.add("XIANSHANGZHIFU");   // 线上支付
+        TASK_TYPE_BLACKLIST.add("XIANXIAZHIFU");     // 到店支付
+        TASK_TYPE_BLACKLIST.add("YUEBAO");           // 余额宝攒钱
+        TASK_TYPE_BLACKLIST.add("XIAOXIDINGYUE");    // 消息订阅（涉及用户设置，不主动订阅）
+        TASK_TYPE_BLACKLIST.add("WAKUANG");          // 挖矿（由金猫矿工功能完成）
+
+        TASK_ID_BLACKLIST.add("MANURE_EXCHANGE");    // 肥料兑换支金豆（靠实际换肥料完成，finishTask 返回"不支持rpc调用"）
+    }
+
+    /**
+     * 金豆夺宝主入口，由 AntOrchard.run() 在完成农场逻辑后调用。
+     *
+     * @param doExchange       肥料换金豆（单独开关，因为会消耗农场肥料）
+     * @param reserveManure    剩余肥料下限（兑换后剩余肥料不低于该值，0=不限制）
+     * @param dailyManureLimit 当日兑换肥料上限（与服务器今日剩余额度看谁低取谁，0=不限制）
+     */
+    public void run(boolean goldenBeansTask, Set<String> GoldenBeansTaskList, boolean GoldenBeansGameCenter, boolean doExchange, int reserveManure, int dailyManureLimit) {
+
+        try {
+            String indexStr = GoldenBeanRpcCall.index();
+            JSONObject index = new JSONObject(indexStr);
+            if (!MessageUtil.checkResultCode(TAG, index)) {
+                return;
+            }
+            // 金豆概况 + 领支金豆(金豆苗收取，调 index 时服务端已自动收取)
+            summary(index);
+            sign(index.optJSONObject("signInfo"));
+            fortuneDraw(index.optJSONObject("fortuneDrawInfo"));
+            collectFloatingBeans();
+            miner();
+            if (goldenBeansTask) {
+                //限时加量弹窗任务先处理(参考实现, 弹窗任务不在taskList里)
+                marketingPopup();
+                //完成两个任务列表
+                if (index.has("taskList")) {
+                    doTaskList(index.optJSONArray("taskList"), "金豆", GoldenBeansTaskList);
+                }
+                if (index.has("farmTaskList")) {
+                    doTaskList(index.optJSONArray("farmTaskList"), "肥料", GoldenBeansTaskList);
+                }
+            }
+            if (GoldenBeansGameCenter) {
+                gameCenter(index);
+                playGame();
+            }
+            if (doExchange) {
+                exchangeManure(index.optJSONObject("manureExchangeInfo"), reserveManure, dailyManureLimit);
+            }
+        } catch (Throwable t) {
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    /**
+     * 截断超长字符串，避免调试日志过大
+     */
+    private static String brief(String s) {
+        if (s == null) {
+            return "null";
+        }
+        return s.length() > 300 ? s.substring(0, 300) + "...(截断)" : s;
+    }
+
+    /**
+     * 浮动金豆收取(借鉴参考实现)：sync取FLOATING_BEANS列表，逐个goldenbean.collect收取。
+     * 浮动豆为限时豆(过期作废)，来源如逛淘工厂/逛淘宝等
+     */
+    private static void collectFloatingBeans() {
+        try {
+            String resp = GoldenBeanRpcCall.sync("\"FLOATING_BEANS\"");
+            JSONObject jo = new JSONObject(resp);
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            JSONObject data = jo.optJSONObject("data");
+            JSONArray floatingBeans = jo.optJSONArray("floatingBeans");
+            if (floatingBeans == null && data != null) {
+                floatingBeans = data.optJSONArray("floatingBeans");
+            }
+            if (floatingBeans == null || floatingBeans.length() == 0) {
+                return;
+            }
+            int collected = 0;
+            long totalBeans = 0;
+            for (int i = 0; i < floatingBeans.length(); i++) {
+                JSONObject bean = floatingBeans.optJSONObject(i);
+                if (bean == null) {
+                    continue;
+                }
+                String assetId = bean.optString("assetId");
+                if (assetId.length() == 0) {
+                    continue;
+                }
+                String source = bean.optString("outBizTypeDesc", "浮动金豆");
+                int beanCount = bean.optInt("beanCount", 0);
+                JSONObject collectJo = new JSONObject(GoldenBeanRpcCall.collect(assetId));
+                if (MessageUtil.checkResultCode(TAG, collectJo)) {
+                    collected++;
+                    totalBeans += beanCount;
+                    Log.farm("金豆夺宝🫘浮动金豆[" + source + "]#获得[" + beanCount + "金豆]");
+                }
+                sleep(500);
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "collectFloatingBeans err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    /**
+     * 限时加量弹窗任务(借鉴参考实现)：弹窗任务不在taskList中，从sync读marketingPopupTask，
+     * TODO时模拟点击弹窗(trigger MARKETING_POPUP_CLICKED)后领取奖励，当日打标防重复
+     */
+    private static void marketingPopup() {
+        try {
+            String resp = GoldenBeanRpcCall.sync("\"MARKETING_POPUP\"");
+            JSONObject jo = new JSONObject(resp);
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            JSONObject data = jo.optJSONObject("data");
+            JSONObject popup = jo.optJSONObject("marketingPopupTask");
+            if (popup == null && data != null) {
+                popup = data.optJSONObject("marketingPopupTask");
+            }
+            if (popup == null || !"TODO".equals(popup.optString("taskStatus"))) {
+                return;
+            }
+            String popupTaskId = popup.optString("taskId");
+            if (popupTaskId.length() == 0 || Status.hasFlagToday("GoldenBean::popup_" + popupTaskId)) {
+                return;
+            }
+            Status.flagToday("GoldenBean::popup_" + popupTaskId);
+            JSONObject pd = popup.optJSONObject("taskDisplayConfig");
+            String title = pd == null ? "限时加量" : pd.optString("title", "限时加量");
+            //模拟点击弹窗(与页面点击一致)，再领奖
+            GoldenBeanRpcCall.trigger(popupTaskId, "MARKETING_POPUP_CLICKED");
+            sleep(500);
+            String sceneCode = popup.optString("sceneCode", "GOLDEN_BEAN_MASTER_TASK");
+            JSONObject award = new JSONObject(GoldenBeanRpcCall.receiveTaskAward(sceneCode, popupTaskId));
+            if (MessageUtil.checkSuccess(TAG, award)) {
+                Log.farm("金豆夺宝⏫限时加量[" + title + "]#获得[" + award.optInt("incAwardCount", 0) + "金豆]");
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "marketingPopup err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    /**
+     * 常用来访任务(借鉴参考实现)：服务端在用户访问金豆主页瞬间自动发奖(无领取接口)，
+     * 用App首页入口source重调index触发，响应receptionAwardCount即本次奖励，当日打标防重复
+     */
+    private static void handleChangYongFangWen(String title) {
+        try {
+            if (Status.hasFlagToday("GoldenBean::changYongFangWen")) {
+                return;
+            }
+            Status.flagToday("GoldenBean::changYongFangWen");
+            JSONObject jo = new JSONObject(GoldenBeanRpcCall.indexFromHome());
+            if (MessageUtil.checkResultCode(TAG, jo)) {
+                int awardCount = jo.optInt("receptionAwardCount", 0);
+                if (awardCount > 0) {
+                    Log.farm("金豆夺宝🏠常用来访[" + title + "]#获得[" + awardCount + "金豆]");
+                }
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "handleChangYongFangWen err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    /**
+     * GAME_ZH游戏任务(借鉴参考实现)：已知游戏走gamesapi2真实上报完成任务得砸蛋机会。
+     * 农场上车车/金豆乐园由playGame按剩余机会统一上报，此处跳过避免重复；未知游戏返回false保持原逻辑
+     */
+    private static boolean handleGameTaskByReport(String taskId, JSONObject taskDisplayConfig, String title) {
+        try {
+            if (Status.hasFlagToday("GoldenBean::game_" + taskId)) {
+                return true;
+            }
+            GameTask game;
+            int eggCount;
+            if (title.contains("对对碰乐园")) {
+                game = GameTask.GoldenBean_ddply;
+                eggCount = Math.max(1, extractNumber(title) / 10);
+            } else if (title.contains("森林小车车")) {
+                game = GameTask.GoldenBean_slxcc;
+                eggCount = Math.max(1, extractNumber(title) / 20);
+            } else if (title.contains("森林救援队")) {
+                game = GameTask.GoldenBean_sljyd;
+                eggCount = Math.max(1, extractNumber(title) / 30);
+            } else if (title.contains("农场上车车") || title.contains("金豆乐园")) {
+                //playGame/gameCenter已覆盖，不重复上报
+                return true;
+            } else {
+                return false;
+            }
+            game.report(title, eggCount);
+            Status.flagToday("GoldenBean::game_" + taskId);
+        } catch (Throwable t) {
+            Log.i(TAG, "handleGameTaskByReport err:");
+            Log.printStackTrace(TAG, t);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 从文本提取第一个数字(游戏任务需求量，如"玩2组"取2)
+     */
+    private static int extractNumber(String text) {
+        try {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d+)").matcher(text);
+            if (m.find()) {
+                return Integer.parseInt(m.group(1));
+            }
+        } catch (Throwable ignored) {
+        }
+        return 0;
+    }
+
+    /**
+     * 金豆概况 + 领支金豆（金豆苗收取）。
+     * <p>
+     * 调用 goldenbean.index 时服务端会自动收取金豆苗，收取量在 sproutCollectedDelta 里返回，
+     * 因此"领支金豆"无需额外请求——本方法只负责把已发生的收取记入日志，并打印一条中文金豆概况，便于监控。
+     * 全程只读 index 数据，不发任何新请求，不影响原有功能。
+     */
+    private static void summary(JSONObject index) {
+        try {
+            // 领支金豆(金豆苗)：调 index/sync 时服务端结算，收取量在 sproutInfo.beanDelta 返回
+            int sproutCollected = 0;
+            JSONObject si = index.optJSONObject("sproutInfo");
+            if (si != null) {
+                sproutCollected = si.optInt("beanDelta", 0);
+            }
+            if (sproutCollected <= 0) {
+                JSONObject gsi = index.optJSONObject("goldenBeanSproutInfo");
+                if (gsi != null) {
+                    sproutCollected = gsi.optInt("beanDelta", 0);
+                }
+            }
+            // 领取为静默处理: 每次轮询都会自动收取2-3金豆, 日志过于频繁, 需要排查时再放开
+            // 中文金豆概况（写入 farm.log，便于直接查看余额/进度）
+            JSONObject jarInfo = index.optJSONObject("jarInfo");
+            int balance = 0, capacity = 99999, jarCount = 0;
+            boolean jarFull = false;
+            if (jarInfo != null) {
+                balance = jarInfo.optInt("currentProgress", 0);
+                capacity = jarInfo.optInt("jarCapacity", 99999);
+                jarCount = jarInfo.optInt("jarCount", 0);
+                jarFull = jarInfo.optBoolean("jarFull", false);
+            }
+            int pendingBeans = 0;
+            JSONObject sproutInfo = index.optJSONObject("sproutInfo");
+            if (sproutInfo != null) {
+                pendingBeans = sproutInfo.optInt("pendingBeans", 0);
+            }
+            int taskAward = index.optInt("taskAwardToReceive", 0);
+            int needForJar = Math.max(0, capacity - balance);
+            if (jarFull) {
+            }
+        } catch (Throwable t) {
+        }
+    }
+
+    /**
+     * 每日签到领金豆
+     */
+    private static void sign(JSONObject signInfo) {
+        try {
+            if (signInfo == null) {
+                return;
+            }
+            if (signInfo.optBoolean("todaySigned", false)) {
+                return;
+            }
+            String signKey = signInfo.optString("currentSignKey");
+            if (signKey.isEmpty()) {
+                return;
+            }
+            String resp = GoldenBeanRpcCall.sign(signKey);
+            JSONObject jo = new JSONObject(resp);
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            int awardCount = getTodayAwardCount(signInfo);
+            Log.farm("金豆夺宝🎁每日签到#获得" + awardCount + "金豆");
+        } catch (Throwable t) {
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    /**
+     * 从签到列表里取当日的奖励数量，取不到则默认 100
+     */
+    private static int getTodayAwardCount(JSONObject signInfo) {
+        try {
+            JSONArray signList = signInfo.optJSONArray("signList");
+            if (signList != null) {
+                for (int i = 0; i < signList.length(); i++) {
+                    JSONObject item = signList.optJSONObject(i);
+                    if (item != null && item.optBoolean("today", false)) {
+                        return item.optInt("awardCount", 100);
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return 100;
+    }
+
+    /**
+     * 每日求签夺宝
+     */
+    private static void fortuneDraw(JSONObject fortuneDrawInfo) {
+        try {
+            if (fortuneDrawInfo != null && fortuneDrawInfo.optBoolean("todayDrawn", false)) {
+                return;
+            }
+            // 本地当日标记兜底：index 的 todayDrawn 偶尔不准，避免每轮重复请求
+            if (Status.hasFlagToday("GoldenBean::fortuneDraw")) {
+                return;
+            }
+            String resp = GoldenBeanRpcCall.fortuneDraw();
+            JSONObject jo = new JSONObject(resp);
+            // "今日已抽过签"等属正常已完成，先拦截打标避免重复，不经过通用错误日志
+            String drawResultCode = jo.optString("resultCode");
+            if (!"SUCCESS".equalsIgnoreCase(drawResultCode) && !"100".equals(drawResultCode)) {
+                String desc = jo.optString("resultDesc") + jo.optString("memo");
+                if (desc.contains("已抽") || desc.contains("已完成") || desc.contains("已领")) {
+                    Status.flagToday("GoldenBean::fortuneDraw");
+                    return;
+                }
+            }
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            Status.flagToday("GoldenBean::fortuneDraw");
+            int beanDelta = jo.optInt("beanDelta", 0);
+            String typeName = "";
+            JSONObject fortuneType = jo.optJSONObject("fortuneType");
+            if (fortuneType != null) {
+                typeName = fortuneType.optString("typeName");
+            }
+            Log.farm("金豆夺宝🔮求签夺宝#" + (typeName.isEmpty() ? "" : "[" + typeName + "]") + "获得[" + beanDelta + "金豆]");
+        } catch (Throwable t) {
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    /**
+     * 肥料换金豆：三重约束——
+     * 1. 剩余肥料下限(reserveManure, 0=不限制)：兑换后剩余肥料不得低于该值
+     * 2. 当日兑换肥料上限(dailyManureLimit, 0=不限制)：与服务器今日剩余额度(remainQuota)看谁低取谁
+     * 3. 服务端最低兑换额(minExchangeAmount)，低于则跳过
+     */
+    private static void exchangeManure(JSONObject exchangeInfo, int reserveManure, int dailyManureLimit) {
+        try {
+            if (exchangeInfo == null) {
+                return;
+            }
+            if (!exchangeInfo.optBoolean("farmOpened", true) || !exchangeInfo.optBoolean("pageOpened", true)) {
+                return;
+            }
+            // 当前肥料余额（优先用 effectiveExchangeManure，其次 currentManure）
+            int currentManure = exchangeInfo.optInt("effectiveExchangeManure", exchangeInfo.optInt("currentManure", 0));
+            int minExchange = exchangeInfo.optInt("minExchangeAmount", 800);
+            int remainQuota = exchangeInfo.optInt("remainQuota", 0);
+
+            // 剩余肥料下限(0=不限制): 只兑超出下限的部分
+            if (reserveManure < 0) {
+                reserveManure = 0;
+            }
+            int exchangeable = currentManure - reserveManure;
+            // 当日兑换肥料上限(0=不限制): 按日累计(跨轮次,Status跨天自动重置)
+            if (dailyManureLimit > 0) {
+                int exchangedToday = Status.getGoldenBeanExchangeCountToday("FARM");
+                int remainLimit = dailyManureLimit - exchangedToday;
+                if (remainLimit <= 0) {
+                    Log.i(TAG, "今日已兑" + exchangedToday + "肥料达上限" + dailyManureLimit + "，跳过换金豆");
+                    return;
+                }
+                if (exchangeable > remainLimit) {
+                    exchangeable = remainLimit;
+                }
+            }
+            if (exchangeable > remainQuota) {
+                exchangeable = remainQuota;
+            }
+            if (exchangeable < minExchange) {
+                return;
+            }
+
+            String resp = GoldenBeanRpcCall.manureExchange(exchangeable);
+            JSONObject jo = new JSONObject(resp);
+            if (!MessageUtil.checkResultCode(TAG, jo)) {
+                return;
+            }
+            int manureCost = jo.optInt("manureCost", exchangeable);
+            int beanReward = exchangeInfo.optInt("beanReward", 1);
+            // 按实际到账记账(beanDelta优先,缺失回退估算);日累计记实际消耗肥料
+            long gotBeans = jo.optLong("beanDelta", (long) manureCost * beanReward);
+            if (manureCost > 0) {
+                Status.goldenBeanExchangeToday("FARM", manureCost);
+            }
+            int newRemainQuota = jo.optInt("remainQuota", -1);
+            Log.farm("金豆夺宝💰肥料换金豆#消耗[" + manureCost + "肥料]获得[" + gotBeans + "金豆]"
+                    + (newRemainQuota >= 0 ? "#今日剩余额度[" + newRemainQuota + "]" : ""));
+        } catch (Throwable t) {
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    /**
+     * 金猫矿工挖矿：循环下钩抓取棋盘上价值最高的金豆，直至用完当日次数。
+     */
+    private static void miner() {
+        try {
+            // 今日次数已用完则不再请求 miner.index，减少空转（挖矿次数服务端每日重置）
+            if (Status.hasFlagToday("GoldenBean::minerDone")) {
+                return;
+            }
+            String indexStr = GoldenBeanRpcCall.minerIndex();
+            JSONObject index = new JSONObject(indexStr);
+            if (!MessageUtil.checkResultCode(TAG, index)) {
+                return;
+            }
+            JSONObject minerInfo = index.optJSONObject("minerInfo");
+            if (minerInfo == null) {
+                return;
+            }
+            JSONObject currentLevel = minerInfo.optJSONObject("currentLevel");
+            JSONObject taskProgress = minerInfo.optJSONObject("taskProgress");
+            JSONObject progress = minerInfo.optJSONObject("progress");
+            int remainingTimes = taskProgress == null ? 0 : taskProgress.optInt("remainingTimes", 0);
+            boolean canGrab = taskProgress != null && taskProgress.optBoolean("canGrab", false);
+            if (remainingTimes <= 0 || !canGrab || currentLevel == null) {
+                if (remainingTimes <= 0) {
+                    Status.flagToday("GoldenBean::minerDone");
+                }
+                return;
+            }
+
+            long totalBeans = 0;
+            int grabbed = 0;
+            // 本关已尝试(抓过/失败)的 itemId，避免重复抓同一个导致"操作失败"；换关时清空
+            Set<String> usedIds = new HashSet<>();
+            int levelIndex = progress == null ? 0 : progress.optInt("currentLevelIndex", 0);
+            addGrabbedIds(usedIds, progress);
+            // 上限保护，防止服务端异常导致死循环
+            int guard = remainingTimes + 10;
+            while (remainingTimes > 0 && canGrab && currentLevel != null && guard-- > 0) {
+                String itemId = pickBestBean(currentLevel.optJSONArray("items"), usedIds);
+                if (itemId == null) {
+                    break;
+                }
+                usedIds.add(itemId); // 先标记，无论成败都不再重复抓
+                String grabResp = GoldenBeanRpcCall.minerGrab("BEAN", itemId);
+                JSONObject grab = new JSONObject(grabResp);
+                if (!MessageUtil.checkResultCode(TAG, grab)) {
+                    sleep(500);
+                    continue;
+                }
+                int reward = grab.optInt("baseReward", 0) + grab.optInt("extraReward", 0);
+                totalBeans += reward;
+                grabbed++;
+                // 更新棋盘、进度与剩余次数
+                currentLevel = grab.optJSONObject("currentLevel");
+                progress = grab.optJSONObject("progress");
+                JSONObject tp = grab.optJSONObject("taskProgress");
+                if (tp == null) {
+                    break;
+                }
+                remainingTimes = tp.optInt("remainingTimes", 0);
+                canGrab = tp.optBoolean("canGrab", false);
+                // 换关则重置已抓集合（不同关卡 itemId 可能重名）
+                int newLevelIndex = progress == null ? levelIndex : progress.optInt("currentLevelIndex", levelIndex);
+                if (newLevelIndex != levelIndex) {
+                    levelIndex = newLevelIndex;
+                    usedIds.clear();
+                    addGrabbedIds(usedIds, progress);
+                }
+                sleep(500);
+            }
+            if (remainingTimes <= 0) {
+                Status.flagToday("GoldenBean::minerDone");
+            }
+            if (grabbed > 0) {
+                Log.farm("金豆夺宝⛏️金猫矿工#下钩[" + grabbed + "次]获得[" + totalBeans + "金豆]");
+            }
+        } catch (Throwable t) {
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    /**
+     * 把 progress.grabbedItemIds 合并进已用集合
+     */
+    private static void addGrabbedIds(Set<String> set, JSONObject progress) {
+        try {
+            if (progress == null) {
+                return;
+            }
+            JSONArray arr = progress.optJSONArray("grabbedItemIds");
+            if (arr != null) {
+                for (int i = 0; i < arr.length(); i++) {
+                    String id = arr.optString(i, "");
+                    if (!id.isEmpty()) {
+                        set.add(id);
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /**
+     * 从棋盘物品里挑价值最高、且未抓取过的金豆（跳过石头 STONE / beanValue<=0 / 已抓过的）
+     */
+    private static String pickBestBean(JSONArray items, Set<String> exclude) {
+        if (items == null) {
+            return null;
+        }
+        String bestId = null;
+        int bestValue = 0;
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            if (item == null) {
+                continue;
+            }
+            if (!"BEAN".equalsIgnoreCase(item.optString("type"))) {
+                continue;
+            }
+            String itemId = item.optString("itemId");
+            if (itemId.isEmpty() || (exclude != null && exclude.contains(itemId))) {
+                continue;
+            }
+            int value = item.optInt("beanValue", 0);
+            if (value > bestValue) {
+                bestValue = value;
+                bestId = itemId;
+            }
+        }
+        return bestId;
+    }
+
+    /**
+     * 完成任务领金豆：遍历 TODO 任务，跳过黑名单类型与当日已尝试的任务，
+     * 先 finishTask 再 receiveTaskAward。当日无论成功失败都打标，避免重复请求。
+     */
+    private void doTaskList(JSONArray taskList, String awardType, Set<String> GoldenBeansTaskList) {
+        if (taskList == null) {
+            return;
+        }
+        for (int i = 0; i < taskList.length(); i++) {
+            try {
+                JSONObject task = taskList.optJSONObject(i);
+                if (task == null) {
+                    continue;
+                }
+
+                String sceneCode = task.optString("sceneCode");
+                String taskType = task.optString("taskId");
+                String taskStatus = task.optString("taskStatus");
+                int rightsTimes = task.optInt("rightsTimes", 0);
+                int rightsTimesLimit = task.optInt("rightsTimesLimit", 0);
+                JSONObject taskDisplayConfig = task.optJSONObject("taskDisplayConfig");
+                String title = taskDisplayConfig == null ? taskType : taskDisplayConfig.optString("title");
+
+                String desc = taskDisplayConfig == null ? "" : taskDisplayConfig.optString("desc");
+                String targetUrl = taskDisplayConfig == null ? "" : taskDisplayConfig.optString("targetUrl");
+
+                //第1步：可领奖任务优先领奖
+                if (taskStatus.equals("FINISHED") || taskStatus.equals("COMPLETED") || taskStatus.equals("TO_RECEIVE")) {
+                    goldenBeansReceiveTaskAward(sceneCode, taskType, title, awardType);
+                    //还有剩余档位时继续往下推进，做到一次进入推满
+                    if (rightsTimesLimit <= rightsTimes) {
+                        continue;
+                    }
+                }
+                //第2步：待完成的游戏任务（不在游戏任务黑名单里的直接调备用接口完成）
+                //游戏任务(GAME_ZH): 已知游戏走gamesapi2真实上报, 未知游戏保持原逻辑(借鉴参考实现)
+                if (taskDisplayConfig != null && "GAME_ZH".equals(taskDisplayConfig.optString("type")) && "TODO".equals(taskStatus)) {
+                    //黑名单任务跳过
+                    if (BaseModel.isMiniGameTaskDisallowed(title, desc, "GoldenBeansTaskList")) {
+                        continue;
+                    }
+                    if (handleGameTaskByReport(taskType, taskDisplayConfig, title)) {
+                        continue;
+                    }
+                }
+                //第3步：黑名单任务跳过（游戏/跳转第三方任务由 TaskAlternative 执行一次后跳过）
+                if (GoldenBeansTaskList.contains(title)) {
+                    TaskAlternative.handleGameTask(new TaskAlternative.GameTask("GoldenBeansTaskList",
+                            title, desc, targetUrl, taskStatus)
+                            .bizKey(taskType)
+                            .rights(rightsTimes, rightsTimesLimit)
+                            .taskRemain(Math.max(0, task.optInt("taskRequire", 0) - task.optInt("taskProgress", 0)))
+                            .taskPlayType(task.optString("taskPlayType", task.optString("taskProdPlayType")))
+                            .taskMode(task.optString("taskMode"))
+                            .taskSceneCode(sceneCode)
+                            .scene(sceneCode, GoldenBeanRpcCall.SOURCE)
+                            .version(GoldenBeanRpcCall.VERSION));
+                    continue;
+                }
+                if (taskStatus.equals("RECEIVED")) {
+                    continue;
+                }
+                //第4步：按各任务方式完成，完成后立即领奖
+                //常用来访任务: 服务端在访问瞬间自动发奖, 用首页入口source重访index触发(借鉴参考实现)
+                if ("GOLDEN_BEAN_TASK_CHANGYONGFANGWEN".equals(taskType) && "TODO".equals(taskStatus)) {
+                    handleChangYongFangWen(title);
+                    continue;
+                }
+                if (taskStatus.equals("TODO") || rightsTimesLimit > rightsTimes) {
+                    //有剩余档位时循环推满
+                    int timesToDo = TaskAlternative.rightsTimesToDo(rightsTimes, rightsTimesLimit);
+                    for (int cnt = 0; cnt < timesToDo; cnt++) {
+                        if (!goldenBeansFinishTask(sceneCode, taskType, title,
+                                taskDisplayConfig == null ? "" : taskDisplayConfig.optString("desc", ""),
+                                TaskAlternative.rightsProgressText(rightsTimes, rightsTimesLimit, cnt))) {
+                            break;
+                        }
+                        goldenBeansReceiveTaskAward(sceneCode, taskType, title, awardType);
+                        sleep(500);
+                    }
+                    continue;
+                }
+                sleep(500);
+            } catch (Throwable t) {
+                Log.printStackTrace(TAG, t);
+            }
+        }
+    }
+
+    private boolean goldenBeansFinishTask(String sceneCode, String taskType, String title, String taskDesc,
+            String progress) {
+        try {
+            JSONObject jo = new JSONObject(GoldenBeanRpcCall.finishTask(sceneCode, taskType));
+            MessageUtil.checkResultCodeAndMarkTaskBlackList("GoldenBeansTaskList", title, jo);
+            // 任务已完结(任务已完成/关闭)属正常态，静默跳过，不走错误日志
+            if (isGoldenBeanTaskClosed(jo)) {
+                return false;
+            }
+            if (MessageUtil.checkSuccess(TAG, jo)) {
+                Log.farm("农场金豆🧾完成任务[" + title + "]" + progress);
+                return true;
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "goldenBeansFinishTask err:");
+            Log.printStackTrace(TAG, t);
+        }
+        return false;
+    }
+
+    private boolean goldenBeansReceiveTaskAward(String sceneCode, String taskType, String title, String awardType) {
+        try {
+            JSONObject jo = new JSONObject(GoldenBeanRpcCall.receiveTaskAward(sceneCode, taskType));
+            MessageUtil.checkResultCodeAndMarkTaskBlackList("GoldenBeansTaskList", title, jo);
+            // 任务已完结(奖励已领过/任务关闭)属正常态，静默跳过，不走错误日志
+            if (isGoldenBeanTaskClosed(jo)) {
+                return false;
+            }
+            if (MessageUtil.checkSuccess(TAG, jo)) {
+                int recvGot = jo.optInt("incAwardCount", 0);
+                Log.farm("农场金豆🎁领取奖励[" + title + "]#获得" + recvGot + awardType);
+                return true;
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "goldenBeansReceiveTaskAward err:");
+            Log.printStackTrace(TAG, t);
+        }
+        return false;
+    }
+
+    /* 金豆任务"已完结/已完成/已领"类良性失败：success=false 且文案命中即视为正常完成态 */
+    private static boolean isGoldenBeanTaskClosed(JSONObject jo) {
+        if (jo.optBoolean("success") || jo.optBoolean("isSuccess")) {
+            return false;
+        }
+        String desc = jo.optString("desc") + jo.optString("errorMsg") + jo.optString("errorMessage")
+                + jo.optString("resultDesc") + jo.optString("memo");
+        return desc.contains("已完结") || desc.contains("已完成") || desc.contains("已领");
+    }
+
+
+    /**
+     * 从 spmExtend.iepTaskTracer 里解析 taskType，取不到则回退用 taskId
+     */
+    private static String parseTaskType(JSONObject task) {
+        try {
+            JSONObject spmExtend = task.optJSONObject("spmExtend");
+            if (spmExtend != null) {
+                String tracer = spmExtend.optString("iepTaskTracer");
+                int idx = tracer.indexOf("taskType:");
+                if (idx >= 0) {
+                    String sub = tracer.substring(idx + "taskType:".length());
+                    int end = sub.indexOf('~');
+                    return end >= 0 ? sub.substring(0, end) : sub;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return task.optString("taskId", "");
+    }
+
+    /**
+     * 金豆乐园自动砸蛋：把已攒到的砸蛋机会（gameCenterDrawRightsCount）全部换成金豆。
+     * 机会由玩游戏/新人奖励产生，本功能只负责领取已有机会，不自动玩游戏。
+     */
+    private static void gameCenter(JSONObject index) {
+        try {
+            if (!index.optBoolean("showGameCenter", true)) {
+                return;
+            }
+            int rights = index.optInt("gameCenterDrawRightsCount", 0);
+            if (rights <= 0) {
+                return;
+            }
+            // 轮次上限保护：服务端quotaCanUse不递减时避免死循环
+            int guard = rights + 5;
+            while (rights > 0 && guard-- > 0) {
+                String resp = GoldenBeanRpcCall.drawGameCenterAward(1);
+                JSONObject jo = new JSONObject(resp);
+                if (MessageUtil.checkResultCode(TAG, jo)) {
+                    int drawGot = 0;
+                    JSONArray awardList = jo.optJSONArray("gameCenterDrawAwardList");
+                    if (awardList != null) {
+                        for (int i = 0; i < awardList.length(); i++) {
+                            JSONObject award = awardList.optJSONObject(i);
+                            if (award != null && "GOLDEN_BEAN".equalsIgnoreCase(award.optString("awardType"))) {
+                                drawGot += award.optInt("awardCount", 0);
+                            }
+                        }
+                    }
+                    JSONObject drawRights = jo.optJSONObject("gameCenterDrawRights");
+                    rights = drawRights == null ? 0 : drawRights.optInt("quotaCanUse", 0);
+                    int quotaCanUse = drawRights == null ? 0 : drawRights.optInt("quotaCanUse", 0);
+                    Log.farm("砸出金豆🎖️" + drawGot + "豆[剩蛋" + quotaCanUse + "个]#[" + UserIdMap.getShowName(UserIdMap.getCurrentUid()) + "]");
+                    sleep(500);
+                } else {
+                    rights--;
+                }
+            }
+        } catch (Throwable t) {
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    /**
+     * 目标为把今日砸蛋机会刷满(20)。刷到的机会由 gameCenter() 自动砸(288豆/次)。
+     * 走第三方 gamesapi2 异步上报，失败最多不加蛋，无风控风险。
+     */
+    private static void playGame() {
+        int usedQuota = 0;
+        int quotaLimit = 20;
+        try {
+            JSONObject gl = new JSONObject(GoldenBeanRpcCall.queryGameCenterList());
+            JSONObject rights = gl.optJSONObject("gameCenterDrawRights");
+            if (rights != null) {
+                usedQuota = rights.optInt("usedQuota", 0);
+                quotaLimit = rights.optInt("quotaLimit", 20);
+            }
+            int remaining = quotaLimit - usedQuota;
+            if (remaining > 0) {
+                GameTask.GoldenBean_ncscc.report("金豆乐园", remaining);
+            }
+        } catch (Throwable t) {
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * 调试日志：走 Log.debug() 写入 debug.log，不进用户可见的 farm.log，避免"跳过/概况"等
+     * 大量诊断信息刷屏。farm.log 只保留真正的结果（Log.farm）。排查时看 debug.log，grep「金豆调试」。
+     * 仅用于排查，不影响主流程，任何异常都被吞掉，绝不阻断原有功能。
+     */
+    private static void dbg(String s) {
+        try {
+            Log.debug("金豆调试｜" + s);
+        } catch (Throwable ignored) {
+        }
+    }
+}

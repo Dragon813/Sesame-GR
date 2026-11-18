@@ -165,6 +165,13 @@
                   </div>
                   </div>
                   </div>
+
+                  <div class="pdTB10" v-if="item.type==='ACCOUNT_LIST'">
+                    <div class="flex-space-between" @click="loadAccountList(tabs_item.modelCode,item.code,item.name)">
+                      <div class="title">{{item.name}}</div>
+                      <div class="link">账号数：{{accountCount(item)}} ›</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </van-collapse-item>
@@ -358,6 +365,13 @@
                   </div>
                   </div>
                   </div>
+
+                  <div class="pdTB10" v-if="item.type==='ACCOUNT_LIST'">
+                    <div class="flex-space-between" @click="loadAccountList(tabs_item.modelCode,item.code,item.name)">
+                      <div class="title">{{item.name}}</div>
+                      <div class="link">账号数：{{accountCount(item)}} ›</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </van-tab>
@@ -500,6 +514,41 @@
           </div>
         </div>
       </van-dialog>
+
+      <!-- 切号账号列表弹窗 -->
+      <van-dialog
+        v-model:show="account_list.visible"
+        :title="account_list.title"
+        show-cancel-button
+        @confirm="confirmAccountList"
+        @cancel="cancelAccountList"
+      >
+        <div class="dialog-list" style="max-height:60vh;overflow-y:auto;">
+          <div
+            v-for="(item,index) in account_list.list"
+            :key="item.uid"
+            class="flex-space-between pdTB10"
+            style="padding-left:16px;padding-right:16px;border-bottom:1px solid rgba(128,128,128,.25);"
+          >
+            <div class="title" style="flex:1;">{{index+1}}. {{item.name}}</div>
+            <van-button
+              size="mini"
+              style="width:24px;padding:0;flex:0 0 24px;"
+              :disabled="index===0"
+              @click="moveAccount(index,-1)"
+            >↑</van-button>
+            <van-button
+              size="mini"
+              style="width:24px;padding:0;flex:0 0 24px;margin-left:8px;"
+              :disabled="index===account_list.list.length-1"
+              @click="moveAccount(index,1)"
+            >↓</van-button>
+          </div>
+          <div v-if="!account_list.list.length" class="pdTB10" style="text-align:center;">
+            暂无账号，启动模块后会自动读取支付宝登录账号
+          </div>
+        </div>
+      </van-dialog>
     </div>
 
     <script>
@@ -555,6 +604,72 @@
 
           // 列表原始数据缓存: 同一列表反复打开免去重复的桥接传输与 JSON 解析
           const listCache = {};
+
+          // 切号账号列表弹窗
+          const account_list = ref({
+            visible: false,
+            title: "",
+            code: "",
+            modelName: "",
+            list: [],
+          });
+
+          function accountCount(item) {
+            try {
+              const value = JSON.parse(item.configValue);
+              return Array.isArray(value) ? value.length : 0;
+            } catch (e) {
+              return 0;
+            }
+          }
+
+          function loadAccountList(modelName, code, name) {
+            account_list.value.visible = true;
+            account_list.value.title = name;
+            account_list.value.code = code;
+            account_list.value.modelName = modelName;
+            account_list.value.list = [];
+            // 先渲染弹窗, 再同步读取列表(桥接调用会阻塞JS线程)
+            setTimeout(() => {
+              try {
+                const info = JSON.parse(window.HOOK.getField(modelName, code));
+                const expand = info.expandValue || [];
+                account_list.value.list = expand.map(a => ({ uid: a.id, name: a.name }));
+              } catch (e) {
+                account_list.value.list = [];
+              }
+            }, 0);
+          }
+
+          function moveAccount(index, delta) {
+            const list = account_list.value.list;
+            const target = index + delta;
+            if (target < 0 || target >= list.length) {
+              return;
+            }
+            const temp = list[index];
+            list[index] = list[target];
+            list[target] = temp;
+          }
+
+          function confirmAccountList() {
+            let item = null;
+            for (const rows of setData.value) {
+              const found = (rows || []).find(row => row.code === account_list.value.code);
+              if (found) {
+                item = found;
+                break;
+              }
+            }
+            if (item) {
+              item.configValue = JSON.stringify(account_list.value.list.map(a => a.uid));
+            }
+            account_list.value.visible = false;
+          }
+
+          function cancelAccountList() {
+            account_list.value.visible = false;
+          }
 
           function loadList(modelName, code, name, type) {
             window.history.pushState({ list: 1 }, "", "");
@@ -789,6 +904,12 @@
             currentTab,
             setData,
             person_list,
+            account_list,
+            accountCount,
+            loadAccountList,
+            moveAccount,
+            confirmAccountList,
+            cancelAccountList,
             listBox,
             displayRows,
             onListScroll,

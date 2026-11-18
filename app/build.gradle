@@ -19,9 +19,9 @@ android {
     def buildTime = new Date().format("yyyy-MM-dd HH:mm:ss", TimeZone.getTimeZone("Asia/Shanghai"))
 
     compileSdk 34
-    namespace 'io.github.lazyimmortal.sesame'
+    namespace 'io.github.Dragon813.sesame'
     defaultConfig {
-        applicationId "io.github.lazyimmortal.sesame"
+        applicationId "io.github.Dragon813.sesame"
         minSdk 21
         //noinspection ExpiredTargetSdkVersion
         targetSdk 34
@@ -31,6 +31,24 @@ android {
         buildConfigField "String", "GIT_COMMIT_HASH", "\"${gitCommitHash}\""
         buildConfigField "String", "GIT_BRANCH_NAME", "\"${gitBranchName}\""
         buildConfigField "String", "BUILD_TIME", "\"${buildTime}\""
+
+        // 界面只使用简繁中文和英文，裁掉依赖库携带的其余语言资源
+        resourceConfigurations += ["zh-rCN", "zh-rTW", "zh-rHK", "en"]
+    }
+    packaging {
+        resources {
+            excludes += [
+                    "META-INF/LICENSE",
+                    "META-INF/LICENSE.txt",
+                    "META-INF/LICENSE.md",
+                    "META-INF/NOTICE",
+                    "META-INF/NOTICE.txt",
+                    "META-INF/NOTICE.md",
+                    "META-INF/FastDoubleParser-LICENSE",
+                    "META-INF/FastDoubleParser-NOTICE",
+                    "META-INF/thirdparty-LICENSE"
+            ]
+        }
     }
     buildFeatures {
         buildConfig = true // 显式启用 BuildConfig
