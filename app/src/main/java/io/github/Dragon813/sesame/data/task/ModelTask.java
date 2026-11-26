@@ -151,6 +151,10 @@ public abstract class ModelTask extends Model {
                 return false;
             }
             stopTask();
+            if (MAIN_TASK_MAP.containsKey(this)) {
+                // 上一个任务线程还没真正退出，不能重复启动同一个任务
+                return false;
+            }
         }
         try {
             if (isEnable() && check()) {
@@ -180,7 +184,14 @@ public abstract class ModelTask extends Model {
         }
         childTaskMap.clear();
         MAIN_THREAD_POOL.remove(mainRunnable);
-        MAIN_TASK_MAP.remove(this);
+        // 主任务线程可能无法立即中断（例如同步任务正在偷能量），此时不能把它从登记表摘除，
+        // 否则 isAllTaskFinished() 会误判任务已结束，导致切号在任务执行中途发生。
+        // 线程真正退出时会在 mainRunnable 的 finally 中自行移除。
+        Thread runningThread = MAIN_TASK_MAP.get(this);
+        if (runningThread == null || !runningThread.isAlive()
+                || runningThread == Thread.currentThread()) {
+            MAIN_TASK_MAP.remove(this);
+        }
     }
 
     public static void startAllTask() {

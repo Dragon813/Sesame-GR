@@ -6,7 +6,9 @@ import org.json.JSONObject;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import io.github.Dragon813.sesame.util.FileUtil;
 import io.github.Dragon813.sesame.util.Log;
@@ -19,7 +21,7 @@ import io.github.Dragon813.sesame.util.StringUtil;
  * accountSwitchEnabled                    是否开启自动切换登录账号
  * accountSwitchIntervalMinutes            切号间隔(分钟，0=任务完成立即切)
  * accountSwitchRoundIntervalMinutes       切号轮次间隔(分钟)
- * accountSwitchAccounts                   账号列表，顺序即切号顺序
+ * accountSwitchAccounts                   账号列表，顺序即切号顺序；未勾选(switchEnabled=false)的账号不参与切换
  * accountSwitchFinalAccountUid            切号最终保持账号（一轮结束后切换到该账号等待轮次间隔）
  * accountSwitchScheduleTimes              切换账号定时执行时间点，如 ["0800","2000"]
  * autoSlideCaptchaEnabled                 自动验证(滑动和拼图)
@@ -33,13 +35,14 @@ public final class AccountSwitchConfig {
 
     private static final String TAG = "AccountSwitchConfig";
     private static final int MAX_INTERVAL_MINUTES = 24 * 60;
-    private static final long CACHE_TTL_MILLIS = 1000L;
+    /** 后台检查配置文件修改时间的最小间隔，用于跨进程同步配置。 */
+    private static final long FILE_POLL_INTERVAL_MILLIS = 1000L;
 
     private static final Object LOCK = new Object();
 
     private static volatile Snapshot cache;
     private static volatile long cacheModified = Long.MIN_VALUE;
-    private static volatile long cacheTime;
+    private static Thread fileWatcher;
 
     private AccountSwitchConfig() {
     }
@@ -48,40 +51,14 @@ public final class AccountSwitchConfig {
         return new File(FileUtil.CONFIG_DIRECTORY_FILE, FILE_NAME);
     }
 
-    /** 读取配置（1 秒内复用缓存，避免任务/界面高频读取文件）。 */
+    /** 读取配置：纯内存快照，不做磁盘 IO；文件变化由后台线程刷新。 */
     public static Snapshot read() {
-        File file = getFile();
-        long modified = file.exists() ? file.lastModified() : -1;
-        long now = System.currentTimeMillis();
-        Snapshot value = cache;
-        if (value != null && modified == cacheModified && now - cacheTime < CACHE_TTL_MILLIS) {
-            return value.copy();
-        }
-        synchronized (LOCK) {
-            value = cache;
-            if (value != null && modified == cacheModified
-                    && System.currentTimeMillis() - cacheTime < CACHE_TTL_MILLIS) {
-                return value.copy();
-            }
-            Snapshot loaded = load(file);
-            cache = loaded;
-            cacheModified = file.exists() ? file.lastModified() : -1;
-            cacheTime = System.currentTimeMillis();
-            return loaded.copy();
-        }
+        return ensureLoaded().copy();
     }
 
-    /** 开关类高频读取：命中缓存时不复制账号列表。 */
+    /** 开关类高频读取：直接返回内存快照，不复制账号列表。 */
     private static Snapshot peek() {
-        Snapshot value = cache;
-        if (value != null) {
-            File file = getFile();
-            long modified = file.exists() ? file.lastModified() : -1;
-            if (modified == cacheModified && System.currentTimeMillis() - cacheTime < CACHE_TTL_MILLIS) {
-                return value;
-            }
-        }
-        return read();
+        return ensureLoaded();
     }
 
     /** 绕过缓存读取磁盘最新内容，用于跨进程写入前的读取。 */
@@ -91,8 +68,67 @@ public final class AccountSwitchConfig {
             Snapshot loaded = load(file);
             cache = loaded;
             cacheModified = file.exists() ? file.lastModified() : -1;
-            cacheTime = System.currentTimeMillis();
+            startFileWatcherLocked();
             return loaded.copy();
+        }
+    }
+
+    /** 首次读取时加载一次配置，之后全部走内存快照。 */
+    private static Snapshot ensureLoaded() {
+        Snapshot value = cache;
+        if (value != null) {
+            return value;
+        }
+        synchronized (LOCK) {
+            if (cache == null) {
+                File file = getFile();
+                cache = load(file);
+                cacheModified = file.exists() ? file.lastModified() : -1;
+                startFileWatcherLocked();
+            }
+            return cache;
+        }
+    }
+
+    /**
+     * 启动后台文件监视：配置文件可能被模块 App 进程改写，
+     * 这里按修改时间异步刷新内存快照，避免每次读取都在调用线程 stat 文件。
+     */
+    private static void startFileWatcherLocked() {
+        if (fileWatcher != null) {
+            return;
+        }
+        Thread watcher = new Thread(() -> {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    Thread.sleep(FILE_POLL_INTERVAL_MILLIS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+                try {
+                    refreshFromDiskIfChanged();
+                } catch (Throwable ignored) {
+                    // 单次刷新失败不影响后续轮询
+                }
+            }
+        }, "AccountSwitchConfig-FileWatcher");
+        watcher.setDaemon(true);
+        fileWatcher = watcher;
+        watcher.start();
+    }
+
+    private static void refreshFromDiskIfChanged() {
+        File file = getFile();
+        if (!file.exists() || file.lastModified() == cacheModified) {
+            return;
+        }
+        synchronized (LOCK) {
+            if (!file.exists() || file.lastModified() == cacheModified) {
+                return;
+            }
+            cache = load(file);
+            cacheModified = file.lastModified();
         }
     }
 
@@ -130,6 +166,11 @@ public final class AccountSwitchConfig {
 
     public static List<Account> getAccountSwitchAccounts() {
         return read().getAccountSwitchAccounts();
+    }
+
+    /** 参与自动切换的账号（列表中勾选的），顺序即切换顺序。 */
+    public static List<Account> getSwitchEnabledAccounts() {
+        return read().getSwitchEnabledAccounts();
     }
 
     public static List<String> getAccountSwitchAccountUids() {
@@ -202,21 +243,39 @@ public final class AccountSwitchConfig {
     }
 
     /**
-     * 模块启动时把支付宝已登录账号合并进配置：
-     * 已有账号保持原位置，新账号追加到末尾。
+     * 把支付宝当前有登录状态的账号合并进配置：
+     * 已有账号保持原位置和勾选状态，新账号追加到末尾；
+     * 支付宝里已删除（无登录状态）的账号同步从配置中移除。
      */
     public static synchronized boolean mergeHostAccounts(List<Account> hostAccounts) {
         if (hostAccounts == null || hostAccounts.isEmpty()) {
             return false;
         }
-        Snapshot snapshot = readFresh();
-        LinkedHashMap<String, Account> merged = new LinkedHashMap<>();
-        for (Account account : snapshot.getAccountSwitchAccounts()) {
-            if (account != null && isValidUid(account.getUid())) {
-                merged.put(account.getUid(), account);
+        Set<String> hostUids = new LinkedHashSet<>();
+        for (Account host : hostAccounts) {
+            if (host != null && isValidUid(host.getUid())) {
+                hostUids.add(host.getUid());
             }
         }
+        if (hostUids.isEmpty()) {
+            // 读取结果异常时不做清理，避免把配置误删
+            return false;
+        }
+        Snapshot snapshot = readFresh();
+        LinkedHashMap<String, Account> merged = new LinkedHashMap<>();
         boolean changed = false;
+        for (Account account : snapshot.getAccountSwitchAccounts()) {
+            if (account == null || !isValidUid(account.getUid())) {
+                continue;
+            }
+            if (!hostUids.contains(account.getUid())) {
+                // 支付宝已删除该账号的登录状态，配置里也一并移除
+                Log.record("自动切号🔄️ 支付宝已无该账号登录状态，从配置移除: " + account.getUid());
+                changed = true;
+                continue;
+            }
+            merged.put(account.getUid(), account);
+        }
         for (Account host : hostAccounts) {
             if (host == null || !isValidUid(host.getUid())) {
                 continue;
@@ -236,6 +295,12 @@ public final class AccountSwitchConfig {
                 existing.setName(host.getName());
                 changed = true;
             }
+        }
+        // 常态保持账号被删除时清空，避免配置指向不存在的账号
+        if (!StringUtil.isEmpty(snapshot.getAccountSwitchFinalAccountUid())
+                && !merged.containsKey(snapshot.getAccountSwitchFinalAccountUid())) {
+            snapshot.setAccountSwitchFinalAccountUid("");
+            changed = true;
         }
         if (!changed) {
             return true;
@@ -284,10 +349,13 @@ public final class AccountSwitchConfig {
                     Object item = array.opt(i);
                     if (item instanceof JSONObject) {
                         JSONObject object = (JSONObject) item;
-                        accounts.add(new Account(
+                        Account account = new Account(
                                 object.optString("uid", null),
                                 object.optString("loginId", null),
-                                object.optString("name", null)));
+                                object.optString("name", null));
+                        // 旧配置没有该字段时默认勾选，保持原有行为
+                        account.setSwitchEnabled(object.optBoolean("switchEnabled", true));
+                        accounts.add(account);
                     } else if (item != null) {
                         accounts.add(new Account(String.valueOf(item), null, null));
                     }
@@ -322,6 +390,7 @@ public final class AccountSwitchConfig {
             for (Account account : snapshot.getAccountSwitchAccounts()) {
                 JSONObject object = new JSONObject();
                 object.put("uid", account.getUid());
+                object.put("switchEnabled", account.isSwitchEnabled());
                 if (!StringUtil.isEmpty(account.getLoginId())) {
                     object.put("loginId", account.getLoginId());
                 }
@@ -334,9 +403,12 @@ public final class AccountSwitchConfig {
             File file = getFile();
             boolean success = FileUtil.write2File(json.toString(2), file);
             if (success) {
-                cache = snapshot.copy();
-                cacheModified = file.exists() ? file.lastModified() : -1;
-                cacheTime = System.currentTimeMillis();
+                // 写入后立即更新内存快照，读侧不再需要任何磁盘检查；
+                // 与后台文件监视共用 LOCK，避免旧内容覆盖刚写入的快照
+                synchronized (LOCK) {
+                    cache = snapshot.copy();
+                    cacheModified = file.exists() ? file.lastModified() : -1;
+                }
                 cleanupLegacyFlagFiles();
             }
             return success;
@@ -417,7 +489,9 @@ public final class AccountSwitchConfig {
                         ? null : account.getLoginId().trim();
                 String name = StringUtil.isEmpty(account.getName())
                         ? null : account.getName().trim();
-                unique.put(uid, new Account(uid, loginId, name));
+                Account normalized = new Account(uid, loginId, name);
+                normalized.setSwitchEnabled(account.isSwitchEnabled());
+                unique.put(uid, normalized);
             }
         }
         return new ArrayList<>(unique.values());
@@ -451,6 +525,8 @@ public final class AccountSwitchConfig {
         private String uid;
         private String loginId;
         private String name;
+        /** 是否参与自动切换：列表里勾选的账号才会按顺序切换，未勾选的账号保留但不切换。 */
+        private boolean switchEnabled = true;
 
         public Account() {
         }
@@ -485,8 +561,18 @@ public final class AccountSwitchConfig {
             this.name = name;
         }
 
+        public boolean isSwitchEnabled() {
+            return switchEnabled;
+        }
+
+        public void setSwitchEnabled(boolean switchEnabled) {
+            this.switchEnabled = switchEnabled;
+        }
+
         public Account copy() {
-            return new Account(uid, loginId, name);
+            Account copy = new Account(uid, loginId, name);
+            copy.switchEnabled = switchEnabled;
+            return copy;
         }
     }
 
@@ -561,6 +647,17 @@ public final class AccountSwitchConfig {
 
         public List<Account> getAccountSwitchAccounts() {
             return accountSwitchAccounts;
+        }
+
+        /** 参与自动切换的账号（勾选的），保持列表中的先后顺序。 */
+        public List<Account> getSwitchEnabledAccounts() {
+            List<Account> result = new ArrayList<>();
+            for (Account account : accountSwitchAccounts) {
+                if (account != null && account.isSwitchEnabled()) {
+                    result.add(account);
+                }
+            }
+            return result;
         }
 
         public void setAccountSwitchAccounts(List<Account> accountSwitchAccounts) {

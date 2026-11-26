@@ -3063,12 +3063,32 @@ public class AntFarm extends ModelTask {
     }
 
     // 获取乐币购买商店列表
+    // 服务端按startIndex分页(hasMore/nextStartIndex), 需翻完所有页
     private JSONArray getGameCenterMallItemList(String bizType) {
-        JSONArray mallItemSimpleList = null;
+        JSONArray mallItemSimpleList = new JSONArray();
         try {
-            JSONObject jo = new JSONObject(AntFarmRpcCall.getMallHome(bizType));
-            if (MessageUtil.checkSuccess(TAG, jo)) {
-                mallItemSimpleList = jo.optJSONArray("mallItemSimpleList");
+            int startIndex = 0;
+            for (int page = 0; page < 10; page++) {
+                JSONObject jo = new JSONObject(AntFarmRpcCall.getMallHome(bizType, startIndex));
+                if (!MessageUtil.checkSuccess(TAG, jo)) {
+                    break;
+                }
+                JSONArray list = jo.optJSONArray("mallItemSimpleList");
+                if (list == null || list.length() == 0) {
+                    break;
+                }
+                for (int i = 0; i < list.length(); i++) {
+                    mallItemSimpleList.put(list.get(i));
+                }
+                if (!jo.optBoolean("hasMore")) {
+                    break;
+                }
+                int nextStartIndex = jo.optInt("nextStartIndex", -1);
+                if (nextStartIndex <= startIndex) {
+                    nextStartIndex = startIndex + list.length();
+                }
+                startIndex = nextStartIndex;
+                TimeUtil.sleep(300);
             }
         } catch (Throwable th) {
             Log.i(TAG, "getGameCenterMallItemList err:");
@@ -4047,6 +4067,12 @@ public class AntFarm extends ModelTask {
                 familyEatTogether(ownerGroupId, EatTogetherUserIds);
             }
 
+            // 家庭任务自动完成（对齐 XR 的「家庭功能」：任务/签到/领奖/干活，不依赖请客开关）
+            // 注意：这是「领奖式完成」，不会真的消耗美食；真请客仍由上面的 familyEatTogether 负责
+            if (familyOptions.getValue().contains("familyTaskAward")) {
+                familyTaskComplete(familyAnimalsExceptUser);
+            }
+
             // 道早安
             if (familyOptions.getValue().contains("deliverMsgSend")) {
                 deliverMsgSend(familyAnimalsExceptUser, familyUserIds);
@@ -4134,6 +4160,122 @@ public class AntFarm extends ModelTask {
             Log.i(TAG, "familyFeedFriendAnimal err:");
             Log.printStackTrace(TAG, t);
         }
+    }
+
+    /**
+     * 家庭任务自动完成（对齐 XR 的「家庭功能」，实测路径）
+     * <p>
+     * XR 抓包结论（2026-11-23）：
+     * 1) com.alipay.antfarm.listFarmTask(taskSceneCode=ANTFARM_FAMILY_TASK) 拉任务列表；
+     * 2) 对 TODO 任务调用 com.alipay.antfarm.doFarmTask(bizKey, taskSceneCode) 完成任务（响应 awardCount 即奖励亲密度）；
+     * 3) 完成后再调 receiveFarmTaskAward(taskId) 领取奖励（该接口响应不含数量，数量取自 doFarmTask 的 awardCount）；
+     * 4) 无需真的请客（familyEatTogether），也不依赖 familyTaskTips（该接口实测返回空）。
+     */
+    private void familyTaskComplete(JSONArray familyAnimalsExceptUser) {
+        try {
+            JSONObject res = new JSONObject(AntFarmRpcCall.listFarmDrawTask("ANTFARM_FAMILY_TASK"));
+            if (!MessageUtil.checkMemo(TAG, res)) {
+                return;
+            }
+            JSONArray tasks = res.optJSONArray("farmTaskList");
+            if (tasks == null || tasks.length() == 0) {
+                tasks = res.optJSONArray("taskList");
+            }
+            if (tasks == null || tasks.length() == 0) {
+                tasks = res.optJSONArray("tasks");
+            }
+            if (tasks == null || tasks.length() == 0) {
+                return;
+            }
+            int done = 0;
+            for (int i = 0; i < tasks.length(); i++) {
+                JSONObject task = tasks.getJSONObject(i);
+                String status = task.optString("taskStatus");
+                String title = task.optString("title", task.optString("bizKey", ""));
+                String taskId = task.optString("taskId", "");
+                String bizKey = task.optString("bizKey", taskId);
+                try {
+                    if ("TODO".equals(status) && !StringUtil.isEmpty(bizKey)) {
+                        // 多档任务（如 TREAT 请客 3 次、FAMILY_TREAD_MALL 2 次）需要按 rightsTimesLimit 循环完成
+                        int rightsTimes = task.optInt("rightsTimes");
+                        int rightsTimesLimit = task.optInt("rightsTimesLimit");
+                        int times = TaskAlternative.rightsTimesToDo(rightsTimes, rightsTimesLimit);
+                        // 奖励亲密度数量：优先取 doFarmTask 响应, 兜底用任务列表下发值
+                        int awardCount = task.optInt("awardCount", task.optInt("canReceiveAwardCount"));
+                        boolean allOk = true;
+                        for (int j = 0; j < times; j++) {
+                            boolean ok = false;
+                            // 每次最多尝试 2 次：RPC 桥偶发超时（wait 30s）会导致整轮卡住
+                            for (int attempt = 0; attempt < 2; attempt++) {
+                                String resp = null;
+                                try {
+                                    resp = AntFarmRpcCall.doFamilyFarmTask(bizKey);
+                                } catch (Throwable ignored) {
+                                }
+                                if (resp != null) {
+                                    JSONObject jo = new JSONObject(resp);
+                                    if (MessageUtil.checkMemo(TAG, jo)) {
+                                        ok = true;
+                                        awardCount = jo.optInt("awardCount", awardCount);
+                                        Log.farm("家庭任务🏠完成[" + title + "]" + TaskAlternative.rightsProgressText(rightsTimes, rightsTimesLimit, j));
+                                        break;
+                                    }
+                                    Log.record("家庭任务🏠完成失败[" + title + "] memo=" + jo.optString("memo"));
+                                } else {
+                                    Log.record("家庭任务🏠完成超时[" + title + "] attempt=" + (attempt + 1));
+                                }
+                                if (attempt == 0) {
+                                    TimeUtil.sleep(3000);
+                                }
+                            }
+                            if (!ok) {
+                                allOk = false;
+                                break;
+                            }
+                            if (j + 1 < times) {
+                                TimeUtil.sleep(3000);
+                            }
+                        }
+                        // 全部完成后再领取奖励
+                        if (allOk && !StringUtil.isEmpty(taskId) && familyTaskAward(taskId, title, awardCount)) {
+                            done++;
+                        }
+                    } else if ("FINISHED".equals(status) && !StringUtil.isEmpty(taskId)) {
+                        if (familyTaskAward(taskId, title, task.optInt("awardCount", task.optInt("canReceiveAwardCount")))) {
+                            done++;
+                        }
+                    }
+                } catch (Throwable t) {
+                    Log.printStackTrace("家庭任务🏠[" + title + "]异常:", t);
+                }
+                if (i + 1 < tasks.length()) {
+                    TimeUtil.sleep(1000);
+                }
+            }
+            if (done > 0) {
+                syncFamilyStatus(ownerGroupId);
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "familyTaskComplete err:");
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    /**
+     * 家庭任务领取奖励：领取成功才视为任务完成流程结束（日志输出「领取」）
+     */
+    private boolean familyTaskAward(String taskId, String title, int awardCount) {
+        try {
+            JSONObject jo = new JSONObject(AntFarmRpcCall.familyReceiveFarmTaskAward(taskId));
+            if (MessageUtil.checkMemo(TAG, jo)) {
+                Log.farm("家庭任务🏠领取[" + title + "]" + (awardCount > 0 ? "#亲密值+" + awardCount : ""));
+                return true;
+            }
+        } catch (Throwable t) {
+            Log.i(TAG, "familyTaskAward err:");
+            Log.printStackTrace(TAG, t);
+        }
+        return false;
     }
 
     private void familyEatTogether(String groupId, JSONArray EatTogetherUserIds) {

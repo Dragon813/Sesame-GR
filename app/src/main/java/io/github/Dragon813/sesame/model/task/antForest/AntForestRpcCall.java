@@ -235,7 +235,15 @@ public class AntForestRpcCall {
     }
 
     public static String queryPropList(boolean onlyGive) {
-        return ApplicationHook.requestString("alipay.antforest.forest.h5.queryPropList", "[{\"onlyGive\":\"" + (onlyGive ? "Y" : "") + "\",\"pageQuery\":true,\"source\":\"chInfo_ch_appcenter__chsub_9patch\"," + "\"version\":\"" + VERSION + "\"}]");
+        return queryPropList(onlyGive, "");
+    }
+
+    // 道具背包分页: 服务端首页返回12个并下发hasMore/nextCursor, 需带上一页的nextCursor继续查询
+    public static String queryPropList(boolean onlyGive, String nextCursor) {
+        String args = "[{\"onlyGive\":\"" + (onlyGive ? "Y" : "") + "\""
+                + (nextCursor == null || nextCursor.isEmpty() ? "" : ",\"nextCursor\":\"" + nextCursor + "\"")
+                + ",\"pageQuery\":true,\"source\":\"chInfo_ch_appcenter__chsub_9patch\"," + "\"version\":\"" + VERSION + "\"}]";
+        return ApplicationHook.requestString("alipay.antforest.forest.h5.queryPropList", args);
     }
 
     // 查询可派遣伙伴
@@ -275,7 +283,12 @@ public class AntForestRpcCall {
     }
 
     public static String itemList(String labelType) {
-        return ApplicationHook.requestString("com.alipay.antiep.itemList", "[{\"extendInfo\":\"{}\",\"labelType\":\"" + labelType + "\",\"pageSize\":20,\"requestType\":\"rpc\"," + "\"sceneCode\":\"ANTFOREST_VITALITY\",\"source\":\"afEntry\",\"startIndex\":0}]");
+        return itemList(labelType, 0);
+    }
+
+    // 活力值商店分页: 服务端下发hasMore/nextStartIndex, 按startIndex继续查询
+    public static String itemList(String labelType, int startIndex) {
+        return ApplicationHook.requestString("com.alipay.antiep.itemList", "[{\"extendInfo\":\"{}\",\"labelType\":\"" + labelType + "\",\"pageSize\":20,\"requestType\":\"rpc\"," + "\"sceneCode\":\"ANTFOREST_VITALITY\",\"source\":\"afEntry\",\"startIndex\":" + startIndex + "}]");
     }
 
     public static String itemDetail(String spuId) {

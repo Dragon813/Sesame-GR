@@ -117,6 +117,41 @@ public class NewRpcBridge implements RpcBridge {
         return "com.alipay.adexchange.ad.facade.xlightPlugin".equals(method);
     }
 
+    /**
+     * 把调用方拼好的信封 JSON 原样发给 RpcBridgeExtension.rpc，不做任何字段加工。
+     * 用来逐字节复现抓包里的真实请求（例如手点的 platformTaskSignUp 信封只有 4 个字段）。
+     */
+    @Override
+    public String requestRawEnvelope(String method, String envelopeJson) {
+        if (ApplicationHook.isOffline()) {
+            return null;
+        }
+        final String[] result = new String[1];
+        try {
+            RpcIntervalLimit.enterIntervalLimit(method);
+            newRpcCallMethod.invoke(newRpcInstance, method, false, false, "json",
+                    parseObjectMethod.invoke(null, envelopeJson),
+                    "", null, true, false, 0, false, "", null, null, null,
+                    Proxy.newProxyInstance(loader, bridgeCallbackClazzArray, new InvocationHandler() {
+                        @Override
+                        public Object invoke(Object proxy, Method innerMethod, Object[] args) {
+                            if (args != null && args.length == 1 && "sendJSONResponse".equals(innerMethod.getName())) {
+                                try {
+                                    result[0] = (String) XposedHelpers.callMethod(args[0], "toJSONString");
+                                } catch (Throwable ignored) {
+                                }
+                            }
+                            return null;
+                        }
+                    })
+            );
+        } catch (Throwable t) {
+            Log.error("raw envelope | method: " + method + " err:");
+            Log.printStackTrace(t);
+        }
+        return result[0];
+    }
+
     @Override
     public RpcEntity requestObject(RpcEntity rpcEntity, int tryCount, int retryInterval) {
         if (ApplicationHook.isOffline()) {

@@ -154,6 +154,9 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
 
     private static volatile boolean init = false;
 
+    /** 验证/账号限制 Hook 是否已有后台任务在执行，避免重复提交。 */
+    private static final AtomicBoolean featureHooksScheduled = new AtomicBoolean();
+
     private static volatile Calendar dayCalendar;
 
     @Getter
@@ -279,6 +282,13 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                     context = (Context) param.args[0];
+                    // 主进程启动即注册状态广播接收器, 不再只依赖 RuntimePowerService.onCreate
+                    // (服务未启动时状态探测没人回包, 模块状态会被误显示为"已关闭")
+                    try {
+                        registerBroadcastReceiver(context);
+                    } catch (Throwable t) {
+                        Log.printStackTrace(TAG, t);
+                    }
                     alipayVersion = new AlipayVersion(context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionName);
                     // 各初始化独立try-catch, 互不影响, 避免一个失败导致AuthCodeHelper未初始化
                     try {
@@ -288,11 +298,14 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
                     }
                     try {
                         AuthCodeHelper.init(classLoader);
-                        AuthCodeHelper.getAuthCode("2021005114632037");
+                        // 反射调用授权服务可能较慢，放到后台线程，避免阻塞宿主启动/登录
+                        runInBackground("Sesame-AuthCode",
+                                () -> AuthCodeHelper.getAuthCode("2021005114632037"));
                     } catch (Throwable t) {
                         Log.printStackTrace(t);
                     }
-                    installFeatureHooks();
+                    // Hook 安装（含账号包 dex 扫描）同样移到后台，避免拖慢登录页首帧
+                    scheduleFeatureHooks();
                     super.afterHookedMethod(param);
                 }
             });
@@ -823,7 +836,8 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
                 Log.record("模块版本：" + modelVersion);
                 Log.record("开始加载");
                 ConfigV2.load(userId);
-                installFeatureHooks();
+                // 后台安装 Hook，避免 initHandler 在主线程执行时阻塞界面
+                scheduleFeatureHooks();
                 // 启动时读取支付宝登录账号并合并到公共配置（已有顺序不变，新账号追加）
                 // 放到后台线程延迟执行：反射调用支付宝服务不能在主线程做，否则会卡住宿主
                 AccountSwitchController.configure(accountSwitchHost);
@@ -1101,6 +1115,19 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
         return rpcBridge.requestString(method, data, relation, tryCount, retryInterval);
     }
 
+    /** 原样信封发送（不做字段加工），用于复现手点抓包的真实请求；桥接不支持时返回 null。 */
+    public static String requestRawEnvelope(String method, String envelopeJson) {
+        if (rpcBridge == null) {
+            return null;
+        }
+        return rpcBridge.requestRawEnvelope(method, envelopeJson);
+    }
+
+    /** 返回宿主全局上下文，与源项目 getAlipayContext 等价，减少移植代码改动。 */
+    public static Context getAlipayContext() {
+        return context;
+    }
+
 
     public static RpcEntity requestObject(RpcEntity rpcEntity) {
         return rpcBridge.requestObject(rpcEntity, 3, -1);
@@ -1247,7 +1274,10 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
                         break;
                     case "com.eg.android.AlipayGphone.sesame.status":
                         try {
-                            context.sendBroadcast(new Intent("io.github.Dragon813.sesame.status"));
+                            // 定向回包, 避免隐式广播被拦截或延迟
+                            Intent statusReply = new Intent("io.github.Dragon813.sesame.status");
+                            statusReply.setPackage(BuildConfig.APPLICATION_ID);
+                            context.sendBroadcast(statusReply);
                         } catch (Throwable th) {
                             Log.i(TAG, "sesame sendBroadcast status err:");
                             Log.printStackTrace(TAG, th);
@@ -1307,6 +1337,31 @@ public class ApplicationHook implements IXposedHookLoadPackage, IXposedHookZygot
     private static final String LEGACY_SLIDER_MAX_VERSION = "10.6.58.99999";
 
     private static volatile boolean legacySliderInstalled;
+
+    /**
+     * 后台安装验证/账号限制 Hook。
+     * 账号包 dex 扫描和类 Hook 都比较重，不能放在宿主主线程；
+     * 这里只提交任务，主线程立即返回。执行完后允许再次提交，
+     * 以便运行期间新开启的开关也能在下次初始化时生效。
+     */
+    private void scheduleFeatureHooks() {
+        if (!featureHooksScheduled.compareAndSet(false, true)) {
+            return;
+        }
+        runInBackground("Sesame-FeatureHooks", () -> {
+            try {
+                installFeatureHooks();
+            } finally {
+                featureHooksScheduled.set(false);
+            }
+        });
+    }
+
+    private static void runInBackground(String name, Runnable task) {
+        Thread thread = new Thread(task, name);
+        thread.setDaemon(true);
+        thread.start();
+    }
 
     /**
      * 按支付宝版本选择验证实现：

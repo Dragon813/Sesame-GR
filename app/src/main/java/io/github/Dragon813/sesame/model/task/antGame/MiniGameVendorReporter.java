@@ -76,7 +76,7 @@ import io.github.Dragon813.sesame.util.idMap.UserIdMap;
  * </ul>
  *
  * <p>已实现协议的 SDK 族：haligame、dianwanshidai、cpchxapi、yyxxgame、nebula737、hnycgames、
- * dianli100、d3games、tomato、aslk2018、raiyantway、flourish、devourad、microfun、qufang、
+ * dianli100、d3games、flysheeep、tomato、aslk2018、raiyantway、flourish、devourad、microfun、qufang、
  * qmhd87、lumosfun、mmhygame、trueplay、igame58、soulgame、qxygame；
  * 族内差异参数（{@code bgid / gcid / oid / appKey}）从 {@link MiniGameTaskTable} 取；
  * d3games 其余游戏的密钥虽有静态表但算法只验证过森林环游记，暂不启用；
@@ -96,12 +96,19 @@ public final class MiniGameVendorReporter {
     /** 农场乐园频道（占城大师等 raiyantway 游戏，actionFinishChannel=nongchangleyuan）。 */
     private static final String FARM_CHANNEL = "nongchangleyuan";
 
+    /** xwz 族频道（守护世界等 Xwz_Sdk 游戏，任务卡 jumpLink 里的 channel）。 */
+    private static final String XWZ_CHANNEL = "P2E_GAME_TRAN_CHANNEL";
+
+    /** xwz 族签名密钥（按 keycpruse 版本，取自守护世界包体内置 Init 配置）。 */
+    private static final Map<String, String> XWZ_KEYS = new HashMap<>();
+
     private static final Random RANDOM = new Random();
 
     private enum Vendor {
         HALIGAME, DIANWANSHIDAI, YYXX, NEBULA, CPCHX, HNYC, DIANLI100, D3GAMES, TOMATO, GAMESAPI2,
         RAYIANTWAY, FLOURISH, DEVOURAD, MICROFUN, QUFANG, QMHD87, LUMOSFUN, MMHYGAME,
-        TRUEPLAY, IGAME58, SOULGAME, QXYGAME, BKGAME, TUYOO, YXMNYS, MIHUANGAME, SHRYOU
+        TRUEPLAY, IGAME58, SOULGAME, QXYGAME, BKGAME, TUYOO, YXMNYS, MIHUANGAME, SHRYOU, FLYSHEEP,
+        XWZ
     }
 
     /** d3games 仅在同时具备 appKey 与 gameId 的游戏上启用。 */
@@ -165,8 +172,10 @@ public final class MiniGameVendorReporter {
         SDK_VENDORS.put("hnycgames", Vendor.HNYC);
         // dianli100 族：farm/openid 登录 + farm/action/report，每次动作重新取 authCode
         SDK_VENDORS.put("dianli100", Vendor.DIANLI100);
-        // d3games 族：api/login + incrementgameaction/submit（仅启用森林环游记）
+        // d3games 族：api/login + 行为提交（需同时具备 appKey 与 gameId）
         SDK_VENDORS.put("d3games", Vendor.D3GAMES);
+        // flysheeep 族：get_ali_token 换 token/openid → ali_submit_v3
+        SDK_VENDORS.put("flysheeep", Vendor.FLYSHEEP);
         // tomato 族：initDevices + zfbMiniGame 登录 + event/push
         SDK_VENDORS.put("tomato", Vendor.TOMATO);
         // aslk2018（gamesapi2 联运平台）：/v2/game/login 换 token → /v2/zfb/taskReport，
@@ -174,6 +183,9 @@ public final class MiniGameVendorReporter {
         SDK_VENDORS.put("aslk2018", Vendor.GAMESAPI2);
         // raiyantway 族（MiniGameServer 框架）：login.do 换 openId → reportGameAction（ENCODE_DATA 加密）
         SDK_VENDORS.put("raiyantway", Vendor.RAYIANTWAY);
+        // xwz 族（守护世界 wanzhushipin，Xwz_Sdk 框架）：AlipayAccount 换 openid →
+        // Login 换 uid → AliCall/AlipayIncrementSubmit 直报；密钥取自包体内置 Init 配置
+        SDK_VENDORS.put("xwz", Vendor.XWZ);
         // flourish（斗破苍穹）：QuickGame/login 换 token → callMethod(incrementGameAction)
         SDK_VENDORS.put("flourish", Vendor.FLOURISH);
         // devourad：alipay/gameLogin → gameReport（MD5 直拼签名）
@@ -210,6 +222,9 @@ public final class MiniGameVendorReporter {
         // shryou（城主别慌）：登录链为 SDK 私有加密无法构造，uid 从游戏自身流量学习，
         // 再用明文接口 docking/lewan/aliReport 补报 action_code
         SDK_VENDORS.put("shryou", Vendor.SHRYOU);
+
+        XWZ_KEYS.put("1.0.2", "5h3DAKBgNVBAoMA3huMREwDwYDVQQIDAhaf");
+        XWZ_KEYS.put("1.0.7", "hh44aZm5vRC8gcbF78qcHxdQbzxSW/CFj0e");
     }
 
     private MiniGameVendorReporter() {
@@ -307,6 +322,9 @@ public final class MiniGameVendorReporter {
             case RAYIANTWAY:
             case MICROFUN:
                 channel = FARM_CHANNEL;
+                break;
+            case XWZ:
+                channel = XWZ_CHANNEL;
                 break;
             default:
                 channel = GAME_TASK_CHANNEL;
@@ -490,6 +508,15 @@ public final class MiniGameVendorReporter {
     }
 
     /**
+     * 兼容旧调用方（返回单个动作码）：取 resolveActions 的首个元素，无匹配返回空串。
+     * 供 gr_shouhu 移植代码（GoldenBean/SesameAlchemy）直接复用，避免逐处改签名。
+     */
+    public static String resolveAction(String appId, String text) {
+        List<String> actions = resolveActions(appId, text);
+        return actions.isEmpty() ? "" : actions.get(0);
+    }
+
+    /**
      * 仅按关键词解析动作码（显式关键词 + 静态表中文动作名），命中不了就返回空列表，
      * 不做默认项/动作语义兜底。用于区分「描述里明确写了游戏内行为」与「只能拿标题猜」。
      */
@@ -566,7 +593,7 @@ public final class MiniGameVendorReporter {
                         ? loginTuyoo(meta, appId, authCode, headers)
                         : loginYxmys(meta, appId, authCode, headers);
             }
-            Log.record("游戏任务🎮厂商上报[" + meta.name + "]任务列表["
+            Log.i("游戏任务🎮厂商上报[" + meta.name + "]任务列表["
                     + MessageUtil.getTaskListName(listTitle) + "]，厂商=" + meta.vendor + "，次数=" + n
                     + (every > 1 ? "（每次上报=" + every + "次游戏行为）" : "") + "，开始登录并提交");
             boolean ok = false;
@@ -598,6 +625,9 @@ public final class MiniGameVendorReporter {
                         break;
                     case D3GAMES:
                         once = reportD3games(meta, appId, action, authCode, headers);
+                        break;
+                    case FLYSHEEP:
+                        once = reportFlysheep(meta, appId, action, authCode, headers);
                         break;
                     case GAMESAPI2:
                         once = reportGamesapi2(meta, appId, action, authCode, headers);
@@ -647,13 +677,21 @@ public final class MiniGameVendorReporter {
                     case SHRYOU:
                         once = reportShryou(meta, appId, action, headers);
                         break;
+                    case XWZ:
+                        once = reportXwz(meta, appId, action, authCode);
+                        break;
                     default:
                         return ok;
                 }
                 ok |= once;
-                MessageUtil.logByTaskList(listTitle, "游戏任务🎮厂商上报[" + meta.name + "]"
+                String progressMessage = "游戏任务🎮厂商上报[" + meta.name + "]"
                         + (n > 1 ? " 第" + (i + 1) + "/" + n + "次" : "")
-                        + (once ? " 成功" : " 失败"));
+                        + (once ? " 成功" : " 失败");
+                if (once) {
+                    MessageUtil.logByTaskList(listTitle, progressMessage);
+                } else {
+                    Log.i(progressMessage);
+                }
                 if (!once) {
                     break;
                 }
@@ -666,6 +704,16 @@ public final class MiniGameVendorReporter {
             Log.i("游戏任务 厂商上报异常[" + meta.name + "]: " + t);
             Log.i("游戏任务🎮厂商上报[" + meta.name + "] 异常: " + t);
             return false;
+        }
+    }
+
+    /** 成功结果保留在记录日志，失败结果仅写运行日志。 */
+    private static void logReportResult(Meta meta, boolean ok) {
+        String message = "游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败");
+        if (ok) {
+            Log.record(message);
+        } else {
+            Log.i(message);
         }
     }
 
@@ -781,6 +829,237 @@ public final class MiniGameVendorReporter {
      * 与森林乐园每日鸡蛋任务同源（见 {@code GameTask} 枚举），全族 33 款的 gid
      * 均取自静态适配表（6 款另有独立协议版本 v），每次上报都重新登录。
      */
+    // ==================== xwz 族（守护世界 wanzhushipin / Xwz_Sdk） ====================
+    // 协议来源：包体 game.js 内嵌 Xwz_Sdk 反混淆 + 2026-11-22 真机抓包对照。
+    // 流程：AlipayAccount(1.0.2, authCode→openid) → Login(1.0.7, 客户端生成 login_key→uid)
+    //       → AliCall(1.0.7, callname=AlipayIncrementSubmit, action_code+channel)。
+    // 签名：参数键全小写按字典序拼 k=v&，body 尾追加 key=md5(串+"key="+密钥+f_c)；
+    //       f_c 为 8 位随机串且必须同时出现在 body 参数里（缺了服务端回「非法调用a6」）。
+    // 服务端不校验 alipayminimark / referer / UA；Login 响应可能带 _val_ 包装（11字符块前后半交换
+    // 再 base64 解码）。
+
+    /** xwz 会话缓存：appId+当前账号UID → 登录态（10 分钟内复用，免每次上报都登录）。
+     *  key 必须带账号：同进程切账号时绝不能复用上一账号的 uid/openid（串号会把进度记到别人头上）。 */
+    private static final Map<String, XwzSession> XWZ_SESSIONS = new HashMap<>();
+    private static final long XWZ_SESSION_TTL = 10 * 60 * 1000L;
+
+    private static final class XwzSession {
+        final String openid;
+        final String uid;
+        final String loginKey;
+        final long createdAt;
+        int callId = 2;
+        int saveCallId = 2;
+
+        XwzSession(String openid, String uid, String loginKey) {
+            this.openid = openid;
+            this.uid = uid;
+            this.loginKey = loginKey;
+            this.createdAt = System.currentTimeMillis();
+        }
+    }
+
+    private static String xwzBase(String appId) {
+        String host = MiniGameTaskTable.param(appId, "loginHost");
+        if (!host.isEmpty()) {
+            return host;
+        }
+        return "https://shsj.wanzhushipin.cn/xiaoddd_zfb/";
+    }
+
+    private static String xwzVer(String appId) {
+        String ver = MiniGameTaskTable.param(appId, "ver");
+        return ver.isEmpty() ? "1232" : ver;
+    }
+
+    private static String xwzRandStr(int n) {
+        String chars = "JKLPOVCXZASDFxcIopasdfghjklz7890MNBvbnm12UYqwertyui3456GHTREWQ";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < n; i++) {
+            sb.append(chars.charAt(RANDOM.nextInt(chars.length())));
+        }
+        return sb.toString();
+    }
+
+    /** xwz 签名：params 里必须已含 f_c；返回 "k=v&...&key=<md5>"。 */
+    private static String xwzSign(Map<String, String> params, String keyVer, String fC) throws Exception {
+        List<String> keys = new ArrayList<>(params.keySet());
+        Collections.sort(keys);
+        StringBuilder body = new StringBuilder();
+        for (String k : keys) {
+            body.append(k).append('=').append(params.get(k)).append('&');
+        }
+        String sign = md5(body + "key=" + XWZ_KEYS.get(keyVer) + fC);
+        return body.append("key=").append(sign).toString();
+    }
+
+    /** xwz 登录（带 10 分钟会话缓存，按 appId+账号隔离）：authCode → openid → uid。 */
+    private static XwzSession xwzSession(String appId, String authCode, Meta meta) {
+        String sessKey = appId + "|" + UserIdMap.getCurrentUid();
+        XwzSession sess = XWZ_SESSIONS.get(sessKey);
+        if (sess != null && System.currentTimeMillis() - sess.createdAt < XWZ_SESSION_TTL) {
+            return sess;
+        }
+        try {
+            String base = xwzBase(appId);
+            String ver = xwzVer(appId);
+            String launch = Base64.encodeToString(
+                    "{\"query\":{},\"referrerInfo\":{}}".getBytes(StandardCharsets.UTF_8),
+                    Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING);
+            Map<String, String> headers = new LinkedHashMap<>();
+            headers.put("Content-Type", "application/x-www-form-urlencoded");
+
+            // 1) AlipayAccount：authCode 换 openid
+            String fC1 = xwzRandStr(8);
+            Map<String, String> p1 = new LinkedHashMap<>();
+            p1.put("selser", "0");
+            p1.put("launch", launch);
+            p1.put("code", authCode);
+            p1.put("ver", ver);
+            p1.put("login_key", "");
+            p1.put("platform", "301");
+            p1.put("from_mobile", "1");
+            p1.put("from_pfm", "Android");
+            p1.put("ios", "0");
+            p1.put("save_call_id", "1");
+            p1.put("sdkver", "129");
+            p1.put("keycpruse", "1.0.2");
+            p1.put("call_id_num", "1");
+            p1.put("tick", String.valueOf(System.currentTimeMillis() / 1000));
+            p1.put("tick_one_key", System.currentTimeMillis() + "__" + (1 + RANDOM.nextInt(10000000)));
+            p1.put("f_c", fC1);
+            String resp1 = post(base + "1.0.2/alipay/AlipayAccount", xwzSign(p1, "1.0.2", fC1), headers);
+            JSONObject j1 = new JSONObject(resp1);
+            String openid = j1.optString("openid");
+            if (j1.optInt("code") != 0 || openid.isEmpty()) {
+                Log.i("游戏任务⏭️[" + meta.name + "]#xwz 登录失败(AlipayAccount) 响应=" + resp1);
+                return null;
+            }
+
+            // 2) Login：客户端生成 login_key（毫秒时间戳+16位随机）换 uid
+            String loginKey = System.currentTimeMillis() + xwzRandStr(16);
+            String fC2 = xwzRandStr(8);
+            Map<String, String> p2 = new LinkedHashMap<>();
+            p2.put("openid", openid);
+            p2.put("version", ver);
+            p2.put("sid", "-1");
+            p2.put("login_key", loginKey);
+            p2.put("scene", "0");
+            p2.put("launch", launch);
+            p2.put("from_pfm", "Android");
+            p2.put("ver", ver);
+            p2.put("platform", "301");
+            p2.put("from_mobile", "1");
+            p2.put("ios", "0");
+            p2.put("save_call_id", "2");
+            p2.put("sdkver", "129");
+            p2.put("keycpruse", "1.0.7");
+            p2.put("call_id_num", "2");
+            p2.put("tick", String.valueOf(System.currentTimeMillis() / 1000));
+            p2.put("tick_one_key", System.currentTimeMillis() + "__" + (1 + RANDOM.nextInt(10000000)));
+            p2.put("f_c", fC2);
+            String resp2 = post(base + "1.0.7/xiaoddd/Login", xwzSign(p2, "1.0.7", fC2), headers);
+            JSONObject j2 = xwzUnwrap(resp2);
+            long uid = j2.optLong("uid", 0);
+            if (j2.optInt("code") != 0 || uid == 0) {
+                Log.i("游戏任务⏭️[" + meta.name + "]#xwz 登录失败(Login) 响应=" + resp2);
+                return null;
+            }
+            sess = new XwzSession(openid, String.valueOf(uid), loginKey);
+            XWZ_SESSIONS.put(sessKey, sess);
+            Log.record("游戏任务🎮厂商登录[" + meta.name + "]#xwz 成功 uid=" + uid
+                    + " openid=" + openid.substring(0, Math.min(10, openid.length())) + "…"
+                    + " 账号=" + UserIdMap.getCurrentUid());
+            return sess;
+        } catch (Throwable t) {
+            Log.i("游戏任务⏭️[" + meta.name + "]#xwz 登录异常: " + t);
+            return null;
+        }
+    }
+
+    /** xwz 响应解包：响应可能带 _val_（11字符块前后半交换→base64→JSON）。 */
+    private static JSONObject xwzUnwrap(String resp) throws Exception {
+        JSONObject json = new JSONObject(resp);
+        if (!json.has("_val_")) {
+            return json;
+        }
+        String x = json.getString("_val_");
+        StringBuilder m = new StringBuilder();
+        StringBuilder iBuf = new StringBuilder("aa");
+        int i = 0;
+        while (i < x.length() - 11) {
+            String a6 = x.substring(i, i + 6);
+            if (a6.length() == x.length()) {
+                a6 += "wxxswllk334ffe";
+            }
+            if (iBuf.length() == x.length()) {
+                m.setLength(0);
+            }
+            String f5 = x.substring(i + 6, i + 11);
+            if (f5.length() == x.length()) {
+                f5 += "w334ffxxswllke";
+            }
+            iBuf.append(a6).append(f5);
+            m.append(f5).append(a6);
+            i += 11;
+        }
+        if (i < x.length()) {
+            m.append(x.substring(i));
+        }
+        // 服务端可能发 URL-SAFE base64（含 - 和 _，新用户大响应实测出现），真机客户端的
+        // Base64.decode 原文也有同样的归一化：replace(/[-_]/g) 后再解码
+        String b64 = m.toString().replace('-', '+').replace('_', '/').replaceAll("\\s", "");
+        String inner = new String(Base64.decode(b64, Base64.DEFAULT), StandardCharsets.UTF_8);
+        return new JSONObject(inner);
+    }
+
+    /** xwz 上报：AlipayIncrementSubmit 一次推进 1 个进度。 */
+    private static boolean reportXwz(Meta meta, String appId, String action, String authCode) {
+        try {
+            XwzSession sess = xwzSession(appId, authCode, meta);
+            if (sess == null) {
+                return false;
+            }
+            sess.callId++;
+            sess.saveCallId++;
+            String fC = xwzRandStr(8);
+            Map<String, String> p = new LinkedHashMap<>();
+            p.put("uid", sess.uid);
+            p.put("callname", "AlipayIncrementSubmit");
+            p.put("user_id", sess.openid);
+            p.put("action_code", action);
+            p.put("channel", meta.channel);
+            p.put("from_pfm", "Android");
+            p.put("ver", xwzVer(appId));
+            p.put("platform", "301");
+            p.put("from_mobile", "1");
+            p.put("ios", "0");
+            p.put("save_call_id", String.valueOf(sess.saveCallId));
+            p.put("login_key", sess.loginKey);
+            p.put("sdkver", "129");
+            p.put("keycpruse", "1.0.7");
+            p.put("call_id_num", String.valueOf(sess.callId));
+            p.put("tick", String.valueOf(System.currentTimeMillis() / 1000));
+            p.put("tick_one_key", System.currentTimeMillis() + "__" + (1 + RANDOM.nextInt(10000000)));
+            p.put("f_c", fC);
+            Map<String, String> headers = new LinkedHashMap<>();
+            headers.put("Content-Type", "application/x-www-form-urlencoded");
+            String resp = post(xwzBase(appId) + "1.0.7/alipay/AliCall", xwzSign(p, "1.0.7", fC), headers);
+            JSONObject json = new JSONObject(resp);
+            if (json.optInt("code") == 0) {
+                Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action
+                        + " channel=" + meta.channel + " 结果=成功");
+                return true;
+            }
+            Log.i("游戏任务 厂商上报[" + meta.name + "] xwz 拒绝: " + resp);
+        } catch (Throwable t) {
+            Log.error("游戏任务 厂商上报 xwz 异常: " + t);
+        }
+        return false;
+    }
+
+    // ==================== xwz 族结束 ====================
+
     private static boolean reportGamesapi2(Meta meta, String appId, String action, String authCode,
                                            Map<String, String> headers) {
         try {
@@ -794,18 +1073,12 @@ public final class MiniGameVendorReporter {
             if (v.isEmpty()) {
                 v = meta.version;
             }
-            JSONObject loginBody = new JSONObject();
-            loginBody.put("v", v);
-            loginBody.put("code", authCode);
-            loginBody.put("pf", "zfb");
-            loginBody.put("reqId", System.currentTimeMillis() + "_" + (RANDOM.nextInt(350) + 1));
-            loginBody.put("gid", gid);
-            loginBody.put("version", meta.version);
             Map<String, String> loginHeaders = new LinkedHashMap<>(headers);
             loginHeaders.put("content-type", "application/json");
             String loginResp = post(tableUrl(appId, "login", 0,
                             "https://gamesapi2.aslk2018.com/v2/game/login"),
-                    loginBody.toString(), loginHeaders);
+                    gamesapi2LoginBody(authCode, gid, v, meta.version,
+                            System.currentTimeMillis() + "_" + (RANDOM.nextInt(350) + 1)), loginHeaders);
             JSONObject loginJson = new JSONObject(loginResp);
             JSONObject data = loginJson.optJSONObject("data");
             String token = data == null ? "" : data.optString("token");
@@ -813,25 +1086,19 @@ public final class MiniGameVendorReporter {
                 Log.i("游戏任务 gamesapi2 登录失败[" + meta.name + "] " + loginResp);
                 return false;
             }
-            JSONObject reportBody = new JSONObject();
-            reportBody.put("v", v);
-            reportBody.put("version", meta.version);
-            reportBody.put("reqId", System.currentTimeMillis() + "_" + (RANDOM.nextInt(90) + 10));
-            reportBody.put("gid", gid);
-            reportBody.put("action_code", action);
-            reportBody.put("action_finish_channel", meta.channel);
             Map<String, String> reportHeaders = new LinkedHashMap<>(headers);
             reportHeaders.put("content-type", "application/json");
             reportHeaders.put("authorization", token);
             String resp = post(tableUrl(appId, "submit", 0,
                         "https://gamesapi2.aslk2018.com/v2/zfb/taskReport"),
-                    reportBody.toString(), reportHeaders);
+                    gamesapi2SubmitBody(action, meta.channel, gid, v, meta.version,
+                            System.currentTimeMillis() + "_" + (RANDOM.nextInt(90) + 10)), reportHeaders);
             JSONObject json = new JSONObject(resp);
             if (json.optInt("code") == 1) {
                 Log.record("游戏任务 厂商上报[" + meta.name + "]成功");
                 return true;
             }
-            Log.record("游戏任务 厂商上报[" + meta.name + "] gamesapi2 拒绝: " + resp);
+            Log.i("游戏任务 厂商上报[" + meta.name + "] gamesapi2 拒绝: " + resp);
         } catch (Throwable t) {
             Log.error("游戏任务 厂商上报 gamesapi2 异常: " + t);
         }
@@ -872,23 +1139,17 @@ public final class MiniGameVendorReporter {
                                           Map<String, String> headers) throws Exception {
         String loginUrl = tableUrl(appId, "login", 0, "https://zf.haligame.com/ajax/get_openid.php");
         String submitUrl = tableUrl(appId, "submit", 0, "https://zf.haligame.com/ajax/user_action_submit.php");
-        JSONObject auth = new JSONObject();
-        auth.put("auth_code", authCode);
         Map<String, String> jsonHeaders = new LinkedHashMap<>(headers);
         jsonHeaders.put("content-type", "application/json; charset=utf-8");
-        String openIdResp = post(loginUrl, auth.toString(), jsonHeaders);
+        String openIdResp = post(loginUrl, haligameLoginBody(authCode), jsonHeaders);
         String openId = findString(openIdResp, "open_id", "openid", "openId");
         if (openId.isEmpty()) {
             Log.i("游戏任务⏭️[" + meta.name + "]#haligame 未取到 open_id，响应=" + openIdResp);
             return false;
         }
-        JSONObject submit = new JSONObject();
-        submit.put("action_code", action);
-        submit.put("action_finish_channel", meta.channel);
-        submit.put("open_id", openId);
         Map<String, String> formHeaders = new LinkedHashMap<>(headers);
         formHeaders.put("content-type", "application/x-www-form-urlencoded");
-        String resp = post(submitUrl, submit.toString(), formHeaders);
+        String resp = post(submitUrl, haligameSubmitBody(action, meta.channel, openId, false), formHeaders);
         // 成功格式 {"code":"10000","msg":"Success"}（code 是字符串）
         boolean ok = resp.contains("\"code\":\"10000\"");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败"));
@@ -917,16 +1178,12 @@ public final class MiniGameVendorReporter {
             Log.i("游戏任务⏭️[" + meta.name + "]#dianwanshidai 未取到 openid，响应=" + loginResp);
             return false;
         }
-        JSONObject behavior = new JSONObject();
-        behavior.put("openid", openId);
-        behavior.put("action_code", action);
-        behavior.put("channel", meta.channel);
         String resp = post(tableUrl(appId, "submit", 0,
                         "https://platformv2.dianwanshidai.com/api_v2/v1/ZfbSop/behavior"),
-                behavior.toString(), loginHeaders);
+                dianwanshidaiSubmitBody(openId, action, meta.channel), loginHeaders);
         // 成功格式 {"code":200,"msg":"上报成功"}
         boolean ok = resp.contains("\"code\":200");
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -1052,41 +1309,32 @@ public final class MiniGameVendorReporter {
         // 成功格式 {"status":0,"message":"OK","data":null}（兼容旧格式 {"msg":"success","code":2000,"data":[]}）
         boolean ok = resp.contains("\"status\":0") || resp.contains("\"code\":2000");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败"));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#"+(ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
     /** cpchxapi：auth/login-ali 换 JWT → analytics/ali-report（Bearer 鉴权）。 */
     private static boolean reportCpchx(Meta meta, String appId, String action, String authCode,
                                        Map<String, String> headers) throws Exception {
-        JSONObject login = new JSONObject();
-        login.put("appId", appId);
-        login.put("code", authCode);
-        login.put("anonymousCode", JSONObject.NULL);
-        login.put("channel", 3);
-        login.put("inviteId", "");
         Map<String, String> jsonHeaders = new LinkedHashMap<>(headers);
         jsonHeaders.put("content-type", "application/json; charset=utf-8");
         String loginResp = post(tableUrl(appId, "login", 0,
                         "https://cpchxapi.dianwanshidai.com/app-api/game/auth/login-ali"),
-                login.toString(), jsonHeaders);
+                cpchxLoginBody(appId, authCode), jsonHeaders);
         String token = findString(loginResp, "token");
         if (token.isEmpty()) {
             Log.i("游戏任务⏭️[" + meta.name + "]#cpchx 未取到 token，响应=" + loginResp);
             return false;
         }
-        JSONObject report = new JSONObject();
-        report.put("eventName", action);
-        report.put("channel", meta.channel);
         Map<String, String> reportHeaders = new LinkedHashMap<>(jsonHeaders);
         reportHeaders.put("authorization", "Bearer " + token);
         String resp = post(tableUrl(appId, "submit", 0,
                         "https://cpchxapi.dianwanshidai.com/app-api/game/analytics/ali-report"),
-                report.toString(), reportHeaders);
+                cpchxSubmitBody(action, meta.channel), reportHeaders);
         // 成功格式 {"code":0,"msg":"","data":null}
         boolean ok = resp.contains("\"code\":0");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败"));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -1128,7 +1376,7 @@ public final class MiniGameVendorReporter {
         boolean ok = resp.contains("\"errorCode\":0");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败")
                 + (ok ? "" : "，响应=" + resp));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -1150,26 +1398,18 @@ public final class MiniGameVendorReporter {
         }
         Map<String, String> jsonHeaders = new LinkedHashMap<>(headers);
         jsonHeaders.put("content-type", "application/json; charset=utf-8");
-        JSONObject login = new JSONObject();
-        login.put("type", 7);
-        login.put("code", authCode);
-        login.put("version", meta.version);
-        login.put("packageType", 2);
-        String loginResp = post(loginUrl, login.toString(), jsonHeaders);
+        String loginResp = post(loginUrl, mmhygameLoginBody(authCode, meta.version, 2), jsonHeaders);
         String openId = findString(loginResp, "openid", "open_id", "uid");
         if (openId.isEmpty()) {
             Log.i("游戏任务⏭️[" + meta.name + "]#mmhygame 未取到 openid，响应=" + loginResp);
 
             return false;
         }
-        JSONObject report = new JSONObject();
-        report.put("eventId", action);
-        report.put("eventChannel", meta.channel);
-        String resp = post(submitUrl, report.toString(), jsonHeaders);
+        String resp = post(submitUrl, mmhygameSubmitBody(action, meta.channel), jsonHeaders);
         boolean ok = resp.contains("\"code\":0") || resp.contains("\"success\":true");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败")
                 + (ok ? "" : "，响应=" + resp));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -1251,7 +1491,7 @@ public final class MiniGameVendorReporter {
         boolean ok = resp.contains("\"code\":0") || resp.contains("\"success\":true");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败")
                 + (ok ? "" : "，响应=" + resp));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -1300,19 +1540,11 @@ public final class MiniGameVendorReporter {
         jsonHeaders.put("usertag", "");
         jsonHeaders.put("uuid", java.util.UUID.randomUUID().toString().replace("-", ""));
         jsonHeaders.put("versioncode", "0");
-        JSONObject report = new JSONObject();
-        report.put("actionCode", action);
-        report.put("actionFinishChannel", meta.channel);
-        report.put("channel", "zhifubao");
-        report.put("platform", 0);
-        if (!umid.isEmpty()) {
-            report.put("umid", umid);
-        }
-        String resp = post(submitUrl, report.toString(), jsonHeaders);
+        String resp = post(submitUrl, igame58SubmitBody(action, meta.channel, true, umid), jsonHeaders);
         boolean ok = resp.contains("\"code\":0") || resp.contains("\"success\":true");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败")
                 + (ok ? "" : "，响应=" + resp));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -1363,7 +1595,7 @@ public final class MiniGameVendorReporter {
         boolean ok = resp.contains("\"code\":0") || resp.contains("\"success\":true");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败")
                 + (ok ? "" : "，响应=" + resp));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -1425,7 +1657,7 @@ public final class MiniGameVendorReporter {
         boolean ok = resp.contains("\"code\":0") || resp.contains("\"success\":true");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败")
                 + (ok ? "" : "，响应=" + resp));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -1444,16 +1676,7 @@ public final class MiniGameVendorReporter {
         }
         Map<String, String> jsonHeaders = new LinkedHashMap<>(headers);
         jsonHeaders.put("content-type", "application/json; charset=utf-8");
-        JSONObject login = new JSONObject();
-        if (!channelAppId.isEmpty()) {
-            try {
-                login.put("channelAppId", Integer.parseInt(channelAppId));
-            } catch (NumberFormatException e) {
-                login.put("channelAppId", channelAppId);
-            }
-        }
-        login.put("code", authCode);
-        String loginResp = post(loginUrl, login.toString(), jsonHeaders);
+        String loginResp = post(loginUrl, mihuangameLoginBody(authCode, channelAppId), jsonHeaders);
         String token = findString(loginResp, "authentication");
         if (token.isEmpty()) {
             Log.i("游戏任务⏭️[" + meta.name + "]#mihuangame 未取到 authentication，响应=" + loginResp);
@@ -1461,16 +1684,13 @@ public final class MiniGameVendorReporter {
         }
         Map<String, String> submitHeaders = new LinkedHashMap<>(jsonHeaders);
         submitHeaders.put("authentication", token);
-        JSONObject submit = new JSONObject();
-        submit.put("action_code", action);
-        submit.put("action_finish_date", System.currentTimeMillis());
-        submit.put("action_finish_channel", meta.channel);
-        String resp = post(submitUrl, submit.toString(), submitHeaders);
+        String resp = post(submitUrl, mihuangameSubmitBody(action, meta.channel,
+                System.currentTimeMillis()), submitHeaders);
         String trimmed = resp == null ? "" : resp.trim();
         boolean ok = trimmed.isEmpty() || trimmed.equals("{}") || trimmed.contains("\"code\":0");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败")
                 + (ok ? "" : "，响应=" + resp));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -1516,7 +1736,11 @@ public final class MiniGameVendorReporter {
         boolean ok = resp.contains("\"code\":0") || resp.contains("authorCode");
         Log.i("游戏任务🎮厂商登录[" + meta.name + "]#tuyoo 结果=" + (ok ? "成功" : "失败")
                 + (ok ? "" : "，响应=" + resp));
-        Log.record("游戏任务🎮厂商登录[" + meta.name + "]#tuyoo " + (ok ? "成功" : "失败"));
+        if (ok) {
+            Log.record("游戏任务🎮厂商登录[" + meta.name + "]#tuyoo 成功");
+        } else {
+            Log.i("游戏任务🎮厂商登录[" + meta.name + "]#tuyoo 失败");
+        }
         return ok;
     }
 
@@ -1545,7 +1769,11 @@ public final class MiniGameVendorReporter {
         boolean ok = resp.contains("\"code\":1") || resp.contains("app_ext");
         Log.i("游戏任务🎮厂商登录[" + meta.name + "]#yxmys 结果=" + (ok ? "成功" : "失败")
                 + (ok ? "" : "，响应=" + resp));
-        Log.record("游戏任务🎮厂商登录[" + meta.name + "]#yxmys " + (ok ? "成功" : "失败"));
+        if (ok) {
+            Log.record("游戏任务🎮厂商登录[" + meta.name + "]#yxmys 成功");
+        } else {
+            Log.i("游戏任务🎮厂商登录[" + meta.name + "]#yxmys 失败");
+        }
         return ok;
     }
 
@@ -1582,7 +1810,7 @@ public final class MiniGameVendorReporter {
         boolean ok = resp.contains("\"code\":200");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败")
                 + " openid=" + openId);
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -1666,7 +1894,44 @@ public final class MiniGameVendorReporter {
         // 成功格式 {"code":"0","msg":"成功","servertime":...}（code 是字符串）
         boolean ok = resp.contains("\"code\":\"0\"");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败"));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
+        return ok;
+    }
+
+    /** flysheeep：get_ali_token 换 token/openid → ali_submit_v3。 */
+    private static boolean reportFlysheep(Meta meta, String appId, String action, String authCode,
+                                          Map<String, String> headers) throws Exception {
+        Map<String, String> jsonHeaders = new LinkedHashMap<>(headers);
+        jsonHeaders.put("content-type", "application/json");
+        JSONObject login = new JSONObject();
+        login.put("appid", appId);
+        login.put("token_type", 1);
+        login.put("code", authCode);
+        String loginResp = post(tableUrl(appId, "login", 0,
+                "https://api.flysheeep.com/api/tapaway/get_ali_token"), login.toString(), jsonHeaders);
+        String token = findString(loginResp, "access_token", "token");
+        String openId = findString(loginResp, "open_id", "openId");
+        String userId = findString(loginResp, "user_id", "userId");
+        if (token.isEmpty() || openId.isEmpty()) {
+            Log.i("游戏任务⏭️[" + meta.name + "]#flysheeep 登录未取到 token/openid，响应=" + loginResp);
+            return false;
+        }
+        JSONObject report = new JSONObject();
+        report.put("appid", appId);
+        report.put("openid", openId);
+        report.put("action_code", action);
+        report.put("action_finish_channel", meta.channel);
+        if (!userId.isEmpty()) {
+            report.put("user_id", userId);
+        }
+        report.put("token", token);
+        report.put("biz_no", openId + "_" + action + "_" + System.currentTimeMillis());
+        String resp = post(tableUrl(appId, "submit", 0,
+                "https://api.flysheeep.com/api/ali/ali_submit_v3"), report.toString(), jsonHeaders);
+        boolean ok = new JSONObject(resp).optInt("code", -1) == 200;
+        Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败")
+                + (ok ? "" : "，响应=" + resp));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -1762,7 +2027,7 @@ public final class MiniGameVendorReporter {
         // 成功格式 {"code":"1","msg":"成功","data":null}（code 是字符串）
         boolean ok = resp.contains("\"code\":\"1\"");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败"));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -1851,8 +2116,45 @@ public final class MiniGameVendorReporter {
         boolean ok = resp.contains("\"code\":0");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败")
                 + (ok ? "" : "，响应=" + resp));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
+    }
+
+    /**
+     * devourad 协议登录（任务列表与游戏中心共用）：MD5(appid + secret + code) 换 open_id。
+     * secretField=true 时登录体额外携带 secret（游戏中心口径），否则不带（任务列表口径）。
+     * 返回登录响应原文，由调用方判定成功与取字段。
+     */
+    public static String devouradLogin(String appId, String secret, String authCode,
+                                       Map<String, String> headers, boolean secretField) throws Exception {
+        String loginUrl = tableUrl(appId, "login", 0, "https://api.devourad.com/alipay/gameLogin");
+        JSONObject login = new JSONObject();
+        login.put("appid", appId);
+        if (secretField) {
+            login.put("secret", secret);
+        }
+        login.put("code", authCode);
+        login.put("sign", md5(appId + secret + authCode));
+        return post(loginUrl, login.toString(), headers);
+    }
+
+    /**
+     * devourad 协议单次行为上报（任务列表与游戏中心共用）：
+     * 签名 MD5(appid + secret + action + channel + outBizNo + openId)。
+     * 返回上报响应原文，由调用方判定成功。
+     */
+    public static String devouradSubmit(String appId, String secret, String channel, String action,
+                                        String openId, Map<String, String> headers) throws Exception {
+        String submitUrl = tableUrl(appId, "submit", 0, "https://api.devourad.com/alipay/gameReport");
+        String outBizNo = md5(UUID.randomUUID().toString());
+        JSONObject report = new JSONObject();
+        report.put("appid", appId);
+        report.put("action_code", action);
+        report.put("action_finish_channel", channel);
+        report.put("open_id", openId);
+        report.put("out_biz_no", outBizNo);
+        report.put("sign", md5(appId + secret + action + channel + outBizNo + openId));
+        return post(submitUrl, report.toString(), headers);
     }
 
     /** devourad：alipay/gameLogin → gameReport，MD5(appid + appSecret + 参数直拼)。 */
@@ -1863,33 +2165,19 @@ public final class MiniGameVendorReporter {
             Log.i("游戏任务⏭️[" + meta.name + "]#devourad 缺 appKey（表 param），跳过");
             return false;
         }
-        String loginUrl = tableUrl(appId, "login", 0, "https://api.devourad.com/alipay/gameLogin");
-        String submitUrl = tableUrl(appId, "submit", 0, "https://api.devourad.com/alipay/gameReport");
         Map<String, String> jsonHeaders = new LinkedHashMap<>(headers);
         jsonHeaders.put("content-type", "application/json; charset=utf-8");
-        JSONObject login = new JSONObject();
-        login.put("appid", appId);
-        login.put("code", authCode);
-        login.put("sign", md5(appId + secret + authCode));
-        String loginResp = post(loginUrl, login.toString(), jsonHeaders);
+        String loginResp = devouradLogin(appId, secret, authCode, jsonHeaders, false);
         String openId = findString(loginResp, "open_id", "openid");
         if (openId.isEmpty() || !loginResp.contains("\"code\":1")) {
             Log.i("游戏任务⏭️[" + meta.name + "]#devourad 登录失败，响应=" + loginResp);
             return false;
         }
-        String outBizNo = md5(UUID.randomUUID().toString());
-        JSONObject report = new JSONObject();
-        report.put("appid", appId);
-        report.put("action_code", action);
-        report.put("action_finish_channel", meta.channel);
-        report.put("open_id", openId);
-        report.put("out_biz_no", outBizNo);
-        report.put("sign", md5(appId + secret + action + meta.channel + outBizNo + openId));
-        String resp = post(submitUrl, report.toString(), jsonHeaders);
+        String resp = devouradSubmit(appId, secret, meta.channel, action, openId, jsonHeaders);
         boolean ok = resp.contains("\"code\":1");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败")
                 + (ok ? "" : "，响应=" + resp));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -1941,7 +2229,7 @@ public final class MiniGameVendorReporter {
         boolean ok = resp.contains("\"code\":\"10000\"");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败")
                 + (ok ? "" : "，响应=" + resp));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -2042,7 +2330,7 @@ public final class MiniGameVendorReporter {
         boolean ok = resp.contains("\"ok\":1");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败")
                 + (ok ? "" : "，响应=" + resp));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -2145,7 +2433,7 @@ public final class MiniGameVendorReporter {
         boolean ok = json != null && json.optInt("code", -1) == 0;
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败")
                 + (ok ? "" : "，响应=" + resp));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -2247,7 +2535,7 @@ public final class MiniGameVendorReporter {
         boolean ok = resp.contains("\"code\":\"0\"");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败")
                 + (ok ? "" : "，响应=" + resp));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -2333,35 +2621,26 @@ public final class MiniGameVendorReporter {
         }
         String base = "https://" + host + "/MiniGameServer";
         // 实际为 GET + JSON body（HttpURLConnection 不支持 GET 带 body），按同 content-type 的 POST 发送
-        JSONObject login = new JSONObject();
-        login.put("userType", userType);
-        login.put("appId", appId);
-        login.put("code", authCode);
         Map<String, String> jsonHeaders = new LinkedHashMap<>(headers);
         jsonHeaders.put("content-type", "application/json; charset=utf-8");
         String loginUrl = tableUrl(appId, "login", 0, base + "/minigame/login.do");
         String submitUrl = tableUrl(appId, "submit", 0, base + "/alipay/reportGameAction");
-        String loginResp = post(loginUrl, login.toString(), jsonHeaders);
+        String loginResp = post(loginUrl, raiyantwayLoginBody(appId, userType, authCode), jsonHeaders);
         String openId = findString(loginResp, "openId");
         if (!loginResp.contains("\"code\":\"0\"") || openId.isEmpty()) {
             Log.i("游戏任务⏭️[" + meta.name + "]#raiyantway 登录未取到 openId，响应=" + loginResp);
             return false;
         }
-        JSONObject plain = new JSONObject();
-        plain.put("appId", appId);
-        plain.put("openId", openId);
-        plain.put("actionCode", action);
-        plain.put("actionFinishChannel", meta.channel);
-        plain.put("outBizNo", UUID.randomUUID().toString());
-        plain.put("actionFinishDate", System.currentTimeMillis());
+        String plain = raiyantwayPlainBody(appId, openId, action, meta.channel,
+                UUID.randomUUID().toString());
         Map<String, String> fields = new LinkedHashMap<>();
-        fields.put("ENCODE_DATA", raiyantwayEncode(plain.toString()));
+        fields.put("ENCODE_DATA", raiyantwayEncode(plain));
         String resp = postForm(submitUrl, fields, headers);
         // 成功格式 {"code":"0","msg":"success","data":null}（code 是字符串）
         boolean ok = resp.contains("\"code\":\"0\"");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#" + action + " 结果=" + (ok ? "成功" : "失败")
                 + (ok ? "" : "\n明文: " + plain + "\n响应: " + resp));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
     }
 
@@ -2369,7 +2648,7 @@ public final class MiniGameVendorReporter {
      * raiyantway ENCODE_DATA 加密（GameTask.js Ya 函数）：
      * UTF-8 字节 → 补零至 4 的倍数 → 逐字节 XOR 随机 4 字节 key → 密文拼接 key → base64。
      */
-    private static String raiyantwayEncode(String plainJson) {
+    public static String raiyantwayEncode(String plainJson) {
         byte[] data = plainJson.getBytes(StandardCharsets.UTF_8);
         int pad = (4 - data.length % 4) % 4;
         byte[] key = new byte[4];
@@ -2523,8 +2802,226 @@ public final class MiniGameVendorReporter {
         boolean ok = resp.contains("\"code\":0");
         Log.i("游戏任务🎮厂商上报[" + meta.name + "]#shryou action=" + action
                 + " uid=" + uid + " 结果=" + (ok ? "成功" : "失败，响应=" + resp));
-        Log.record("游戏任务🎮厂商上报[" + meta.name + "]#" + (ok ? "成功" : "失败"));
+        logReportResult(meta, ok);
         return ok;
+    }
+
+    // ---------------------------------------------------------------- 跨模块共用协议原语
+    // 游戏中心（antMember/GameCenterMiniGameReporter）与游戏任务（本类）对同一 SDK 族的
+    // 请求体 / wire format 完全一致，统一在此定义；传输、重试循环与日志仍由两侧各自保留。
+
+    /** dianwanshidai 行为上报体：{openid, action_code, channel}。 */
+    public static String dianwanshidaiSubmitBody(String openId, String action, String channel) {
+        JSONObject body = new JSONObject();
+        try {
+            body.put("openid", openId);
+            body.put("action_code", action);
+            body.put("channel", channel);
+        } catch (Throwable ignored) {
+        }
+        return body.toString();
+    }
+
+    /** cpchxapi 登录体：{appId, code, anonymousCode:null, channel:3, inviteId:""}。 */
+    public static String cpchxLoginBody(String appId, String authCode) {
+        JSONObject body = new JSONObject();
+        try {
+            body.put("appId", appId);
+            body.put("code", authCode);
+            body.put("anonymousCode", JSONObject.NULL);
+            body.put("channel", 3);
+            body.put("inviteId", "");
+        } catch (Throwable ignored) {
+        }
+        return body.toString();
+    }
+
+    /** cpchxapi 行为上报体：{eventName, channel}。 */
+    public static String cpchxSubmitBody(String action, String channel) {
+        JSONObject body = new JSONObject();
+        try {
+            body.put("eventName", action);
+            body.put("channel", channel);
+        } catch (Throwable ignored) {
+        }
+        return body.toString();
+    }
+
+    /** haligame 登录体：{auth_code}。 */
+    public static String haligameLoginBody(String authCode) {
+        JSONObject body = new JSONObject();
+        try {
+            body.put("auth_code", authCode);
+        } catch (Throwable ignored) {
+        }
+        return body.toString();
+    }
+
+    /**
+     * haligame 行为上报体。form=true 为游戏中心的表单口径（与线上一致，不做 urlencode），
+     * 否则为任务列表的 JSON 口径。
+     */
+    public static String haligameSubmitBody(String action, String channel, String openId, boolean form) {
+        if (form) {
+            return "action_code=" + action + "&action_finish_channel=" + channel + "&open_id=" + openId;
+        }
+        JSONObject body = new JSONObject();
+        try {
+            body.put("action_code", action);
+            body.put("action_finish_channel", channel);
+            body.put("open_id", openId);
+        } catch (Throwable ignored) {
+        }
+        return body.toString();
+    }
+
+    /** gamesapi2 登录体；reqId 由调用方按各自口径生成。 */
+    public static String gamesapi2LoginBody(String authCode, String gid, String v, String version,
+                                            String reqId) {
+        JSONObject body = new JSONObject();
+        try {
+            body.put("v", v);
+            body.put("code", authCode);
+            body.put("pf", "zfb");
+            body.put("reqId", reqId);
+            body.put("gid", gid);
+            body.put("version", version);
+        } catch (Throwable ignored) {
+        }
+        return body.toString();
+    }
+
+    /** gamesapi2 行为上报体；reqId 由调用方按各自口径生成。 */
+    public static String gamesapi2SubmitBody(String action, String channel, String gid, String v,
+                                             String version, String reqId) {
+        JSONObject body = new JSONObject();
+        try {
+            body.put("v", v);
+            body.put("version", version);
+            body.put("reqId", reqId);
+            body.put("gid", gid);
+            body.put("action_code", action);
+            body.put("action_finish_channel", channel);
+        } catch (Throwable ignored) {
+        }
+        return body.toString();
+    }
+
+    /** mmhygame 登录体（包体 zfb.login 分支）：{packageType, code, version, type:7}。 */
+    public static String mmhygameLoginBody(String authCode, String version, int packageType) {
+        JSONObject body = new JSONObject();
+        try {
+            body.put("packageType", packageType);
+            body.put("code", authCode);
+            body.put("version", version);
+            body.put("type", 7);
+        } catch (Throwable ignored) {
+        }
+        return body.toString();
+    }
+
+    /** mmhygame 事件上报体：{eventId, eventChannel}。 */
+    public static String mmhygameSubmitBody(String action, String channel) {
+        JSONObject body = new JSONObject();
+        try {
+            body.put("eventId", action);
+            body.put("eventChannel", channel);
+        } catch (Throwable ignored) {
+        }
+        return body.toString();
+    }
+
+    /** mihuangame 登录体；channelAppId 为空时不发送该字段，非数字时按字符串发送。 */
+    public static String mihuangameLoginBody(String authCode, String channelAppId) {
+        JSONObject body = new JSONObject();
+        try {
+            if (channelAppId != null && !channelAppId.isEmpty()) {
+                try {
+                    body.put("channelAppId", Integer.parseInt(channelAppId));
+                } catch (NumberFormatException e) {
+                    body.put("channelAppId", channelAppId);
+                }
+            }
+            body.put("code", authCode);
+        } catch (Throwable ignored) {
+        }
+        return body.toString();
+    }
+
+    /** mihuangame 行为上报体（action_code 口径，赵云与阿斗等自定义 submitPath 变体）。 */
+    public static String mihuangameSubmitBody(String action, String channel, long finishDate) {
+        JSONObject body = new JSONObject();
+        try {
+            body.put("action_code", action);
+            body.put("action_finish_date", finishDate);
+            body.put("action_finish_channel", channel);
+        } catch (Throwable ignored) {
+        }
+        return body.toString();
+    }
+
+    /**
+     * igame58 行为上报体。withChannelFields=true 为任务列表口径（附带 channel/platform/umid），
+     * 否则为游戏中心口径（只有 actionCode/actionFinishChannel）。
+     */
+    public static String igame58SubmitBody(String action, String channel, boolean withChannelFields,
+                                           String umid) {
+        JSONObject body = new JSONObject();
+        try {
+            body.put("actionCode", action);
+            body.put("actionFinishChannel", channel);
+            if (withChannelFields) {
+                body.put("channel", "zhifubao");
+                body.put("platform", 0);
+                if (umid != null && !umid.isEmpty()) {
+                    body.put("umid", umid);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return body.toString();
+    }
+
+    /** raiyantway 登录体（任务列表的 POST JSON 口径）：{userType, appId, code}。 */
+    public static String raiyantwayLoginBody(String appId, String userType, String authCode) {
+        JSONObject body = new JSONObject();
+        try {
+            body.put("userType", userType);
+            body.put("appId", appId);
+            body.put("code", authCode);
+        } catch (Throwable ignored) {
+        }
+        return body.toString();
+    }
+
+    /** raiyantway 登录 query（游戏中心的 GET 口径，只有 code 做 urlencode）。 */
+    public static String raiyantwayLoginQuery(String appId, String userType, String authCode) {
+        String code;
+        try {
+            code = URLEncoder.encode(authCode, "UTF-8");
+        } catch (Throwable t) {
+            code = authCode;
+        }
+        return "appId=" + appId + "&userType=" + userType + "&code=" + code;
+    }
+
+    /**
+     * raiyantway 上报明文：{appId, openId, actionCode, actionFinishChannel, outBizNo, actionFinishDate}。
+     * outBizNo 由调用方生成（任务列表带连字符、游戏中心去连字符），加密统一走 {@link #raiyantwayEncode}。
+     */
+    public static String raiyantwayPlainBody(String appId, String openId, String action, String channel,
+                                             String outBizNo) {
+        JSONObject plain = new JSONObject();
+        try {
+            plain.put("appId", appId);
+            plain.put("openId", openId);
+            plain.put("actionCode", action);
+            plain.put("actionFinishChannel", channel);
+            plain.put("outBizNo", outBizNo);
+            plain.put("actionFinishDate", System.currentTimeMillis());
+        } catch (Throwable ignored) {
+        }
+        return plain.toString();
     }
 
     /** 以 application/x-www-form-urlencoded 提交表单字段（值逐个 urlencode）。 */

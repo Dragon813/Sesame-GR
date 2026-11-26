@@ -429,6 +429,22 @@ public class SesameAlchemy {
     // ==================== 炼金金豆夺宝（bizType=ZHIMA） ====================
 
     /**
+     * 手动运行入口（扩展功能 → 手动运行 → 炼金金豆小游戏）：只跑金豆夺宝里的任务，
+     * 包含 ZHIMA_youxi_* 小游戏的上报与领取，不碰炼金/签到/兑换。
+     * 上报渠道优先取任务卡片 targetUrl 里的 channel，取不到时回落到默认值 GOLDENBEAN_ZHIMA。
+     */
+    public static void runGoldenBeanOnly() {
+        try {
+            // 渠道留空：上报时会优先用任务卡片 targetUrl 里的 channel（真实客户端就是这么发的），
+            // 取不到才回落到默认值 GOLDENBEAN_ZHIMA。
+            goldenBean(true, null, false, 0, 0);
+        }
+        catch (Throwable t) {
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    /**
      * 炼金入口金豆夺宝：金豆苗收取 + 签到 + 任务（黑名单与农场金豆夺宝共用） + 芝麻粒换金豆
      */
     private static void goldenBean(boolean doTask, Set<String> goldenBeanList, boolean doExchange, int dailyLimit, int reserveZml) {
@@ -565,6 +581,41 @@ public class SesameAlchemy {
                     title = taskType;
                 }
 
+                // 小游戏任务（ZHIMA_youxi_*）：进度由支付宝开放平台记账，finishTask 伪造无效，
+                // 必须让真实游戏 SDK 把动作报上去，这里调游戏中心那套厂商上报。
+                if (taskType.startsWith("ZHIMA_youxi_")) {
+                    // 未开启「芝麻信用 | 金豆夺宝」时跳过，避免对游戏任务发无效 finishTask
+                    if (!zhimaGameEnabled) {
+                        continue;
+                    }
+                    final String gameChannel = "GOLDENBEAN_ZHIMA";
+                    int rightsTimes = task.optInt("rightsTimes", 0);
+                    int rightsTimesLimit = Math.max(1, task.optInt("rightsTimesLimit", 1));
+                    Log.other("炼金金豆🎮[" + title + "]状态=" + taskStatus
+                            + " 进度=" + rightsTimes + "/" + rightsTimesLimit
+                            + " 奖励=" + task.optString("awardCount"));
+                    if ("RECEIVED".equals(taskStatus)) {
+                        TimeUtil.sleep(300);
+                        continue;
+                    }
+                    // 真实客户端把「拉起时的 channel」原样上报（haligame 的 action_finish_channel、
+                    // mmhygame 的 eventChannel 都是 my.getLaunchOptionsSync().query.channel），
+                    // 这个值就在任务 targetUrl 的 query=channel%3D<值> 里，优先用它。
+                    String launchChannel = channelFromTargetUrl(taskDisplayConfig);
+                    reportZhimaGame(taskType, title, launchChannel.isEmpty() ? gameChannel : launchChannel);
+                    TimeUtil.sleep(800);
+                    // 进度已满但状态仍是 TODO（支付宝只记进度、不自动发奖）→ 主动领取
+                    if (rightsTimes >= rightsTimesLimit) {
+                        receiveTaskAward(sceneCode, taskType, title);
+                        TimeUtil.sleep(500);
+                        continue;
+                    }
+                    // 厂商上报只是把动作存到厂商侧，支付宝侧可能还要等落账；先回查并领取。
+                    // 按既定策略不自动打开/拉起游戏小程序，仍未落账就保留待办等下次刷新。
+                    pollAndReceiveZhimaGame(sceneCode, taskType, title);
+                    continue;
+                }
+
                 // 黑名单任务跳过，仅领取
                 if (goldenBeanList != null && goldenBeanList.contains(title)) {
                     if ("FINISHED".equals(taskStatus) || "COMPLETED".equals(taskStatus) || "TO_RECEIVE".equals(taskStatus)) {
@@ -601,6 +652,171 @@ public class SesameAlchemy {
             } catch (Throwable t) {
                 Log.i(TAG, "doTaskList err:");
                 Log.printStackTrace(TAG, t);
+            }
+        }
+    }
+
+    /** 「芝麻信用 | 金豆夺宝」开关：控制 ZHIMA_youxi_* 小游戏任务是否上报/领取。 */
+    private static volatile boolean zhimaGameEnabled = false;
+
+    public static void setZhimaGameEnabled(boolean enabled) {
+        zhimaGameEnabled = enabled;
+    }
+
+    /** 炼金金豆夺宝里的小游戏任务 taskId → 游戏 appId（与游戏中心同一款游戏、同一个 appId） */
+    private static final java.util.Map<String, String> ZHIMA_GAME_APP_ID = new java.util.HashMap<>();
+
+    /** 炼金金豆小游戏上报渠道：实测只有这个值会被支付宝侧记账（lianjin / zmxy_jdrwlb 都不会）。 */
+    private static final String ZHIMA_GAME_CHANNEL = "GOLDENBEAN_ZHIMA";
+
+    static {
+        ZHIMA_GAME_APP_ID.put("ZHIMA_youxi_dageluosi", "2021005139650112");        // 玩打个螺丝（haligame）
+        ZHIMA_GAME_APP_ID.put("ZHIMA_youxi_zheguanwohenxing", "2021005132680209");  // 玩这关我很行（dianwanshidai）
+        ZHIMA_GAME_APP_ID.put("ZHIMA_youxi_hebuguowoba", "2021005112626489");       // 去玩合不过我吧（mmhygame）
+        ZHIMA_GAME_APP_ID.put("ZHIMA_youxi_zhishanglexiaoxiao", "2021006105651938"); // 去玩智商乐消消（devourad，表里有 appKey）
+    }
+
+    /**
+     * 从任务卡片 taskDisplayConfig.targetUrl 里取出拉起游戏时的 channel，例如
+     * alipays://platformapi/startapp?...&query=channel%3Dzmxy_jdrwlb → zmxy_jdrwlb。
+     * 游戏 SDK 上报进度时会把这个值放在 action_finish_channel / eventChannel 里，支付宝按它记账。
+     */
+    private static String channelFromTargetUrl(JSONObject config) {
+        if (config == null) {
+            return "";
+        }
+        String url = config.optString("targetUrl");
+        if (url == null || url.isEmpty()) {
+            return "";
+        }
+        String marker = "channel%3D";
+        int idx = url.indexOf(marker);
+        if (idx < 0) {
+            marker = "channel%3d";
+            idx = url.indexOf(marker);
+        }
+        if (idx < 0) {
+            marker = "channel=";
+            idx = url.indexOf(marker);
+        }
+        if (idx < 0) {
+            return "";
+        }
+        String rest = url.substring(idx + marker.length());
+        int end = rest.length();
+        int amp = rest.indexOf('&');
+        if (amp >= 0 && amp < end) {
+            end = amp;
+        }
+        int enc = rest.indexOf("%26");
+        if (enc >= 0 && enc < end) {
+            end = enc;
+        }
+        String ch = rest.substring(0, end);
+        try {
+            ch = java.net.URLDecoder.decode(ch, "UTF-8");
+        }
+        catch (Throwable ignored) {
+        }
+        return ch;
+    }
+
+    /**
+     * 芝麻炼金金豆夺宝里的小游戏任务：taskId 形如 ZHIMA_youxi_xxx，进度由支付宝开放平台记账，
+     * finishTask 伪造无效，只有对应游戏 SDK 把动作报上去才会变 FINISHED。
+     * 这里复用小游戏上报通道，并把 channel 临时覆盖成炼金金豆所用的值。
+     */
+    private static void reportZhimaGame(String taskId, String title, String gameChannel) {
+        try {
+            // 老配置里这个值可能是 lianjin（早期默认值），但实测只有 GOLDENBEAN_ZHIMA 会被支付宝记账，
+            // 换账号时各账号的旧配置也都还留着 lianjin，所以在运行期做一次归一，保证任何账号都能到账。
+            if (gameChannel == null || gameChannel.isEmpty() || "lianjin".equals(gameChannel)) {
+                gameChannel = ZHIMA_GAME_CHANNEL;
+            }
+            if (Status.hasFlagToday("SesameAlchemy::game_" + taskId)) {
+                return;
+            }
+            String appId = ZHIMA_GAME_APP_ID.get(taskId);
+            if (appId == null) {
+                String unknownFlag = "SesameAlchemy::gameUnknown_" + taskId;
+                if (!Status.hasFlagToday(unknownFlag)) {
+                    Log.other("炼金金豆🎮[" + title + "]#暂无已知上报通道，需人工完成一次后才有记录");
+                    Status.flagToday(unknownFlag);
+                }
+                return;
+            }
+            GameCenterMiniGameReporter.Spec spec = GameCenterMiniGameReporter.specOf(appId);
+            if (spec == null) {
+                return;
+            }
+            int done;
+            GameCenterMiniGameReporter.setChannelOverride(gameChannel);
+            try {
+                done = GameCenterMiniGameReporter.report(spec, 3);
+            }
+            finally {
+                GameCenterMiniGameReporter.setChannelOverride(null);
+            }
+            if (done <= 0) {
+                Log.i("炼金金豆🎮[" + title + "]#厂商上报失败，渠道=" + gameChannel);
+                return; // 不打标记：换个渠道或下次启动再试
+            }
+            Log.other("炼金金豆🎮[" + title + "]#厂商上报 " + done + "/3，渠道=" + gameChannel);
+            Status.flagToday("SesameAlchemy::game_" + taskId);
+        }
+        catch (Throwable t) {
+            Log.printStackTrace(TAG, t);
+        }
+    }
+
+    /**
+     * 上报后回查：重新拉取炼金金豆任务列表（scene=GOLDEN_BEAN_ZHIMA_LIST），找到同 taskId 的任务，
+     * 状态变成 FINISHED/COMPLETED/TO_RECEIVE 或进度已满即领奖。最多 3 轮，每轮间隔 2 秒。
+     * 说明：支付宝侧是「厂商上报 → 服务端记账 → 任务状态更新」，不是同步返回，所以必须回查。
+     */
+    private static void pollAndReceiveZhimaGame(String sceneCode, String taskType, String title) {
+        for (int round = 1; round <= 3; round++) {
+            TimeUtil.sleep(2000);
+            JSONObject jo;
+            try {
+                jo = new JSONObject(GoldenBeanRpcCall.index(GoldenBeanRpcCall.BIZ_TYPE_ZHIMA, GoldenBeanRpcCall.SOURCE_ZHIMA, GoldenBeanRpcCall.VERSION_ZHIMA));
+            } catch (Throwable t) {
+                Log.i(TAG, "pollAndReceiveZhimaGame err:");
+                Log.printStackTrace(TAG, t);
+                return;
+            }
+            JSONArray taskList = jo.optJSONArray("taskList");
+            if (taskList == null) {
+                // 列表异常时不要静默当成「没进展」，留一行日志便于排查
+                Log.other("炼金金豆🔄回查[" + title + "]#任务列表为空，第" + round + "轮");
+                continue;
+            }
+            boolean found = false;
+            for (int i = 0; i < taskList.length(); i++) {
+                JSONObject task = taskList.optJSONObject(i);
+                if (task == null || !taskType.equals(task.optString("taskId"))) {
+                    continue;
+                }
+                found = true;
+                String status = task.optString("taskStatus");
+                int times = task.optInt("rightsTimes", 0);
+                int limit = Math.max(1, task.optInt("rightsTimesLimit", 1));
+                Log.other("炼金金豆🔄回查[" + title + "]第" + round + "轮 状态=" + status + " 进度=" + times + "/" + limit);
+                if ("RECEIVED".equals(status)) {
+                    return;
+                }
+                if ("FINISHED".equals(status) || "COMPLETED".equals(status) || "TO_RECEIVE".equals(status)
+                        || times >= limit) {
+                    if (receiveTaskAward(sceneCode, taskType, title)) {
+                        return;
+                    }
+                }
+                break;
+            }
+            if (!found) {
+                // 任务已不在列表里（通常代表当天被处理完），没必要继续查
+                Log.other("炼金金豆🔄回查[" + title + "]#任务已不在列表，停止回查");
+                return;
             }
         }
     }

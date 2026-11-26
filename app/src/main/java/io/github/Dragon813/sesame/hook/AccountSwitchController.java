@@ -30,6 +30,8 @@ import io.github.Dragon813.sesame.util.TimeUtil;
  *          未配置最终保持账号时，回到列表第一个账号等待轮次间隔。
  * 定时切号：config_common.json 中配置的「切换账号定时执行」到点后，立即终止当前账号任务，
  *          固定等待 20 秒后切换到最终保持账号并执行一轮（设置方式与定时执行相同：HH/HHmm/HHmmss，逗号分隔）。
+ * 任务校验：所有切号路径在真正调用支付宝切号前，都会等待同步/异步任务真正结束（最多等
+ *          {@link #TASK_FINISH_WAIT_MILLIS} 毫秒），仍在执行（如还在偷能量）时取消本次切号、稍后重试。
  */
 public final class AccountSwitchController {
 
@@ -69,6 +71,8 @@ public final class AccountSwitchController {
     private static final long SCHEDULE_SWITCH_DELAY_MILLIS = 20_000L;
     /** 定时切号失败后的最大重试次数（每次间隔 FAILED_RETRY_MILLIS）。 */
     private static final int SCHEDULED_MAX_RETRY = 3;
+    /** 切号前等待同步/异步任务真正结束的最长时间；超时说明任务还在跑，取消本次切号。 */
+    private static final long TASK_FINISH_WAIT_MILLIS = 60_000L;
 
     private static final Object LOCK = new Object();
 
@@ -302,6 +306,10 @@ public final class AccountSwitchController {
                 }
                 return;
             }
+            // 未勾选参与的账号不切换：可用账号不足 2 个时无事可做
+            if (config.getSwitchEnabledAccounts().size() < 2) {
+                return;
+            }
             if (!currentHost.isReadyForSwitch()) {
                 idleSince = 0;
                 return;
@@ -394,7 +402,8 @@ public final class AccountSwitchController {
             for (AlipayAccountSwitchBridge.HostAccount account : hostAccounts) {
                 hostMap.put(account.uid, account);
             }
-            List<AccountSwitchConfig.Account> ordered = config.getAccountSwitchAccounts();
+            // 只用勾选参与的账号，未勾选的账号保留在配置里但不参与切换
+            List<AccountSwitchConfig.Account> ordered = config.getSwitchEnabledAccounts();
             if (ordered.size() < 2) {
                 nextAttemptAt = System.currentTimeMillis() + FAILED_RETRY_MILLIS;
                 return;
@@ -491,6 +500,11 @@ public final class AccountSwitchController {
             paused = true;
             stoppedTasks = true;
             currentHost.pause();
+            if (!waitForTasksFinished()) {
+                // 还有同步/异步任务在跑（例如正在偷能量），此时切号会打断任务并把请求带偏，取消本次切号
+                Log.record("自动切号🔄️ 当前账号任务尚未全部结束，取消本次切号，稍后重试");
+                return;
+            }
 
             if (!sameAccount) {
                 if (!AlipayAccountSwitchBridge.switchTo(target.getUid(), loginId)) {
@@ -614,6 +628,10 @@ public final class AccountSwitchController {
             paused = true;
             stoppedTasks = true;
             currentHost.pause();
+            if (!waitForTasksFinished()) {
+                Log.record("自动切号🔄️ 当前账号任务尚未全部结束，取消本次轮次切号，稍后重试");
+                return;
+            }
             if (!AlipayAccountSwitchBridge.switchTo(targetUid, loginId)) {
                 logSwitchRejected();
                 return;
@@ -740,7 +758,7 @@ public final class AccountSwitchController {
                     hostMap.put(account.uid, account);
                 }
             }
-            List<AccountSwitchConfig.Account> ordered = config.getAccountSwitchAccounts();
+            List<AccountSwitchConfig.Account> ordered = config.getSwitchEnabledAccounts();
             AccountSwitchConfig.Account target = null;
             int holdIndex = indexOf(ordered, config.getAccountSwitchFinalAccountUid());
             if (holdIndex >= 0
@@ -766,6 +784,11 @@ public final class AccountSwitchController {
             if (!sameAccount) {
                 paused = true;
                 currentHost.pause();
+                if (!waitForTasksFinished()) {
+                    // 定时切号虽然会强制终止任务，但任务真正停下前不能切号
+                    Log.record("自动切号🔄️ 当前账号任务尚未全部结束，取消本次定时切号，稍后重试");
+                    return;
+                }
                 if (!AlipayAccountSwitchBridge.switchTo(targetUid, loginId)) {
                     logSwitchRejected();
                     return;
@@ -821,6 +844,26 @@ public final class AccountSwitchController {
             lastSwitchEndAt = System.currentTimeMillis();
             switching = false;
         }
+    }
+
+    /**
+     * 切号前确认当前账号的同步/异步任务都已真正结束。
+     * 任务线程仍在执行（例如还在偷能量）时返回 false，调用方必须放弃本次切号。
+     */
+    private static boolean waitForTasksFinished() {
+        long deadline = System.currentTimeMillis() + TASK_FINISH_WAIT_MILLIS;
+        while (!ModelTask.isAllTaskFinished()) {
+            if (System.currentTimeMillis() >= deadline) {
+                return false;
+            }
+            try {
+                Thread.sleep(SWITCH_POLL_INTERVAL_MILLIS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean waitForAccount(String targetUid) {

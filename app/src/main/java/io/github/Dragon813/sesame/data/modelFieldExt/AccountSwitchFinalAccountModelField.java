@@ -44,7 +44,7 @@ public class AccountSwitchFinalAccountModelField extends ModelField<Integer> {
     @Override
     @JsonIgnore
     public Object getExpandKey() {
-        List<AccountSwitchConfig.Account> accounts = AccountSwitchConfig.getAccountSwitchAccounts();
+        List<AccountSwitchConfig.Account> accounts = AccountSwitchConfig.getSwitchEnabledAccounts();
         if (accounts.isEmpty()) {
             optionUids = java.util.Collections.emptyList();
             return new String[]{"暂无账号"};
@@ -84,7 +84,7 @@ public class AccountSwitchFinalAccountModelField extends ModelField<Integer> {
                 uid = uids.get(index);
             }
             if (StringUtil.isEmpty(uid)) {
-                List<AccountSwitchConfig.Account> accounts = AccountSwitchConfig.getAccountSwitchAccounts();
+                List<AccountSwitchConfig.Account> accounts = AccountSwitchConfig.getSwitchEnabledAccounts();
                 if (index >= 0 && index < accounts.size()) {
                     uid = accounts.get(index).getUid();
                 }
@@ -115,9 +115,9 @@ public class AccountSwitchFinalAccountModelField extends ModelField<Integer> {
     }
 
     private void showChoiceDialog(Context context) {
-        List<AccountSwitchConfig.Account> accounts = AccountSwitchConfig.getAccountSwitchAccounts();
+        List<AccountSwitchConfig.Account> accounts = AccountSwitchConfig.getSwitchEnabledAccounts();
         if (accounts.isEmpty()) {
-            ToastUtil.show(context, "暂无支付宝登录账号");
+            ToastUtil.show(context, "暂无参与切换的账号，请先在账号顺序配置列表里勾选");
             return;
         }
         String[] keys = new String[accounts.size()];
@@ -135,7 +135,7 @@ public class AccountSwitchFinalAccountModelField extends ModelField<Integer> {
     }
 
     private int selectedIndex() {
-        List<AccountSwitchConfig.Account> accounts = AccountSwitchConfig.getAccountSwitchAccounts();
+        List<AccountSwitchConfig.Account> accounts = AccountSwitchConfig.getSwitchEnabledAccounts();
         if (accounts.isEmpty()) {
             return 0;
         }

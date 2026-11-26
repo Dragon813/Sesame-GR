@@ -140,6 +140,14 @@ public class AntFarmRpcCall {
         return ApplicationHook.requestString("com.alipay.antfarm.doFarmTask", args1);
     }
 
+    /**
+     * 家庭任务专用：单次尝试（tryCount=1），避免 RPC 桥超时后长时间阻塞循环
+     */
+    public static String doFamilyFarmTask(String bizKey) {
+        String args1 = "[{\"bizKey\":\"" + bizKey + "\",\"requestType\":\"RPC\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"taskSceneCode\":\"ANTFARM_FAMILY_TASK\",\"version\":\"" + VERSION + "\"}]";
+        return ApplicationHook.requestString("com.alipay.antfarm.doFarmTask", args1, 1, 0);
+    }
+
     //{"bizKey":"SHH_liyunrui","requestType":"NORMAL","sceneCode":"ANTFARM","source":"H5","version":"1.8.2302070202.46"}]}
     public static String doFarmTask(String bizKey) {
         String args1 = "[{\"bizKey\":\"" + bizKey + "\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\"}]";
@@ -436,7 +444,12 @@ public class AntFarmRpcCall {
     }
 
     public static String getMallHome(String bizType) {
-        return ApplicationHook.requestString("com.alipay.charitygamecenter.getMallHome", "[{\"bizType\":\"" + bizType + "\",\"pageSize\":10,\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"startIndex\":0}]");
+        return getMallHome(bizType, 0);
+    }
+
+    // 乐园商店分页: 服务端下发hasMore/nextStartIndex, 按startIndex继续查询
+    public static String getMallHome(String bizType, int startIndex) {
+        return ApplicationHook.requestString("com.alipay.charitygamecenter.getMallHome", "[{\"bizType\":\"" + bizType + "\",\"pageSize\":10,\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"H5\",\"startIndex\":" + startIndex + "}]");
     }
 
     public static String getMallItemDetail(String spuId) {

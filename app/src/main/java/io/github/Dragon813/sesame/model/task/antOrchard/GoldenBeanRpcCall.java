@@ -15,6 +15,13 @@ public class GoldenBeanRpcCall {
 
     // 固定的版本号与来源（VERSION/SOURCE 供 doFarmTask 伪申报与 M 项目传参保持一致）
     public static final String VERSION = "20260803.01";
+    /**
+     * 任务列表专用的接口版本。
+     * 20260803.01 的服务端响应只回 18 条任务、不含「从支付宝首页访问金豆」
+     * （GOLDEN_BEAN_TASK_CHANGYONGFANGWEN）；用 20261106.01 才回 19 条并带上该任务。
+     * 2026-11-20 真机对比：同为 source=babafarm、bizType=MASTER，旧版本 hasCHANGYONG=false。
+     */
+    public static final String VERSION_INDEX = "20261106.01";
     public static final String SOURCE = "babafarm";
     private static final String BIZ_TYPE = "MASTER";
 
@@ -28,7 +35,7 @@ public class GoldenBeanRpcCall {
      * 返回 signInfo（签到）/manureExchangeInfo（肥料换豆）/taskList（任务）/jarInfo（罐子进度）等
      */
     public static String index() {
-        return index(BIZ_TYPE, SOURCE, VERSION);
+        return index(BIZ_TYPE, SOURCE, VERSION_INDEX);
     }
 
     /**
@@ -119,7 +126,7 @@ public class GoldenBeanRpcCall {
      */
     public static String indexFromHome() {
         return ApplicationHook.requestString("com.alipay.goldenbean.index",
-                "[{\"bizType\":\"" + BIZ_TYPE + "\",\"source\":\"ch_appcenter__chsub_commonapp\",\"version\":\"" + VERSION + "\"}]");
+                "[{\"bizType\":\"" + BIZ_TYPE + "\",\"source\":\"ch_appcenter__chsub_commonapp\",\"version\":\"" + VERSION_INDEX + "\"}]");
     }
 
     /**

@@ -12,6 +12,11 @@ final class PuzzleSliderMatcherCore {
     private static final int SOURCE_LEFT = 166;
     private static final int SOURCE_TOP_FROM_SLIDER = -707;
     private static final int SOURCE_BOTTOM_FROM_SLIDER = -287;
+    /* 源拼图块所在左侧条带的宽度，占图片宽度比例。 */
+    private static final float PIECE_STRIP_WIDTH_RATIO = 0.17f;
+    /* 源拼图块纵向搜索带相对滑块按钮的偏移（参考坐标，随高度缩放）。 */
+    private static final int PIECE_BAND_TOP_FROM_SLIDER = -1000;
+    private static final int PIECE_BAND_BOTTOM_FROM_SLIDER = -100;
     /* Search-window dimensions, expressed at the reference screenshot width. */
     private static final int SEARCH_MIN_REFERENCE = 250;
     private static final int INITIAL_SEARCH_TRAVEL_REFERENCE = 720;
@@ -26,35 +31,65 @@ final class PuzzleSliderMatcherCore {
         void read(int left, int top, int width, int height, int[] pixels);
     }
 
+    /** 源拼图块在截图中的包围盒（绝对坐标）。 */
+    static final class Piece {
+        final int left, top, right, bottom;
+
+        Piece(int left, int top, int right, int bottom) {
+            this.left = left;
+            this.top = top;
+            this.right = right;
+            this.bottom = bottom;
+        }
+
+        int width() {
+            return right - left + 1;
+        }
+
+        int height() {
+            return bottom - top + 1;
+        }
+    }
+
     /** Runtime pipeline: bounded texture consensus, then legacy edges with remaining budget. */
     static Result estimateOptimized(int width, int height, float sliderY, int screenTop,
             PixelReader reader, long timeoutMs, int sourceLeft) {
         long started = System.nanoTime();
         if (timeoutMs <= 0) return Result.failure("matching timed out", 0);
+        // 先用深色轮廓定位源拼图块：纵向位置随机，固定条带会裁掉高处的块。
+        Piece piece = detectPiece(width, height, sliderY, screenTop, reader, sourceLeft);
         Result texture = PuzzleTextureMatcherCore.estimate(width, height, sliderY, screenTop,
-                reader, Math.min(1200L, timeoutMs / 2), sourceLeft);
+                reader, Math.min(1200L, timeoutMs / 2), sourceLeft, piece);
         long used = elapsedMs(started);
         if (used >= timeoutMs || Thread.currentThread().isInterrupted()) {
             return Result.failure("matching timed out", used);
         }
-        Result result = texture != null ? texture : estimate(width, height, sliderY, screenTop,
-                reader, timeoutMs - used, sourceLeft);
+        Result result = texture;
+        if (result == null) {
+            // 雾面/纯色块纹理不足时，退回几何兜底：同形状灰色阴影的中心差。
+            result = estimateShadow(width, height, sliderY, screenTop, reader,
+                    Math.max(0L, timeoutMs - used), sourceLeft, piece);
+        }
+        if (result == null) {
+            result = estimate(width, height, sliderY, screenTop,
+                    reader, timeoutMs - used, sourceLeft, piece);
+        }
         long remaining = timeoutMs - elapsedMs(started);
         if (!result.success && remaining > 0 && !Thread.currentThread().isInterrupted()) {
             Result compact = PuzzleTextureMatcherCore.estimateCompact(width, height, sliderY, screenTop,
-                    reader, remaining, sourceLeft);
+                    reader, remaining, sourceLeft, piece);
             if (compact != null) result = compact;
         }
         remaining = timeoutMs - elapsedMs(started);
         if (!result.success && remaining > 0 && !Thread.currentThread().isInterrupted()) {
             Result narrow = PuzzleTextureMatcherCore.estimateNarrow(width, height, sliderY, screenTop,
-                    reader, remaining, sourceLeft);
+                    reader, remaining, sourceLeft, piece);
             if (narrow != null) result = narrow;
         }
         remaining = timeoutMs - elapsedMs(started);
         if (!result.success && remaining > 0 && !Thread.currentThread().isInterrupted()) {
             Result localized = PuzzleTextureMatcherCore.estimateLocalized(width, height, sliderY, screenTop,
-                    reader, remaining, sourceLeft);
+                    reader, remaining, sourceLeft, piece);
             if (localized != null) result = localized;
         }
         remaining = timeoutMs - elapsedMs(started);
@@ -93,9 +128,22 @@ final class PuzzleSliderMatcherCore {
             PixelReader pixelReader,
             long timeoutMs,
             int sourceLeftOverride) {
+        return estimate(bitmapWidth, bitmapHeight, sliderScreenY, bitmapScreenTop,
+                pixelReader, timeoutMs, sourceLeftOverride, null);
+    }
+
+    private static Result estimate(
+            int bitmapWidth,
+            int bitmapHeight,
+            float sliderScreenY,
+            int bitmapScreenTop,
+            PixelReader pixelReader,
+            long timeoutMs,
+            int sourceLeftOverride,
+            Piece piece) {
         long started = System.nanoTime();
         Result initial = estimateRange(bitmapWidth, bitmapHeight, sliderScreenY, bitmapScreenTop,
-                pixelReader, timeoutMs, sourceLeftOverride, false);
+                pixelReader, timeoutMs, sourceLeftOverride, piece, false);
         int boundary = Math.round(INITIAL_SEARCH_TRAVEL_REFERENCE * bitmapWidth / (float) REFERENCE_WIDTH);
         if ((initial.success && initial.displacement < boundary - 2)
                 || initial.error.equals("matching timed out")) {
@@ -106,7 +154,7 @@ final class PuzzleSliderMatcherCore {
             return Result.failure("matching timed out", elapsedMs(started));
         }
         Result extended = estimateRange(bitmapWidth, bitmapHeight, sliderScreenY, bitmapScreenTop,
-                pixelReader, remainingMs, sourceLeftOverride, true);
+                pixelReader, remainingMs, sourceLeftOverride, piece, true);
         int outerBoundary = Math.round(ROI_TRAVEL_REFERENCE * bitmapWidth / (float) REFERENCE_WIDTH);
         if (extended.success && extended.displacement < outerBoundary - 2) {
             return Result.success(extended.displacement, extended.peak, extended.bestScore,
@@ -123,7 +171,8 @@ final class PuzzleSliderMatcherCore {
 
     private static Result estimateRange(
             int bitmapWidth, int bitmapHeight, float sliderScreenY, int bitmapScreenTop,
-            PixelReader pixelReader, long timeoutMs, int sourceLeftOverride, boolean extendedRange) {
+            PixelReader pixelReader, long timeoutMs, int sourceLeftOverride, Piece piece,
+            boolean extendedRange) {
         long startedNanos = System.nanoTime();
         long deadlineNanos = timeoutMs <= 0L
                 ? startedNanos
@@ -142,9 +191,17 @@ final class PuzzleSliderMatcherCore {
                 ? sourceLeftOverride
                 : Math.round(SOURCE_LEFT * scaleX);
         int templateWidth = Math.max(72, Math.round(TEMPLATE_SIZE * scaleX));
-        int templateHeight = Math.max(72, Math.round(TEMPLATE_SIZE * scaleY));
+        // 模板按宽度比例取正方形，不再用高度比例（会在 720x1039 上压成 72px 高）。
+        int templateHeight = Math.max(72, Math.round(TEMPLATE_SIZE * scaleX));
         int sourceTop = sliderY + Math.round(SOURCE_TOP_FROM_SLIDER * scaleY);
         int sourceBottom = sliderY + Math.round(SOURCE_BOTTOM_FROM_SLIDER * scaleY);
+        if (piece != null) {
+            sourceLeft = piece.left;
+            templateWidth = Math.max(48, piece.width());
+            templateHeight = Math.max(48, piece.height());
+            sourceTop = piece.top;
+            sourceBottom = piece.bottom;
+        }
         int maxDx = Math.round((extendedRange ? ROI_TRAVEL_REFERENCE : INITIAL_SEARCH_TRAVEL_REFERENCE) * scaleX);
         int minDx = Math.max(templateWidth + sampleGuard(scaleX),
                 Math.round(SEARCH_MIN_REFERENCE * scaleX));
@@ -403,6 +460,247 @@ final class PuzzleSliderMatcherCore {
             }
         }
         return refined;
+    }
+
+    /** 在图片左侧条带里找拼图块的深色轮廓，返回其包围盒；找不到返回 null。 */
+    static Piece detectPiece(int width, int height, float sliderScreenY, int screenTop,
+            PixelReader reader, int sourceLeftHint) {
+        if (reader == null || width <= 0 || height <= 0) {
+            return null;
+        }
+        float scaleX = width / (float) REFERENCE_WIDTH;
+        float scaleY = height / (float) REFERENCE_HEIGHT;
+        int sliderY = Math.round(sliderScreenY - screenTop);
+        int expected = Math.max(40, Math.round(TEMPLATE_SIZE * scaleX));
+        int stripLeft = Math.max(1, sourceLeftHint >= 0 ? sourceLeftHint : Math.round(SOURCE_LEFT * scaleX));
+        int stripRight = Math.min(width - 2, stripLeft + Math.round(PIECE_STRIP_WIDTH_RATIO * width));
+        int bandTop = Math.max(1, sliderY + Math.round(PIECE_BAND_TOP_FROM_SLIDER * scaleY));
+        int bandBottom = Math.min(height - 2, sliderY + Math.round(PIECE_BAND_BOTTOM_FROM_SLIDER * scaleY));
+        int w = stripRight - stripLeft + 1;
+        int h = bandBottom - bandTop + 1;
+        if (w < expected / 2 || h < expected / 2 || (long) w * h > 1_000_000) {
+            return null;
+        }
+        int[] pixels = new int[w * h];
+        try {
+            reader.read(stripLeft, bandTop, w, h, pixels);
+        } catch (Throwable invalid) {
+            return null;
+        }
+        boolean[] dark = new boolean[pixels.length];
+        for (int i = 0; i < pixels.length; i++) {
+            int c = pixels[i];
+            int gray = (77 * ((c >>> 16) & 255) + 150 * ((c >>> 8) & 255) + 29 * (c & 255)) >> 8;
+            dark[i] = gray < 96;
+        }
+        // 一次膨胀把抗锯齿造成的断线接起来，避免轮廓被拆成多条细弧。
+        boolean[] linked = new boolean[pixels.length];
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int i = y * w + x;
+                linked[i] = dark[i]
+                        || (x > 0 && dark[i - 1]) || (x + 1 < w && dark[i + 1])
+                        || (y > 0 && dark[i - w]) || (y + 1 < h && dark[i + w]);
+            }
+        }
+        boolean[] seen = new boolean[pixels.length];
+        int[] queue = new int[pixels.length];
+        int minW = Math.round(expected * 0.55f), maxW = Math.round(expected * 1.5f);
+        int minH = Math.round(expected * 0.55f), maxH = Math.round(expected * 1.5f);
+        int bestCost = Integer.MAX_VALUE;
+        Piece best = null;
+        for (int y = 1; y < h - 1; y++) {
+            for (int x = 1; x < w - 1; x++) {
+                int index = y * w + x;
+                if (seen[index]) {
+                    continue;
+                }
+                if (!linked[index]) {
+                    seen[index] = true;
+                    continue;
+                }
+                int head = 0, tail = 0;
+                queue[tail++] = index;
+                seen[index] = true;
+                int minX = x, maxX = x, minY = y, maxY = y;
+                while (head < tail) {
+                    int point = queue[head++];
+                    int px = point % w, py = point / w;
+                    minX = Math.min(minX, px);
+                    maxX = Math.max(maxX, px);
+                    minY = Math.min(minY, py);
+                    maxY = Math.max(maxY, py);
+                    if (px > 0 && !seen[point - 1] && linked[point - 1]) {
+                        seen[point - 1] = true;
+                        queue[tail++] = point - 1;
+                    }
+                    if (px + 1 < w && !seen[point + 1] && linked[point + 1]) {
+                        seen[point + 1] = true;
+                        queue[tail++] = point + 1;
+                    }
+                    if (py > 0 && !seen[point - w] && linked[point - w]) {
+                        seen[point - w] = true;
+                        queue[tail++] = point - w;
+                    }
+                    if (py + 1 < h && !seen[point + w] && linked[point + w]) {
+                        seen[point + w] = true;
+                        queue[tail++] = point + w;
+                    }
+                }
+                int bw = maxX - minX + 1, bh = maxY - minY + 1;
+                if (bw < minW || bw > maxW || bh < minH || bh > maxH) {
+                    continue;
+                }
+                // 上下不贴边（横向贴左边是拼图块被图片边缘裁掉，属于正常情况）。
+                if (minY <= 0 || maxY >= h - 1) {
+                    continue;
+                }
+                double fill = tail / (double) (bw * bh);
+                if (fill > 0.5) {
+                    continue;
+                }
+                int cost = Math.abs(bw - expected) + Math.abs(bh - expected) + minX / 2;
+                if (cost < bestCost) {
+                    bestCost = cost;
+                    best = new Piece(stripLeft + minX, bandTop + minY, stripLeft + maxX, bandTop + maxY);
+                }
+            }
+        }
+        return best;
+    }
+
+    /**
+     * 几何兜底：目标缺口是与源块同形状、竖向对齐的灰色阴影。纹理证据不足时直接取两者中心差，
+     * 不做像素相关，所以对雾面/纯色拼图块同样有效。置信度不够时返回 null 交给旧分支。
+     */
+    static Result estimateShadow(int width, int height, float sliderScreenY, int screenTop,
+            PixelReader reader, long timeoutMs, int sourceLeftHint, Piece piece) {
+        if (piece == null || timeoutMs <= 0L) {
+            return null;
+        }
+        long started = System.nanoTime();
+        float scaleX = width / (float) REFERENCE_WIDTH;
+        float scaleY = height / (float) REFERENCE_HEIGHT;
+        int pieceWidth = piece.width(), pieceHeight = piece.height();
+        if (pieceWidth < 40 || pieceHeight < 40) {
+            return null;
+        }
+        int minDx = Math.max(pieceWidth + sampleGuard(scaleX), Math.round(SEARCH_MIN_REFERENCE * scaleX));
+        int bandMargin = Math.max(3, Math.round(10 * scaleY));
+        int bandTop = Math.max(1, piece.top - bandMargin);
+        int bandBottom = Math.min(height - 2, piece.bottom + bandMargin);
+        int searchLeft = Math.max(1, piece.left + minDx - pieceWidth / 2);
+        int searchRight = width - 2;
+        int w = searchRight - searchLeft + 1;
+        int h = bandBottom - bandTop + 1;
+        if (w <= pieceWidth || h < pieceHeight || (long) w * h > 2_000_000) {
+            return null;
+        }
+        int[] pixels = new int[w * h];
+        try {
+            reader.read(searchLeft, bandTop, w, h, pixels);
+        } catch (Throwable invalid) {
+            return null;
+        }
+        if (elapsedMs(started) > timeoutMs) {
+            return null;
+        }
+        boolean[] shadow = new boolean[pixels.length];
+        for (int i = 0; i < pixels.length; i++) {
+            int c = pixels[i];
+            int r = (c >>> 16) & 255, g = (c >>> 8) & 255, b = c & 255;
+            int high = Math.max(r, Math.max(g, b)), low = Math.min(r, Math.min(g, b));
+            int gray = (77 * r + 150 * g + 29 * b) >> 8;
+            // 灰色阴影：低饱和且不是亮白背景（天空/卡片）。
+            shadow[i] = high - low <= 40 && gray <= 205;
+        }
+        boolean[] seen = new boolean[pixels.length];
+        int[] queue = new int[pixels.length];
+        int minW = Math.round(pieceWidth * 0.7f), maxW = Math.round(pieceWidth * 1.35f);
+        int minH = Math.round(pieceHeight * 0.7f), maxH = Math.round(pieceHeight * 1.35f);
+        int tolY = Math.max(6, Math.round(pieceHeight * 0.18f));
+        int bestCost = Integer.MAX_VALUE;
+        int bestLeft = 0, bestRight = 0;
+        for (int y = 1; y < h - 1; y++) {
+            if (elapsedMs(started) > timeoutMs || Thread.currentThread().isInterrupted()) {
+                return null;
+            }
+            for (int x = 1; x < w - 1; x++) {
+                int index = y * w + x;
+                if (seen[index]) {
+                    continue;
+                }
+                if (!shadow[index]) {
+                    seen[index] = true;
+                    continue;
+                }
+                int head = 0, tail = 0;
+                queue[tail++] = index;
+                seen[index] = true;
+                int minX = x, maxX = x, minY = y, maxY = y;
+                while (head < tail) {
+                    int point = queue[head++];
+                    int px = point % w, py = point / w;
+                    minX = Math.min(minX, px);
+                    maxX = Math.max(maxX, px);
+                    minY = Math.min(minY, py);
+                    maxY = Math.max(maxY, py);
+                    if (px > 0 && !seen[point - 1] && shadow[point - 1]) {
+                        seen[point - 1] = true;
+                        queue[tail++] = point - 1;
+                    }
+                    if (px + 1 < w && !seen[point + 1] && shadow[point + 1]) {
+                        seen[point + 1] = true;
+                        queue[tail++] = point + 1;
+                    }
+                    if (py > 0 && !seen[point - w] && shadow[point - w]) {
+                        seen[point - w] = true;
+                        queue[tail++] = point - w;
+                    }
+                    if (py + 1 < h && !seen[point + w] && shadow[point + w]) {
+                        seen[point + w] = true;
+                        queue[tail++] = point + w;
+                    }
+                }
+                int bw = maxX - minX + 1, bh = maxY - minY + 1;
+                if (bw < minW || bw > maxW || bh < minH || bh > maxH) {
+                    continue;
+                }
+                // 拼图块只做水平滑动，缺口与源块必须竖向对齐。
+                if (Math.abs((bandTop + minY) - piece.top) > tolY) {
+                    continue;
+                }
+                if (minX <= 0 || maxX >= w - 1 || minY <= 0 || maxY >= h - 1) {
+                    continue;
+                }
+                double fill = tail / (double) (bw * bh);
+                if (fill < 0.12) {
+                    continue;
+                }
+                int cost = Math.abs(bw - pieceWidth) + Math.abs(bh - pieceHeight)
+                        + Math.abs((bandTop + minY) - piece.top);
+                if (cost < bestCost) {
+                    bestCost = cost;
+                    bestLeft = searchLeft + minX;
+                    bestRight = searchLeft + maxX;
+                }
+            }
+        }
+        if (bestCost == Integer.MAX_VALUE) {
+            return null;
+        }
+        boolean clipped = piece.left <= sourceLeftHint + 2
+                || piece.left <= Math.round(SOURCE_LEFT * scaleX) + 2;
+        int displacement = clipped
+                ? bestRight - piece.right
+                : (bestLeft + bestRight) / 2 - (piece.left + piece.right) / 2;
+        if (displacement < minDx || displacement > Math.round(ROI_TRAVEL_REFERENCE * scaleX)) {
+            return null;
+        }
+        int travel = Math.round(ROI_TRAVEL_REFERENCE * scaleX);
+        return Result.success(displacement, displacement, 0.85f, "shadow-geometry", travel,
+                elapsedMs(started), piece.left, piece.top, piece.left + displacement, piece.top,
+                pieceWidth, pieceHeight);
     }
 
     private static int sampleGuard(float scale) {

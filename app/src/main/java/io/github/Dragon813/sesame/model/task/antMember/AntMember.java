@@ -16,7 +16,6 @@ import io.github.Dragon813.sesame.entity.AlipayAntMemberTaskList;
 import io.github.Dragon813.sesame.entity.AlipayMemberCreditSesameTaskList;
 import io.github.Dragon813.sesame.entity.MemberBenefit;
 import io.github.Dragon813.sesame.entity.PromiseSimpleTemplate;
-import io.github.Dragon813.sesame.hook.ApplicationHook;
 import io.github.Dragon813.sesame.model.task.antGame.TaskAlternative;
 import io.github.Dragon813.sesame.model.base.TaskCommon;
 import io.github.Dragon813.sesame.model.extensions.ExtensionsHandle;
@@ -67,11 +66,13 @@ public class AntMember extends ModelTask {
     private BooleanModelField signinCalendar;
     private BooleanModelField enableGoldTicket;
     private BooleanModelField enableGameCenter;
+    private BooleanModelField parcelJourney;
     private BooleanModelField merchantSignIn;
     private BooleanModelField merchantKMDK;
     private BooleanModelField sesameAlchemy;
     private BooleanModelField sesameAlchemySign;
     private BooleanModelField sesameAlchemyGoldenBean;
+    private BooleanModelField sesameAlchemyGoldBeanGame;
     private BooleanModelField sesameAlchemyBeanExchange;
     private IntegerModelField sesameAlchemyBeanLimit;
     private IntegerModelField sesameAlchemyReserveZml;
@@ -87,6 +88,7 @@ public class AntMember extends ModelTask {
         modelFields.addField(memberPointExchangeBenefit = new BooleanModelField("memberPointExchangeBenefit", "会员积分 | 兑换权益", false));
         modelFields.addField(memberPointExchangeBenefitList = new SelectModelField("memberPointExchangeBenefitList", "会员积分 | 权益列表", new LinkedHashSet<>(), MemberBenefit::getList));
         modelFields.addField(collectSesame = new BooleanModelField("collectSesame", "芝麻粒 | 芝麻粒任务", false));
+        modelFields.addField(sesameAlchemyGoldBeanGame = new BooleanModelField("sesameAlchemyGoldBeanGame", "芝麻信用 | 金豆夺宝", false));
         modelFields.addField(sesameAlchemyGrainTask = new BooleanModelField("sesameAlchemyGrainTask", "芝麻粒 | 芝麻炼金任务", false));
         modelFields.addField(AutoMemberCreditSesameTaskList = new BooleanModelField("AutoMemberCreditSesameTaskList", "芝麻粒任务 | 推荐黑白名单", true));
         modelFields.addField(MemberCreditSesameTaskList = new SelectModelField("MemberCreditSesameTaskList", "芝麻粒任务 | 黑名单列表", new LinkedHashSet<>(), AlipayMemberCreditSesameTaskList::getList));
@@ -100,7 +102,8 @@ public class AntMember extends ModelTask {
         modelFields.addField(pointTreasureBox = new BooleanModelField("pointTreasureBox", "芝麻积分 | 宝箱", false));
         modelFields.addField(promise = new BooleanModelField("promise", "生活记录 | 坚持做", false));
         modelFields.addField(promiseList = new SelectModelField("promiseList", "生活记录 | 坚持做列表", new LinkedHashSet<>(), PromiseSimpleTemplate::getList));
-        modelFields.addField(enableGameCenter = new BooleanModelField("enableGameCenter", "游戏中心 | 得乐园豆", false));
+        modelFields.addField(enableGameCenter = new BooleanModelField("enableGameCenter", "游戏中心 | 得游戏金币", false));
+        modelFields.addField(parcelJourney = new BooleanModelField("parcelJourney", "我的快递 | 包裹游历裹粒橙", false));
         modelFields.addField(KuaiDiFuLiJia = new BooleanModelField("KuaiDiFuLiJia", "我的快递 | 福利加", false));
         modelFields.addField(signinCalendar = new BooleanModelField("signinCalendar", "消费金 | 签到", false));
         modelFields.addField(enableGoldTicket = new BooleanModelField("enableGoldTicket", "黄金票 | 签到", false));
@@ -145,7 +148,8 @@ public class AntMember extends ModelTask {
             }
             // 芝麻信用信息记录(芝麻粒数据受"芝麻粒|领取"开关控制, 芝麻炼金数据随炼金相关开关)
             if (collectSesame.getValue() || sesameAlchemy.getValue() || sesameAlchemySign.getValue()
-                    || sesameAlchemyGoldenBean.getValue() || sesameAlchemyBeanExchange.getValue() || pointTreasureBox.getValue()) {
+                    || sesameAlchemyGoldenBean.getValue() || sesameAlchemyGoldBeanGame.getValue()
+                    || sesameAlchemyBeanExchange.getValue() || pointTreasureBox.getValue()) {
                 sesameInfo();
             }
             // 攒粒任务（炼金页queryListV3 version=alchemy，独立开关）
@@ -180,14 +184,10 @@ public class AntMember extends ModelTask {
                 signinCalendar();
             }
             if (enableGameCenter.getValue()) {
-                //检查并执行签到
-                checkAndDoSignIn();
-                //查询并处理任务列表
-                queryAndProcessTaskList();
-                
-                //查询玩乐豆小球列表，有则领取
-                queryPointBallList();
-                
+                GameCenter.run();
+            }
+            if (parcelJourney.getValue()) {
+                ParcelJourney.runFromExtension();
             }
             if (merchantSignIn.getValue() || merchantKMDK.getValue()) {
                 if (MerchantService.transcodeCheck()) {
@@ -200,6 +200,7 @@ public class AntMember extends ModelTask {
                 }
             }
             //芝麻炼金 + 炼金金豆夺宝(任务黑名单与农场金豆夺宝共用GoldenBeansTaskList)
+            SesameAlchemy.setZhimaGameEnabled(sesameAlchemyGoldBeanGame.getValue());
             if (sesameAlchemy.getValue() || sesameAlchemySign.getValue()
                     || sesameAlchemyGoldenBean.getValue() || sesameAlchemyBeanExchange.getValue() || pointTreasureBox.getValue()) {
                 Set<String> goldenBeanList = null;
@@ -212,6 +213,9 @@ public class AntMember extends ModelTask {
                         sesameAlchemyGoldenBean.getValue(), goldenBeanList,
                         sesameAlchemyBeanExchange.getValue(), sesameAlchemyBeanLimit.getValue(), sesameAlchemyReserveZml.getValue(),
                         pointTreasureBox.getValue());
+            } else if (sesameAlchemyGoldBeanGame.getValue()) {
+                // 仅开启「芝麻信用 | 金豆夺宝」时，单独跑一次炼金金豆任务（含 ZHIMA 小游戏上报与领取）
+                SesameAlchemy.runGoldenBeanOnly();
             }
         }
         catch (Throwable t) {
@@ -1148,47 +1152,6 @@ public class AntMember extends ModelTask {
     //游戏中心任务
     
     /**
-     * 批量领取玩乐豆
-     */
-    public static void batchReceivePointBall() {
-        try {
-            JSONObject jsonObject = new JSONObject(AntMemberRpcCall.batchReceivePointBall());
-            if (MessageUtil.checkSuccess(TAG, jsonObject)) {
-                JSONObject dataObj = jsonObject.getJSONObject("data");
-                String totalAmount = dataObj.getString("totalAmount");
-                Log.other("游戏中心🎮批量领取#获得[" + totalAmount + "玩乐豆]");
-            }
-        }
-        catch (Throwable t) {
-            Log.i(TAG, "batchReceivePointBall err:");
-            Log.printStackTrace(TAG, t);
-        }
-    }
-    
-    /**
-     * 每日签到
-     *
-     * @return 签到是否成功
-     */
-    public static boolean dailySignIn() {
-        try {
-            JSONObject jsonObject = new JSONObject(AntMemberRpcCall.continueSignIn());
-            if (MessageUtil.checkSuccess(TAG, jsonObject)) {
-                JSONObject toastModule = jsonObject.getJSONObject("data").getJSONObject("autoSignInToastModule");
-                String desc = toastModule.getString("desc");
-                String beanNum = desc.substring(desc.indexOf("玩乐豆+") + 4);
-                Log.other("游戏中心🎮每日签到#获得[" + beanNum + "玩乐豆]");
-                return true;
-            }
-        }
-        catch (Throwable t) {
-            Log.i(TAG, "continueSignIn err:");
-            Log.printStackTrace(TAG, t);
-        }
-        return false;
-    }
-    
-    /**
      * 处理单个任务
      *
      * @param taskObj 任务JSON对象
@@ -1206,14 +1169,14 @@ public class AntMember extends ModelTask {
             
             // 任务未完成且需要报名
             if ("NOT_DONE".equals(taskStatus) && taskObj.getBoolean("needSignUp")) {
-                JSONObject jsonObject = new JSONObject(AntMemberRpcCall.doTaskSignup(taskId));
+                JSONObject jsonObject = new JSONObject(GameCenterRpcCall.doTaskSignup(taskId));
                 if (!MessageUtil.checkSuccess(TAG, jsonObject)) {
                     return;
                 }
             }
             
             // 执行任务
-            JSONObject doTaskjo = new JSONObject(AntMemberRpcCall.doTaskSend(taskId));
+            JSONObject doTaskjo = new JSONObject(GameCenterRpcCall.doTaskSend(taskId));
             if (MessageUtil.checkSuccess(TAG, doTaskjo)) {
                 Log.other("游戏中心🎮完成任务[" + subTitle + "]#待领[" + prizeAmount + "玩乐豆]");
             }
@@ -1247,79 +1210,6 @@ public class AntMember extends ModelTask {
         }
         catch (Throwable t) {
             Log.i(TAG, "queryModularTaskList err:");
-            Log.printStackTrace(TAG, t);
-        }
-    }
-    
-    public static void queryTaskList() {
-        try {
-            JSONObject jsonObject = new JSONObject(AntMemberRpcCall.queryTaskList());
-            if (!MessageUtil.checkSuccess(TAG, jsonObject)) {
-                return;
-            }
-            if (!jsonObject.has("data")) {
-                return;
-            }
-            JSONArray gameTaskList = jsonObject.getJSONObject("data").optJSONObject("gameTaskModule").optJSONArray("gameTaskList");
-            for (int i = 0; i < gameTaskList.length(); i++) {
-                processTask(gameTaskList.getJSONObject(i));
-            }
-        }
-        catch (Throwable t) {
-            Log.i(TAG, "queryModularTaskList err:");
-            Log.printStackTrace(TAG, t);
-        }
-    }
-    
-    /**
-     * 查询玩乐豆小球列表，有则领取
-     */
-    public static void queryPointBallList() {
-        try {
-            String response = ApplicationHook.requestString("com.alipay.gamecenteruprod.biz.rpc.v3.queryPointBallList", "[{}]");
-            JSONObject jsonObject = new JSONObject(response);
-            if (MessageUtil.checkSuccess(TAG, jsonObject)) {
-                JSONObject dataObj = jsonObject.optJSONObject("data");
-                if (dataObj == null) {
-                    return;
-                }
-                JSONArray pointBallList = dataObj.optJSONArray("pointBallList");
-                if (pointBallList != null && pointBallList.length() > 0) {
-                    batchReceivePointBall();
-                }
-            }
-        }
-        catch (Throwable t) {
-            Log.i(TAG, "queryPointBallList err:");
-            Log.printStackTrace(TAG, t);
-        }
-    }
-    
-    /**
-     * 检查并执行签到
-     */
-    public static void checkAndDoSignIn() {
-        if (Status.hasFlagToday("gameCenterSignIn")) {
-            return;
-        }
-        
-        try {
-            JSONObject jsonObject = new JSONObject(AntMemberRpcCall.queryPointBallList());
-            if (MessageUtil.checkSuccess(TAG, jsonObject)) {
-                JSONObject dataObj = jsonObject.optJSONObject("data");
-                if (dataObj == null) {
-                    return;
-                }
-                JSONObject signInModule = dataObj.optJSONObject("signInBallModule");
-                if (signInModule != null && !signInModule.optBoolean("signInStatus")) {
-                    if (dailySignIn()) {
-                        Status.flagToday("gameCenterSignIn");
-                    }
-                }
-            }
-        }
-        catch (Throwable t) {
-            Log.i(TAG, "querySignInBall err:");
             Log.printStackTrace(TAG, t);
         }
     }

@@ -577,12 +577,9 @@ final class MultiplierCardPlanner {
     private static Inventory queryInventory() {
         Inventory inventory = new Inventory();
         try {
-            JSONObject jo = unwrap(new JSONObject(AntForestRpcCall.queryPropList(false)));
-            if (!MessageUtil.checkResultCode(TAG, jo)) {
-                return inventory;
-            }
-            JSONArray forestPropVOList = jo.optJSONArray("forestPropVOList");
-            if (forestPropVOList == null) {
+            // 背包道具分页拉取, 避免只看到首页12个导致误判"没有加速卡"
+            JSONArray forestPropVOList = AntForestV2.getForestPropVOList();
+            if (forestPropVOList.length() == 0) {
                 return inventory;
             }
             for (int i = 0; i < forestPropVOList.length(); i++) {

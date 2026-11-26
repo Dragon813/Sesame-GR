@@ -60,7 +60,30 @@ public class MainActivity extends BaseActivity {
 
     private Handler viewHandler;
 
-    private Runnable titleRunner;
+    private static final int STATUS_PING_MAX = 3;
+
+    private static final long STATUS_PING_INTERVAL_MS = 2000L;
+
+    private int statusPingCount = 0;
+
+    private boolean statusConfirmed = false;
+
+    // 模块状态探测: 最多3次(间隔2秒), 6秒内都没有回包才显示"已关闭", 避免偶发漏包被误判
+    private final Runnable statusPingRunner = new Runnable() {
+        @Override
+        public void run() {
+            if (statusConfirmed || isFinishing()) {
+                return;
+            }
+            if (statusPingCount >= STATUS_PING_MAX) {
+                updateSubTitle(RunType.DISABLE);
+                return;
+            }
+            statusPingCount++;
+            sendStatusPing();
+            viewHandler.postDelayed(this, STATUS_PING_INTERVAL_MS);
+        }
+    };
 
     private String[] userNameArray = {"默认"};
 
@@ -73,9 +96,9 @@ public class MainActivity extends BaseActivity {
         setContentView(R.layout.activity_main);
         tvStatistics = findViewById(R.id.tv_statistics);
         ViewAppInfo.checkRunType();
-        updateSubTitle(ViewAppInfo.getRunType());
+        // 未确认前显示"已加载", 避免探测期间闪现"已关闭", 超时后才降级
+        updateSubTitle(RunType.DISABLE == ViewAppInfo.getRunType() ? RunType.PACKAGE : ViewAppInfo.getRunType());
         viewHandler = new Handler(Looper.getMainLooper());
-        titleRunner = () -> updateSubTitle(RunType.DISABLE);
         BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -84,10 +107,12 @@ public class MainActivity extends BaseActivity {
                 if (action != null) {
                     switch (action) {
                         case "io.github.Dragon813.sesame.status":
+                            // 收到回包即确认模块已加载, 之后本次运行不再降级为"已关闭"
+                            statusConfirmed = true;
                             if (RunType.DISABLE == ViewAppInfo.getRunType()) {
                                 updateSubTitle(RunType.PACKAGE);
                             }
-                            viewHandler.removeCallbacks(titleRunner);
+                            viewHandler.removeCallbacks(statusPingRunner);
                             if (isClick) {
                                 ToastUtil.show(context, "芝麻粒加载状态正常");
                                 isClick = false;
@@ -166,14 +191,10 @@ public class MainActivity extends BaseActivity {
     protected void onResume() {
         super.onResume();
         if (hasPermissions) {
-            if (RunType.DISABLE == ViewAppInfo.getRunType()) {
-                viewHandler.postDelayed(titleRunner, 3000);
-                try {
-                    sendBroadcast(new Intent("com.eg.android.AlipayGphone.sesame.status"));
-                } catch (Throwable th) {
-                    Log.i("view sendBroadcast status err:");
-                    Log.printStackTrace(th);
-                }
+            if (!statusConfirmed && RunType.DISABLE == ViewAppInfo.getRunType()) {
+                viewHandler.removeCallbacks(statusPingRunner);
+                statusPingCount = 0;
+                viewHandler.post(statusPingRunner);
             }
             try {
                 List<String> userNameList = new ArrayList<>();
@@ -218,13 +239,8 @@ public class MainActivity extends BaseActivity {
     @SuppressLint("NonConstantResourceId")
     public void onClick(View v) {
         if (v.getId() == R.id.btn_test) {
-            try {
-                sendBroadcast(new Intent("com.eg.android.AlipayGphone.sesame.status"));
-                isClick = true;
-            } catch (Throwable th) {
-                Log.i("view sendBroadcast status err:");
-                Log.printStackTrace(th);
-            }
+            isClick = true;
+            sendStatusPing();
             return;
         }
 
@@ -472,6 +488,26 @@ public class MainActivity extends BaseActivity {
         String userId = userEntity.getUserId();
         String title = getString(R.string.friend_watch) + "-" + userEntity.getShowName();
         ListDialog.show(this, title, FriendWatch.getList(userId), SelectModelFieldFunc.newMapInstance(), false, ListDialog.ListType.SHOW);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (viewHandler != null) {
+            viewHandler.removeCallbacks(statusPingRunner);
+        }
+    }
+
+    // 定向发送状态探测, 避免隐式广播被拦截或延迟
+    private void sendStatusPing() {
+        try {
+            Intent intent = new Intent("com.eg.android.AlipayGphone.sesame.status");
+            intent.setPackage("com.eg.android.AlipayGphone");
+            sendBroadcast(intent);
+        } catch (Throwable th) {
+            Log.i("view sendBroadcast status err:");
+            Log.printStackTrace(th);
+        }
     }
 
     private void updateSubTitle(RunType runType) {

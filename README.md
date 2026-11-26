@@ -5,7 +5,6 @@
 [![License](https://img.shields.io/github/license/LazyImmortal/Sesame.svg)](LICENSE)
 [![Latest Release](https://img.shields.io/github/release/LazyImmortal/Sesame.svg)](../../releases)
 [![All Releases Download](https://img.shields.io/github/downloads/LazyImmortal/Sesame/total.svg)](../../releases)
-[![Telegram](https://img.shields.io/static/v1?label=Telegram&message=Channel&color=0088cc)](https://t.me/Sesame_Channels)
 
 ## 为了大家的资金安全与个人信息安全，强烈建议
 1. 不要使用任何未开放源代码的修改版！

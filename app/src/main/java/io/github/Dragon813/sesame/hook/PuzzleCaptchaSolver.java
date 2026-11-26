@@ -70,7 +70,8 @@ public final class PuzzleCaptchaSolver {
 
     private static final float REFERENCE_WIDTH = 1264f;
     private static final float START_X = 236f;
-    private static final float START_Y = 1787f;
+    /** 按钮中心相对截图高度的比例（实测 711/1039≈0.684），参考高度 2780 与实际布局不符，改用高度比例。 */
+    private static final float VERTICAL_RATIO = 0.684f;
     // 同一验证码在不同设备有不同的水平留白：固定坐标只作宽松候选提示，真正的按钮靠颜色连通块识别
     private static final float START_TOLERANCE = 130f;
     private static final float VERTICAL_TOLERANCE = 700f;
@@ -531,8 +532,12 @@ public final class PuzzleCaptchaSolver {
         float startY = location[1] + slider.centerY;
         float trackEndX = location[0] + slider.trackEndX;
         int sourceLeft = Math.round(slider.centerX - slider.buttonWidth / 2f);
-        PuzzleSliderMatcher.Result match = PuzzleSliderMatcher.estimate(
+        PuzzleSliderMatcher.Result algorithm = PuzzleSliderMatcher.estimate(
                 bitmap, startY, location[1], MATCH_BUDGET_MS, sourceLeft);
+        // 第三种：算法；再叠加第一条（历史成功位置）与第二条（同图完整图差异），差异优先。
+        PuzzleHistory.Choice choice = PuzzleHistory.choose(
+                bitmap, sourceLeft, startY, location[1], algorithm);
+        PuzzleSliderMatcher.Result match = choice.result;
         if (!match.success) {
             diag(root, "缺口位移识别失败（不拖动）：" + match.error);
             saveSample(bitmap, "match-failed");
@@ -542,9 +547,12 @@ public final class PuzzleCaptchaSolver {
         }
         // 先把拖动排到主线程，再做整屏截图存档：PNG 压缩一张 1080x2400 的图要 1~2 秒，
         // 放在拖动前会把验证页等没（实测 08:39 那次就是存档期间页面已被关掉）。
-        MAIN.post(() -> swipe(target, web, slider, match, startX, startY, trackEndX, "异步保存", release));
+        MAIN.post(() -> swipe(target, web, slider, match, startX, startY, trackEndX,
+                choice.pending, release));
         try {
             String sampleName = saveSample(bitmap, "matched-d" + match.displacement);
+            // 成功时要把“补齐缺口的完整图”落盘，PNG 压缩同样放到拖动之后的工作线程做。
+            PuzzleHistory.prepare(bitmap, choice.pending);
             Log.i(TAG, "拖动前截图已保存: " + sampleName + "（位移=" + match.displacement
                     + " 方法=" + match.method + " 匹配耗时=" + match.elapsedMs + "ms）");
         } finally {
@@ -554,7 +562,8 @@ public final class PuzzleCaptchaSolver {
 
     /** 主线程：窗口仍然有效才拖动，并只拖一次。 */
     private static void swipe(Target target, View web, Slider slider, PuzzleSliderMatcher.Result match,
-                              float startX, float startY, float trackEndX, String sampleName, Runnable release) {
+                              float startX, float startY, float trackEndX,
+                              PuzzleHistory.Pending pending, Runnable release) {
         View root = target.root;
         if (!handling || fallbackFired || !web.isShown() || !web.isAttachedToWindow()
                 || attemptsOf(web) >= maxAttempts()) {
@@ -577,7 +586,7 @@ public final class PuzzleCaptchaSolver {
         Log.i(TAG, String.format(java.util.Locale.ROOT,
                 "第%d/" + maxAttempts() + "次识别成功，开始拖动：缺口位移=%dpx 触摸距离=%.0fpx 终点=%.0f 时长=%dms 轨道截断=%s 方法=%s 分数=%.3f 耗时=%dms 滑块=%s 截图=%s",
                 attempt, match.displacement, mapping.touchDistance, mapping.endX, duration, mapping.clamped,
-                match.method, match.bestScore, match.elapsedMs, slider.describe(), sampleName));
+                match.method, match.bestScore, match.elapsedMs, slider.describe(), "异步保存"));
         sawPuzzle = true;
         PuzzleSwipe.start(web, startX, startY, mapping.endX, startY, duration, 4f,
                 (sent, reason) -> {
@@ -602,6 +611,7 @@ public final class PuzzleCaptchaSolver {
                         handling = false;
                         ATTEMPTS.remove(web); // 验证成功：尝试次数归零
                         Log.record("拼图验证✅成功（拖动后验证窗口已关闭）");
+                        commitHistory(pending); // 记录成功位移，并保存补齐缺口的完整图
                         cleanupNoSlider(); // 验证结束：只留包含验证码的截图
                     }, () -> {
                         if (downRejected) {
@@ -655,6 +665,18 @@ public final class PuzzleCaptchaSolver {
      */
     private static void saveAfterShot(Target target, View web, int displacement, int attempt) {
         saveShot(target, web, "matched-after-d" + displacement + "-a" + attempt);
+    }
+
+    /** 验证成功后在工作线程记录位移/保存完整图，避免主线程做文件与压缩。 */
+    private static void commitHistory(PuzzleHistory.Pending pending) {
+        if (pending == null) {
+            return;
+        }
+        try {
+            WORKER.execute(() -> PuzzleHistory.commit(pending));
+        } catch (Throwable t) {
+            Log.printStackTrace(TAG, t);
+        }
     }
 
     /** 截图并按名字存进 puzzle.zip（matched 前缀的会保留）。 */
@@ -745,7 +767,7 @@ public final class PuzzleCaptchaSolver {
                 try {
                     int deleted = PuzzleSampleArchive.deleteNonMatched();
                     if (deleted > 0) {
-                        Log.i(TAG, "已清理 " + deleted + " 张没有拖动过的截图，puzzle.zip 只保留 matched");
+                        Log.i(TAG, "已清理 " + deleted + " 张没有拖动过的截图，puzzle.zip 保留 matched 和成功完整图");
                     }
                 } catch (Throwable t) {
                     Log.printStackTrace(TAG, t);
@@ -790,11 +812,12 @@ public final class PuzzleCaptchaSolver {
             return null;
         }
         try {
-            int scanTop = Math.max(0, Math.round((START_Y - VERTICAL_TOLERANCE) * scale));
-            int scanBottom = Math.min(bitmap.getHeight(), Math.round((START_Y + VERTICAL_TOLERANCE) * scale));
+            float expectedY = bitmap.getHeight() * VERTICAL_RATIO;
+            int scanTop = Math.max(0, Math.round(expectedY - VERTICAL_TOLERANCE * scale));
+            int scanBottom = Math.min(bitmap.getHeight(), Math.round(expectedY + VERTICAL_TOLERANCE * scale));
             int scanLeft = Math.max(0, Math.round((START_X - 180f) * scale));
             int scanRight = Math.min(bitmap.getWidth(), Math.round((START_X + 220f) * scale));
-            int[] c = findButtonComponent(bitmap, scanLeft, scanTop, scanRight, scanBottom, scale);
+            int[] c = findButtonComponent(bitmap, scanLeft, scanTop, scanRight, scanBottom, scale, expectedY);
             if (c == null) {
                 return null;
             }
@@ -810,7 +833,8 @@ public final class PuzzleCaptchaSolver {
      * 取一个连通的彩色块（蓝/红按钮）而不是所有蓝/红像素的包围盒：错误页常带另一块彩色插图，
      * 合并会让坐标漂移。返回 {left, top, right, bottom}，找不到返回 null。
      */
-    private static int[] findButtonComponent(Bitmap bitmap, int left, int top, int right, int bottom, float scale) {
+    private static int[] findButtonComponent(Bitmap bitmap, int left, int top, int right, int bottom,
+                                             float scale, float expectedY) {
         int width = right - left;
         int height = bottom - top;
         if (width <= 0 || height <= 0) {
@@ -824,7 +848,6 @@ public final class PuzzleCaptchaSolver {
         int maxHeight = Math.max(minHeight, Math.round(180f * scale));
         int minPixels = Math.max(400, Math.round(1800f * scale * scale));
         float expectedX = START_X * scale;
-        float expectedY = START_Y * scale;
         int[] best = null;
         float bestDistance = Float.MAX_VALUE;
         for (int index = 0; index < visited.length; index++) {

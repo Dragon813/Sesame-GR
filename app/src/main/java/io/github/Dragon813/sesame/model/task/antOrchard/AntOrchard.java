@@ -210,6 +210,9 @@ public class AntOrchard extends ModelTask {
             if (goldenBeans.getValue()) {
                 GoldenBean GoldenBean = new GoldenBean();
                 GoldenBean.run(goldenBeansTask.getValue(), GoldenBeansTaskList.getValue(), GoldenBeansGameCenter.getValue(), goldenBeanExchangeManure.getValue(), goldenBeanReserveManure.getValue(), goldenBeanDailyManureLimit.getValue());
+            } else if (goldenBeansTask.getValue()) {
+                // 仅开启「金豆完成任务领奖」时，补跑一次只领奖（补领已完成未领取的金豆，不重复做任务）
+                GoldenBean.runClaimOnly();
             }
 
             // 执行农场抽抽乐任务

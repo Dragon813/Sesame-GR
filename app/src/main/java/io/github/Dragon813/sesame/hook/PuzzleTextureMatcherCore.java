@@ -15,35 +15,49 @@ final class PuzzleTextureMatcherCore {
     }
 
     static PuzzleSliderMatcherCore.Result estimate(int width, int height, float sliderScreenY,
-            int screenTop, PuzzleSliderMatcherCore.PixelReader reader, long budgetMs, int sourceOverride) {
-        return estimateProfile(width, height, sliderScreenY, screenTop, reader, budgetMs, sourceOverride, false, false, false);
+            int screenTop, PuzzleSliderMatcherCore.PixelReader reader, long budgetMs, int sourceOverride,
+            PuzzleSliderMatcherCore.Piece piece) {
+        return estimateProfile(width, height, sliderScreenY, screenTop, reader, budgetMs, sourceOverride, piece, false, false, false);
     }
 
     static PuzzleSliderMatcherCore.Result estimateCompact(int width, int height, float sliderScreenY,
-            int screenTop, PuzzleSliderMatcherCore.PixelReader reader, long budgetMs, int sourceOverride) {
-        return estimateProfile(width, height, sliderScreenY, screenTop, reader, budgetMs, sourceOverride, true, false, false);
+            int screenTop, PuzzleSliderMatcherCore.PixelReader reader, long budgetMs, int sourceOverride,
+            PuzzleSliderMatcherCore.Piece piece) {
+        return estimateProfile(width, height, sliderScreenY, screenTop, reader, budgetMs, sourceOverride, piece, true, false, false);
     }
 
     static PuzzleSliderMatcherCore.Result estimateNarrow(int width, int height, float sliderScreenY,
-            int screenTop, PuzzleSliderMatcherCore.PixelReader reader, long budgetMs, int sourceOverride) {
-        return estimateProfile(width, height, sliderScreenY, screenTop, reader, budgetMs, sourceOverride, true, true, false);
+            int screenTop, PuzzleSliderMatcherCore.PixelReader reader, long budgetMs, int sourceOverride,
+            PuzzleSliderMatcherCore.Piece piece) {
+        return estimateProfile(width, height, sliderScreenY, screenTop, reader, budgetMs, sourceOverride, piece, true, true, false);
     }
 
     static PuzzleSliderMatcherCore.Result estimateLocalized(int width, int height, float sliderScreenY,
-            int screenTop, PuzzleSliderMatcherCore.PixelReader reader, long budgetMs, int sourceOverride) {
-        return estimateProfile(width, height, sliderScreenY, screenTop, reader, budgetMs, sourceOverride, true, true, true);
+            int screenTop, PuzzleSliderMatcherCore.PixelReader reader, long budgetMs, int sourceOverride,
+            PuzzleSliderMatcherCore.Piece piece) {
+        return estimateProfile(width, height, sliderScreenY, screenTop, reader, budgetMs, sourceOverride, piece, true, true, true);
     }
 
     private static PuzzleSliderMatcherCore.Result estimateProfile(int width, int height, float sliderScreenY,
             int screenTop, PuzzleSliderMatcherCore.PixelReader reader, long budgetMs, int sourceOverride,
+            PuzzleSliderMatcherCore.Piece piece,
             boolean compact, boolean narrow, boolean localized) {
         long start = System.nanoTime(), deadline = start + budgetMs * 1_000_000L;
         if (budgetMs <= 0 || width <= 0 || height <= 0 || reader == null) return null;
         float sx = width / 1264f, sy = height / 2780f;
         int source = sourceOverride >= 0 ? sourceOverride : Math.round(166 * sx);
         int sliderY = Math.round(sliderScreenY - screenTop);
-        int tw = Math.max(72, Math.round(180 * sx)), th = Math.max(72, Math.round(180 * sy));
+        // 模板按宽度比例取正方形；按高度比例会在 720x1039 上压成 72px，盖不住整块拼图。
+        int tw = Math.max(72, Math.round(180 * sx)), th = Math.max(72, Math.round(180 * sx));
         int top = sliderY + Math.round(-707 * sy), bottom = sliderY + Math.round(-287 * sy);
+        if (piece != null) {
+            // 拼图块纵向位置随机，用检测到的包围盒替换固定条带。
+            source = piece.left;
+            tw = Math.max(48, piece.width());
+            th = Math.max(48, piece.height());
+            top = piece.top;
+            bottom = piece.bottom;
+        }
         int left = Math.max(1, source - 2), roiTop = Math.max(1, top - Math.round(34 * sy));
         int right = Math.min(width - 1, source + tw + Math.round(800 * sx) + 2);
         int roiBottom = Math.min(height - 1, bottom + th + Math.round(34 * sy));

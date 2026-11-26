@@ -13,7 +13,7 @@ final class PuzzleOccludedContourMatcher {
             PuzzleSliderMatcherCore.PixelReader reader,long budgetMs,int sourceOverride) {
         long started=System.nanoTime(),deadline=started+budgetMs*1000000L;
         float sx=width/1264f,sy=height/2780f;
-        int source=sourceOverride>=0?sourceOverride:Math.round(166*sx),tw=Math.max(72,Math.round(180*sx)),th=Math.max(72,Math.round(180*sy));
+        int source=sourceOverride>=0?sourceOverride:Math.round(166*sx),tw=Math.max(72,Math.round(180*sx)),th=Math.max(72,Math.round(180*sx));
         int top=Math.round(sliderY-screenTop)+Math.round(-707*sy),bottom=Math.round(sliderY-screenTop)+Math.round(-287*sy);
         int left=Math.max(1,source-2),roiTop=Math.max(1,top-Math.round(34*sy));
         int w=Math.min(width-1,source+tw+Math.round(800*sx)+2)-left;

@@ -66,6 +66,7 @@ import io.github.Dragon813.sesame.model.normal.base.BaseModel;
 import io.github.Dragon813.sesame.model.task.antFarm.AntFarm.TaskStatus;
 import io.github.Dragon813.sesame.model.task.antFarm.AntFarmRpcCall;
 import io.github.Dragon813.sesame.model.task.antGame.GameTask;
+import io.github.Dragon813.sesame.model.task.antMember.YouthPrivilege;
 import io.github.Dragon813.sesame.rpc.intervallimit.FixedOrRangeIntervalLimit;
 import io.github.Dragon813.sesame.rpc.intervallimit.RpcIntervalLimit;
 import io.github.Dragon813.sesame.ui.ObjReference;
@@ -377,7 +378,7 @@ public class AntForestV2 extends ModelTask {
         modelFields.addField(greenLife = new BooleanModelField("greenLife", "森林集市", false));
         modelFields.addField(greenRent = new BooleanModelField("greenRent", "绿色租赁", false));
         modelFields.addField(readForest = new BooleanModelField("readForest", "无纸阅读", false));
-        modelFields.addField(youthPrivilege = new BooleanModelField("youthPrivilege", "青春特权 | 森林道具", false));
+        modelFields.addField(youthPrivilege = new BooleanModelField("youthPrivilege", "青春特权 | 森林道具/签到/任务/抽奖", false));
         modelFields.addField(ecoLife = new BooleanModelField("ecoLife", "绿色行动 | 开启", false));
         modelFields.addField(ecoLifeOptions = new SelectModelField("ecoLifeOptions", "绿色行动 | 选项", new LinkedHashSet<>(), CustomOption::getEcoLifeOptions, "光盘行动需要先手动完成一次"));
         modelFields.addField(partnerteamWater = new BooleanModelField("partnerteamWater", "组队合种浇水", false));
@@ -457,6 +458,8 @@ public class AntForestV2 extends ModelTask {
 
             if (youthPrivilege.getValue()) {
                 Privilege.youthPrivilege();
+                // 青春特权其余能力（签到青春豆 / 青春任务 / 青春豆十连抽），与森林道具共用本开关
+                YouthPrivilege.runFromExtension();
             }
             //连续兑换使用道具卡片
             continuousUseCardOptions();
@@ -1125,6 +1128,10 @@ public class AntForestV2 extends ModelTask {
     }
 
     private void collectPKEnergy() {
+        if (isForestRestricted()) {
+            Log.record("蚂蚁森林🚫" + forestRestrictTip() + "，跳过收取PK能量");
+            return;
+        }
         try {
             JSONObject pkObject = new JSONObject(AntForestRpcCall.queryTopEnergyChallengeRanking());
             if (!MessageUtil.checkResultCode(TAG + "获取PK排行榜失败:", pkObject)) {
@@ -1170,6 +1177,49 @@ public class AntForestV2 extends ModelTask {
                 AntForestV2.this.notifyAll();
             }
         }
+    }
+
+    /** 蚂蚁森林账号受限提示文案（"您暂时无法使用蚂蚁森林，请X天后再试…"）。 */
+    private static final String FOREST_RESTRICT_NOTICE = "暂时无法使用蚂蚁森林";
+
+    /** 当日出现账号受限的标识，出现后当天不再尝试好友浇水和收取好友/PK能量（组队/真爱合种除外）。 */
+    private static final String FOREST_RESTRICT_FLAG = "Forest::restricted";
+
+    /** 账号受限原文的缓存键，跳过日志里带上服务端原文（含具体天数）。 */
+    private static final String FOREST_RESTRICT_TIP_KEY = "ForestRestrictTip";
+
+    /** 未记录到服务端原文时使用的提示文案。 */
+    private static final String FOREST_RESTRICT_DEFAULT_TIP =
+            "您暂时无法使用蚂蚁森林，请4天后再试，同时遵守《蚂蚁森林用户使用须知》";
+
+    /** 账号受限提示原文，用于在跳过日志中告诉用户原因和天数。 */
+    private static String forestRestrictTip() {
+        String tip = RuntimeInfo.getInstance().getString(FOREST_RESTRICT_TIP_KEY);
+        return tip.isEmpty() ? FOREST_RESTRICT_DEFAULT_TIP : tip;
+    }
+
+    /**
+     * 当天是否已出现账号受限。
+     * 出现后当天不再尝试好友浇水、收取好友/PK能量，避免连续的无效请求。
+     */
+    private static boolean isForestRestricted() {
+        return Status.hasFlagToday(FOREST_RESTRICT_FLAG);
+    }
+
+    /**
+     * 从浇水/收取能量的返回文案中识别账号限制，并打上当天标识；
+     * 当天只提示一次。
+     */
+    private static synchronized void checkForestRestrict(String resultDesc) {
+        if (resultDesc == null || !resultDesc.contains(FOREST_RESTRICT_NOTICE)) {
+            return;
+        }
+        if (Status.hasFlagToday(FOREST_RESTRICT_FLAG)) {
+            return;
+        }
+        Log.record("蚂蚁森林🚫" + resultDesc + "，今日不再进行好友浇水和收取好友/PK能量（组队/真爱合种除外）");
+        RuntimeInfo.getInstance().put(FOREST_RESTRICT_TIP_KEY, resultDesc);
+        Status.flagToday(FOREST_RESTRICT_FLAG, UserIdMap.getCurrentUid());
     }
 
     private JSONObject querySelfHome() {
@@ -1268,7 +1318,12 @@ public class AntForestV2 extends ModelTask {
 
     private JSONObject collectUserEnergy(String userId, JSONObject userHomeObject, String getType) {
         try {
+            if (isForestRestricted() && !Objects.equals(userId, selfId)) {
+                // 账号受限：不收取好友/PK能量，也不添加蹲点收取
+                return userHomeObject;
+            }
             if (!MessageUtil.checkResultCode(TAG, userHomeObject)) {
+                checkForestRestrict(userHomeObject.optString("resultDesc"));
                 return userHomeObject;
             }
 
@@ -1437,6 +1492,11 @@ public class AntForestV2 extends ModelTask {
             if (hasErrorWait) {
                 return;
             }
+            if (isForestRestricted()) {
+                Log.record("蚂蚁森林🚫" + forestRestrictTip() + "，跳过收取"
+                        + ("PK".equals(getType) ? "PK" : "好友") + "能量");
+                return;
+            }
             collectFriendsEnergy(new JSONObject(AntForestRpcCall.fillUserRobFlag(new JSONArray(idList).toString())), getType);
         } catch (Exception e) {
             Log.printStackTrace(e);
@@ -1445,6 +1505,11 @@ public class AntForestV2 extends ModelTask {
 
     private void collectFriendsEnergy(JSONObject friendsObject, String getType) {
         if (hasErrorWait) {
+            return;
+        }
+        if (isForestRestricted()) {
+            Log.record("蚂蚁森林🚫" + forestRestrictTip() + "，跳过收取"
+                    + ("PK".equals(getType) ? "PK" : "好友") + "能量");
             return;
         }
         try {
@@ -1609,6 +1674,10 @@ public class AntForestV2 extends ModelTask {
         if (hasErrorWait) {
             return;
         }
+        if (isForestRestricted() && !Objects.equals(collectEnergyEntity.getUserId(), selfId)) {
+            // 账号受限：不收取好友/PK（含蹲点）能量
+            return;
+        }
         Runnable runnable = () -> {
             try {
                 String userId = collectEnergyEntity.getUserId();
@@ -1667,6 +1736,11 @@ public class AntForestV2 extends ModelTask {
                         return;
                     }
                     Log.record("[" + username + "]" + jo.getString("resultDesc"));
+                    checkForestRestrict(jo.optString("resultDesc"));
+                    if (isForestRestricted()) {
+                        // 账号被限制（请X天后再试）：不再重试收取
+                        return;
+                    }
                     if (tryCount < tryCountInt) {
                         collectEnergyEntity.setNeedRetry();
                         collectEnergy(collectEnergyEntity, username);
@@ -2366,6 +2440,10 @@ public class AntForestV2 extends ModelTask {
     }
 
     private void waterFriendEnergy() {
+        if (isForestRestricted()) {
+            Log.record("蚂蚁森林🚫" + forestRestrictTip() + "，跳过好友浇水");
+            return;
+        }
         String taskUid = UserIdMap.getCurrentUid();
         int waterEnergy = WaterFriendType.waterEnergy[waterFriendType.getValue()];
         if (waterEnergy == 0) {
@@ -2398,6 +2476,12 @@ public class AntForestV2 extends ModelTask {
                         if (!waterCountKVNode.getValue()) {
                             break;
                         }
+                    } else {
+                        // 查询好友森林页失败也识别账号限制，受限后不再继续浇水
+                        checkForestRestrict(jo.optString("resultDesc"));
+                        if (isForestRestricted()) {
+                            break;
+                        }
                     }
                 } catch (Throwable t) {
                     Log.i(TAG, "waterFriendEnergy err:");
@@ -2410,6 +2494,10 @@ public class AntForestV2 extends ModelTask {
     private KVNode<Integer, Boolean> returnFriendWater(String userId, String bizNo, int count, int waterEnergy) {
         if (bizNo == null || bizNo.isEmpty()) {
             return new KVNode<>(0, true);
+        }
+        if (isForestRestricted()) {
+            // 账号受限：停止继续浇水，避免连续无效请求
+            return new KVNode<>(0, false);
         }
         int wateredTimes = 0;
         boolean isContinue = true;
@@ -2447,6 +2535,12 @@ public class AntForestV2 extends ModelTask {
                     default:
                         Log.record("好友浇水🚿" + jo.getString("resultDesc"));
                         Log.i(jo.toString());
+                        checkForestRestrict(jo.optString("resultDesc"));
+                        if (isForestRestricted()) {
+                            // 账号被限制（请X天后再试）：本次以及后续好友都不再尝试浇水
+                            isContinue = false;
+                            break label;
+                        }
                         break;
                 }
             }
@@ -3586,13 +3680,9 @@ public class AntForestV2 extends ModelTask {
         try {
             do {
                 try {
-                    JSONObject jo = new JSONObject(AntForestRpcCall.queryPropList(true));
-                    if (!MessageUtil.checkResultCode(TAG, jo)) {
-                        return;
-                    }
-                    JSONArray forestPropVOList = jo.optJSONArray("forestPropVOList");
-                    if (forestPropVOList != null && forestPropVOList.length() > 0) {
-                        jo = forestPropVOList.getJSONObject(0);
+                    JSONArray forestPropVOList = getForestPropVOList(true);
+                    if (forestPropVOList.length() > 0) {
+                        JSONObject jo = forestPropVOList.getJSONObject(0);
                         String giveConfigId = jo.getJSONObject("giveConfigVO").getString("giveConfigId");
                         int holdsNum = jo.optInt("holdsNum", 0);
                         String propName = jo.getJSONObject("propConfigVO").getString("propName");
@@ -5269,11 +5359,35 @@ public class AntForestV2 extends ModelTask {
     }
 
     public static JSONArray getForestPropVOList() {
+        return getForestPropVOList(false);
+    }
+
+    // 道具背包分页拉取: 首页仅12个, 按nextCursor翻完所有页后合并
+    public static JSONArray getForestPropVOList(boolean onlyGive) {
         JSONArray forestPropVOList = new JSONArray();
         try {
-            JSONObject jo = new JSONObject(AntForestRpcCall.queryPropList(false));
-            if (MessageUtil.checkResultCode(TAG, jo)) {
-                forestPropVOList = jo.getJSONArray("forestPropVOList");
+            String nextCursor = "";
+            for (int page = 0; page < 10; page++) {
+                JSONObject jo = new JSONObject(AntForestRpcCall.queryPropList(onlyGive, nextCursor));
+                if (!MessageUtil.checkResultCode(TAG, jo)) {
+                    break;
+                }
+                JSONArray list = jo.optJSONArray("forestPropVOList");
+                if (list == null || list.length() == 0) {
+                    break;
+                }
+                for (int i = 0; i < list.length(); i++) {
+                    forestPropVOList.put(list.get(i));
+                }
+                if (!jo.optBoolean("hasMore")) {
+                    break;
+                }
+                String cursor = jo.optString("nextCursor", "");
+                if (cursor.isEmpty() || cursor.equals(nextCursor)) {
+                    break;
+                }
+                nextCursor = cursor;
+                TimeUtil.sleep(300);
             }
         } catch (Throwable th) {
             Log.i(TAG, "getForestPropVOList err:");
@@ -5380,12 +5494,32 @@ public class AntForestV2 extends ModelTask {
     }
 
     // 获取活力值商店列表
+    // 服务端按startIndex分页(hasMore/nextStartIndex), 需翻完所有页
     private JSONArray getVitalityItemList(String labelType) {
-        JSONArray itemInfoVOList = null;
+        JSONArray itemInfoVOList = new JSONArray();
         try {
-            JSONObject jo = new JSONObject(AntForestRpcCall.itemList(labelType));
-            if (MessageUtil.checkSuccess(TAG, jo)) {
-                itemInfoVOList = jo.optJSONArray("itemInfoVOList");
+            int startIndex = 0;
+            for (int page = 0; page < 10; page++) {
+                JSONObject jo = new JSONObject(AntForestRpcCall.itemList(labelType, startIndex));
+                if (!MessageUtil.checkSuccess(TAG, jo)) {
+                    break;
+                }
+                JSONArray list = jo.optJSONArray("itemInfoVOList");
+                if (list == null || list.length() == 0) {
+                    break;
+                }
+                for (int i = 0; i < list.length(); i++) {
+                    itemInfoVOList.put(list.get(i));
+                }
+                if (!jo.optBoolean("hasMore")) {
+                    break;
+                }
+                int nextStartIndex = jo.optInt("nextStartIndex", -1);
+                if (nextStartIndex <= startIndex) {
+                    nextStartIndex = startIndex + list.length();
+                }
+                startIndex = nextStartIndex;
+                TimeUtil.sleep(300);
             }
         } catch (Throwable th) {
             Log.i(TAG, "getVitalityItemList err:");
@@ -6165,6 +6299,10 @@ public class AntForestV2 extends ModelTask {
         @Override
         public Runnable setRunnable() {
             return () -> {
+                if (isForestRestricted() && !Objects.equals(userId, selfId)) {
+                    Log.record("蚂蚁森林🚫" + forestRestrictTip() + "，跳过蹲点收取[" + userName + "]");
+                    return;
+                }
                 int averageInteger = offsetTimeMath.getAverageInteger();
                 long readyTime = produceTime - advanceTimeInt + averageInteger - delayTimeMath.getAverageInteger() - System.currentTimeMillis() + 70;
                 if (readyTime > 0) {

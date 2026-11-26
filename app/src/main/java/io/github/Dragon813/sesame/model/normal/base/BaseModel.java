@@ -189,16 +189,17 @@ public class BaseModel extends Model {
         modelFields.addField(backupConfigDays = new IntegerModelField("backupConfigDays", "按天和修改备份配置保存数(滚动覆盖)", 5));
         modelFields.addField(backupLogDays = new IntegerModelField("backupLogDays", "保留之前日志天数", 1));
         modelFields.addField(newRpc = new BooleanModelField("newRpc", "使用新接口(最低支持v10.3.96.8100)", true));
+        // 以下项统一读写 config/config_common.json（不区分登录账号）
         modelFields.addField(autoSlideCaptchaEnabled = new AccountSwitchBooleanModelField("autoSlideCaptchaEnabled", "自动验证(滑动和拼图)", true, AccountSwitchBooleanModelField.KIND_SLIDE_CAPTCHA));
         // 仅作用于本地账号记录；服务端、设备和风控限制不在该开关范围内。
         modelFields.addField(unlockAccountLimitEnabled = new AccountSwitchBooleanModelField("unlockAccountLimitEnabled", "解除登录账号数限制", true, AccountSwitchBooleanModelField.KIND_UNLOCK_ACCOUNT_LIMIT));
-        // 以下四项统一读写 config/config_common.json（不区分登录账号）
         modelFields.addField(accountSwitchEnabled = new AccountSwitchBooleanModelField("accountSwitchEnabled", "自动切换登录账号", false, AccountSwitchBooleanModelField.KIND_AUTO_SWITCH));
         modelFields.addField(accountSwitchIntervalMinutes = new AccountSwitchIntervalModelField("accountSwitchIntervalMinutes", "切号间隔(分钟,0任务完成立即切)", AccountSwitchIntervalModelField.KIND_SWITCH));
         modelFields.addField(accountSwitchRoundIntervalMinutes = new AccountSwitchIntervalModelField("accountSwitchRoundIntervalMinutes", "切号轮次间隔(分钟,0不等待)", AccountSwitchIntervalModelField.KIND_ROUND));
         modelFields.addField(accountSwitchAccounts = new AccountSwitchListModelField("accountSwitchAccounts", "账号顺序配置列表", new ArrayList<>()));
         modelFields.addField(accountSwitchFinalAccountUid = new AccountSwitchFinalAccountModelField("accountSwitchFinalAccountUid", "常态保持账号(轮完切入)"));
         modelFields.addField(accountSwitchScheduleTimes = new AccountSwitchTimesModelField("accountSwitchScheduleTimes", "切换账号定时执行(如0800,2000)", new ArrayList<>()));
+
         modelFields.addField(debugMode = new BooleanModelField("debugMode", "开启抓包(含小程序数据)", false));
         modelFields.addField(maxGameTaskSubmitPerDay = new IntegerModelField("maxGameTaskSubmitPerDay", "链接任务单个每日最大执行次数(0仅收集不执行)", 1, 0, 10));
         modelFields.addField(miniGameTaskDisallowList = new SelectModelField("miniGameTaskDisallowList", "跳转任务 | 不允许执行列表(游戏、第三方)", new LinkedHashSet<>(), MiniGameTaskListMap::getOptions));

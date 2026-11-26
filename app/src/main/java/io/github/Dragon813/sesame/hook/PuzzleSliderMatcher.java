@@ -24,6 +24,28 @@ final class PuzzleSliderMatcher {
                 result.templateWidth, result.templateHeight);
     }
 
+    /** 由历史记录/差异兜底直接构造的位移结果。 */
+    static Result synthetic(int displacement, String method, float score,
+                            int sourceLeft, int sourceTop, int templateWidth, int templateHeight) {
+        return new Result(true, displacement, displacement, score, method, 0, 0L, "",
+                sourceLeft, sourceTop, sourceLeft + displacement, sourceTop,
+                templateWidth, templateHeight);
+    }
+
+    /** 检测左侧源拼图块包围盒，返回 {left, top, right, bottom}；检测不到返回 null。 */
+    static int[] detectPiece(Bitmap bitmap, float sliderScreenY, int screenTop, int sourceLeft) {
+        if (bitmap == null || bitmap.isRecycled() || bitmap.getWidth() <= 0 || bitmap.getHeight() <= 0) {
+            return null;
+        }
+        PuzzleSliderMatcherCore.Piece piece = PuzzleSliderMatcherCore.detectPiece(
+                bitmap.getWidth(), bitmap.getHeight(), sliderScreenY, screenTop,
+                (left, top, width, height, pixels) ->
+                        bitmap.getPixels(pixels, 0, width, left, top, width, height),
+                sourceLeft);
+        return piece == null ? null
+                : new int[]{piece.left, piece.top, piece.right, piece.bottom};
+    }
+
     static Result estimate(
             Bitmap bitmap,
             float sliderScreenY,

@@ -57,5 +57,17 @@ public interface RpcBridge {
         return requestObject(new RpcEntity(method, data, relation), tryCount, retryInterval);
     }
 
+    /**
+     * 原样发送调用方拼好的信封 JSON，不做任何字段加工。
+     * 用来逐字节复现抓包里的真实请求（例如手点的 platformTaskSignUp 信封只有 4 个字段）。
+     * 不支持的桥接实现返回 null，调用方自行回落完整信封。
+     *
+     * @param envelopeJson 完整信封 JSON（对象）
+     * @return 响应字符串，不支持时返回 null
+     */
+    default String requestRawEnvelope(String method, String envelopeJson) {
+        return null;
+    }
+
 
 }

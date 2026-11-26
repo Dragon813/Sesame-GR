@@ -525,12 +525,31 @@
       >
         <div class="dialog-list" style="max-height:60vh;overflow-y:auto;">
           <div
+            v-if="account_list.list.length"
+            class="pdTB10"
+            style="padding-left:16px;padding-right:16px;font-size:12px;opacity:.7;"
+          >
+            勾选的账号参与自动切换，顺序即切换顺序；用 ↑ ↓ 调整顺序
+          </div>
+          <div
             v-for="(item,index) in account_list.list"
             :key="item.uid"
             class="flex-space-between pdTB10"
             style="padding-left:16px;padding-right:16px;border-bottom:1px solid rgba(128,128,128,.25);"
           >
-            <div class="title" style="flex:1;">{{index+1}}. {{item.name}}</div>
+            <span
+              class="dl-check"
+              :class="{'dl-check-on': item.switchEnabled}"
+              @click.stop="item.switchEnabled = !item.switchEnabled"
+            ></span>
+            <div style="flex:1;min-width:0;margin-right:8px;">
+              <div
+                style="font-size:14px;color:black;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+              >{{item.showName}}</div>
+              <div
+                style="font-size:12px;opacity:.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+              >{{item.name}}</div>
+            </div>
             <van-button
               size="mini"
               style="width:24px;padding:0;flex:0 0 24px;"
@@ -634,13 +653,19 @@
               try {
                 const info = JSON.parse(window.HOOK.getField(modelName, code));
                 const expand = info.expandValue || [];
-                account_list.value.list = expand.map(a => ({ uid: a.id, name: a.name }));
+                account_list.value.list = expand.map(a => ({
+                  uid: a.id,
+                  showName: a.showName || a.name,
+                  name: a.name,
+                  switchEnabled: a.switchEnabled !== false,
+                }));
               } catch (e) {
                 account_list.value.list = [];
               }
             }, 0);
           }
 
+          // 上下移动: 交换相邻两项
           function moveAccount(index, delta) {
             const list = account_list.value.list;
             const target = index + delta;
@@ -662,7 +687,12 @@
               }
             }
             if (item) {
-              item.configValue = JSON.stringify(account_list.value.list.map(a => a.uid));
+              item.configValue = JSON.stringify(
+                account_list.value.list.map(a => ({
+                  uid: a.uid,
+                  switchEnabled: !!a.switchEnabled,
+                }))
+              );
             }
             account_list.value.visible = false;
           }
